@@ -1,6 +1,7 @@
 'use strict';
 // =============================================================================
-// SHADOW DIRECTIVE v1.1  —  Procedural Intelligence Operations Game
+// SHADOW DIRECTIVE v1.2  —  Multi-phase operations
+// MISSION_TYPES is now loaded from missions.js (must be included before this)
 // =============================================================================
 
 // =============================================================================
@@ -89,373 +90,27 @@ const DEPT_CONFIG = [
 // =============================================================================
 
 const FOREIGN_CITIES = [
-  { city: 'Moscow', country: 'Russia', region: 'Eastern Europe' },
-  { city: 'Tehran', country: 'Iran', region: 'Middle East' },
-  { city: 'Pyongyang', country: 'North Korea', region: 'East Asia' },
-  { city: 'Damascus', country: 'Syria', region: 'Middle East' },
-  { city: 'Caracas', country: 'Venezuela', region: 'South America' },
-  { city: 'Havana', country: 'Cuba', region: 'Caribbean' },
-  { city: 'Minsk', country: 'Belarus', region: 'Eastern Europe' },
-  { city: 'Kabul', country: 'Afghanistan', region: 'Central Asia' },
-  { city: 'Baghdad', country: 'Iraq', region: 'Middle East' },
-  { city: 'Tripoli', country: 'Libya', region: 'North Africa' },
-  { city: 'Khartoum', country: 'Sudan', region: 'East Africa' },
-  { city: 'Islamabad', country: 'Pakistan', region: 'South Asia' },
-  { city: 'Bogotá', country: 'Colombia', region: 'South America' },
-  { city: 'Lagos', country: 'Nigeria', region: 'West Africa' },
-  { city: 'Belgrade', country: 'Serbia', region: 'Balkans' },
+  { city: 'Moscow', country: 'Russia' },
+  { city: 'Tehran', country: 'Iran' },
+  { city: 'Pyongyang', country: 'North Korea' },
+  { city: 'Damascus', country: 'Syria' },
+  { city: 'Caracas', country: 'Venezuela' },
+  { city: 'Havana', country: 'Cuba' },
+  { city: 'Minsk', country: 'Belarus' },
+  { city: 'Kabul', country: 'Afghanistan' },
+  { city: 'Baghdad', country: 'Iraq' },
+  { city: 'Tripoli', country: 'Libya' },
+  { city: 'Khartoum', country: 'Sudan' },
+  { city: 'Islamabad', country: 'Pakistan' },
+  { city: 'Bogotá', country: 'Colombia' },
+  { city: 'Lagos', country: 'Nigeria' },
+  { city: 'Belgrade', country: 'Serbia' },
 ];
 
 const CODENAME_ADJ = ['IRON', 'SHADOW', 'BLACK', 'SILENT', 'STEEL', 'CRIMSON', 'GOLDEN', 'BROKEN', 'DARK',
-  'SWIFT', 'BURNING', 'COLD', 'GHOST', 'HOLLOW', 'WHITE', 'SILVER', 'STONE', 'BLIND', 'FALLEN', 'BROKEN'];
+  'SWIFT', 'BURNING', 'COLD', 'GHOST', 'HOLLOW', 'WHITE', 'SILVER', 'STONE', 'BLIND', 'FALLEN'];
 const CODENAME_NOUN = ['FALCON', 'HAMMER', 'DAWN', 'TIDE', 'SERPENT', 'ARROW', 'STORM', 'SHIELD',
   'WOLF', 'LANCE', 'STAR', 'ANVIL', 'BLADE', 'CROWN', 'GATE', 'RAVEN', 'TOWER', 'MIRROR', 'VEIL', 'FIST'];
-
-// =============================================================================
-// MISSION TEMPLATES
-// =============================================================================
-
-const MISSION_TYPES = {
-
-  DOMESTIC_TERROR: {
-    label: 'DOMESTIC THREAT',
-    category: 'COUNTER-TERRORISM',
-    location: 'DOMESTIC',
-    urgencyRange: [7, 18],
-    threatRange: [3, 5],
-    invDaysRange: [2, 4],
-    execDaysRange: [2, 3],
-    budgetRange: [3, 9],
-    staffRange: [15, 45],
-    invDepts: ['ANALYSIS', 'HUMINT', 'SIGINT', 'FIELD_OPS'],
-    execDepts: ['FIELD_OPS', 'SPECIAL_OPS'],
-    opNarrative: 'Field teams establish a tactical perimeter and move to neutralize the cell. HUMINT assets provide real-time target guidance while SIGINT intercepts communications. Special Operations holds in reserve for direct-action if the cell is armed. A simultaneous multi-point breach minimizes the risk of suspects fleeing.',
-    initialReports: [
-      'SIGINT intercepts suggest imminent {attack_type} against {target}. Source reliability: {reliability}. Cell location unknown.',
-      'Human asset reports {group} cell active near {city}. Nature unclear. Assess as potentially threat-related.',
-      'Anonymous tip forwarded by {city} metro police: suspicious activity consistent with {attack_type} preparation near {target}.',
-    ],
-    fullReports: [
-      'INTELLIGENCE BRIEF — OP {codename}\n\nCell composition: {cell_size} individuals confirmed. Additional members possible. Cell leader operating under alias "{alias}".\n\nObjective: {attack_type} targeting {target} in {city}.\n\nTimeline: window of {urgency_days} days remaining.\n\nAssessment: Threat credible. Immediate action recommended.',
-      'INTELLIGENCE BRIEF — OP {codename}\n\nConfirmed: {group} planning {attack_type}. Primary target: {target}.\n\nHUMINT places cell leader ({alias}) in {city}. Cell size: {cell_size}. Weapons acquisition believed complete.\n\nThreat level: CRITICAL. Time-sensitive. Recommend field neutralization.',
-    ],
-    successMsgs: [
-      'Cell neutralized. {cell_size} suspects detained. Materials seized. Planned attack against {target} prevented. No civilian casualties.\n\nPost-operation assessment confirms the cell was days from executing. HUMINT source proved reliable throughout. The {city} bureau performed well under pressure.',
-      'Operation successful. "{alias}" and {cell_size} operatives apprehended. {attack_type} threat eliminated.\n\nFull debriefing of the cell leader is underway. Early indications suggest the cell had foreign logistical support — a follow-up investigation has been recommended.',
-    ],
-    failureMsgs: [
-      'Operation blown. Cell received advance warning and dispersed. {attack_type} against {target} proceeded — {casualties} casualties reported.\n\nThe source of the operational leak is under investigation. The cell leader "{alias}" remains at large. Expect further attempts.',
-      'Insufficient intelligence led to premature deployment. Field teams arrived post-event. {casualties} casualties. Cell leader "{alias}" remains at large.\n\nPost-incident review indicates the investigation was closed too early. Full intel was not yet available when the operation was approved.',
-    ],
-    confSuccess: [10, 18], confFail: [-18, -30],
-    vars: {
-      group: ['domestic extremists', 'a foreign-linked cell', 'an anarchist collective', 'radicalized nationals', 'a separatist faction'],
-      attack_type: ['a mass-casualty bombing', 'a vehicle attack', 'an infrastructure strike', 'a targeted assassination campaign', 'a chemical release'],
-      target: ['Parliament', 'a transit hub', 'a financial district', 'a government ministry', 'a national monument', 'a major airport'],
-      cell_size: ['3', '4 to 6', '7 or more', 'an unknown number of'],
-      alias: ['VIPER', 'HAMMER', 'CROW', 'GHOST', 'THORN', 'HYDRA', 'JACKAL', 'WRAITH'],
-      casualties: ['12', '28', '47', '8', '31', '53'],
-      reliability: ['HIGH', 'MODERATE', 'UNVERIFIED'],
-    }
-  },
-
-  FOREIGN_HVT: {
-    label: 'FOREIGN HVT',
-    category: 'HIGH-VALUE TARGET',
-    location: 'FOREIGN',
-    urgencyRange: [10, 25],
-    threatRange: [3, 5],
-    invDaysRange: [3, 5],
-    execDaysRange: [3, 5],
-    budgetRange: [6, 14],
-    staffRange: [8, 25],
-    invDepts: ['ANALYSIS', 'HUMINT', 'SIGINT', 'FOREIGN_OPS'],
-    execDepts: ['FOREIGN_OPS', 'SPECIAL_OPS'],
-    opNarrative: 'A covert team inserts into the target country under civilian or diplomatic cover. Foreign Operations conducts final surveillance and confirms the window. The team moves on the target at the optimal moment, with Special Operations providing armed overwatch. Extraction routes are pre-staged — the team must be clear of the country within hours of completing the mission.',
-    initialReports: [
-      'Intel suggests high-value target — designation {hvt_role} — currently located in {city}, {country}. Identity unconfirmed.',
-      'SIGINT intercepts place HVT of interest in {country}. Known alias: "{alias}". Purpose of visit: unknown.',
-      'Foreign liaison reports individual matching description of {hvt_role} "{alias}" active in {city}, {country}.',
-    ],
-    fullReports: [
-      'INTELLIGENCE BRIEF — OP {codename}\n\nTarget: {hvt_role}, operating as "{alias}". Confirmed present in {city}, {country}.\n\nBackground: {hvt_bg}\n\nLocation: {location_detail}. Personal security detail: {security}.\n\nWindow: {urgency_days} days before target relocates.\n\nRecommendation: Covert elimination or rendition team deployment.',
-      'INTELLIGENCE BRIEF — OP {codename}\n\nHVT "{alias}" — {hvt_role} — confirmed in {city}, {country}.\n\n{hvt_bg}\n\nSecurity profile: {security}. Known movements: {movements}.\n\nThis is a time-critical target. Recommend immediate action.',
-    ],
-    successMsgs: [
-      'Target "{alias}" neutralized. Operation conducted with minimal signature. Regional {hvt_consequence} significantly degraded.\n\nThe team extracted cleanly within the planned window. No attribution. Foreign liaison has acknowledged the outcome through back channels.',
-      'Mission accomplished. "{alias}" eliminated in {city}. No agency attribution. {hvt_consequence} disrupted.\n\nInitial assessment: the target\'s network will require months to reconstitute. A significant capability degradation has been achieved.',
-    ],
-    failureMsgs: [
-      'Target "{alias}" escaped. Team extracted under fire. {complication}. International exposure risk elevated.\n\nThe target was apparently warned — a security review of the intelligence chain is under way. Foreign Operations has flagged a possible leak.',
-      'Operation compromised. Target alerted and relocated. Two assets burned. {complication}.\n\nThe mission window is now closed. The target has likely moved to a protected location. Recovery of this opportunity is assessed as unlikely in the near term.',
-    ],
-    confSuccess: [12, 20], confFail: [-15, -25],
-    vars: {
-      hvt_role: ['a weapons broker', 'a terrorist financier', 'a foreign intelligence officer', 'a fugitive arms dealer', 'a rogue scientist', 'a war crimes suspect'],
-      hvt_bg: ['Subject responsible for financing multiple attacks against allied interests.', 'Subject linked to proliferation of advanced weaponry to hostile non-state actors.', 'Subject believed to have operational knowledge of planned attacks against the homeland.'],
-      security: ['minimal (2 guards)', 'moderate (6-man detail)', 'heavy (12+ armed personnel)', 'unknown'],
-      movements: ['predictable daily route', 'erratic, irregular schedule', 'confined to secure compound'],
-      location_detail: ['a private residence', 'a hotel', 'a government facility', 'an unofficial safehouse'],
-      hvt_consequence: ['terror financing network', 'arms trafficking operation', 'intelligence network'],
-      complication: ['Foreign media is reporting possible intelligence activity in the area', 'A local national was killed during the exfil', 'Two team members are still evading pursuit'],
-    }
-  },
-
-  ASSET_RESCUE: {
-    label: 'ASSET RESCUE',
-    category: 'COVERT EXTRACTION',
-    location: 'FOREIGN',
-    urgencyRange: [4, 10],
-    threatRange: [3, 5],
-    invDaysRange: [1, 3],
-    execDaysRange: [2, 4],
-    budgetRange: [5, 12],
-    staffRange: [6, 18],
-    invDepts: ['ANALYSIS', 'HUMINT', 'FOREIGN_OPS'],
-    execDepts: ['FOREIGN_OPS', 'SPECIAL_OPS'],
-    opNarrative: 'Foreign Operations inserts a small contact team to locate and reach the asset. Once contact is made, the team moves to a pre-planned exfiltration corridor — sea, air, or overland depending on the situation. Special Operations provides armed support in case the extraction turns hostile. Speed is critical; the window closes fast.',
-    initialReports: [
-      'Asset "{alias}" has gone dark in {city}, {country}. Last contact: {days_dark} days ago. Status unknown.',
-      'EMERGENCY: {country} security services may have rolled up one of our networks. Asset "{alias}" is unreachable.',
-      'Encrypted distress signal received from {city}. Source appears to be asset "{alias}". Message fragmentary.',
-    ],
-    fullReports: [
-      'INTELLIGENCE BRIEF — OP {codename}\n\nAsset "{alias}" confirmed detained by {detaining_authority} in {city}, {country}.\n\nAsset has {asset_knowledge}. Interrogation is likely underway.\n\nExtraction window: {urgency_days} days before transfer to a maximum security facility.\n\nOptions: Covert extraction team, or in-country asset negotiation.',
-      'INTELLIGENCE BRIEF — OP {codename}\n\nAsset "{alias}" location confirmed: {location_detail} in {city}.\n\nCondition: {asset_condition}. Has {asset_knowledge}.\n\nExfiltration corridor: {exfil_route}. Window is closing.\n\nRecommend immediate extraction before asset is transferred or talks.',
-    ],
-    successMsgs: [
-      'Asset "{alias}" successfully extracted from {country}. Debriefing is underway. No casualties on the extraction team.\n\nThe asset remains operational. They have provided preliminary intelligence on the circumstances of their detention — further debrief reports will follow.',
-      'Extraction complete. "{alias}" recovered. {asset_condition_post}. Operational security was maintained throughout.\n\nThe in-country network was partially compromised. An assessment of the damage to our {country} operations is being prepared.',
-    ],
-    failureMsgs: [
-      'Extraction failed. Asset "{alias}" transferred to a high-security facility. Recovery is now assessed as unlikely.\n\nThe asset has knowledge of ongoing operations. A review of all related mission files is recommended. Assume potential compromise.',
-      'Team compromised. Asset extraction aborted. "{alias}" fate unknown. Two team members are still evading pursuit.\n\nForeign Operations has activated emergency exfiltration protocols for the remaining personnel. Related operations are being suspended pending a security review.',
-    ],
-    confSuccess: [8, 15], confFail: [-12, -22],
-    vars: {
-      alias: ['COBALT', 'MERCURY', 'DELPHI', 'SUNDIAL', 'PARROT', 'ATLAS', 'HERMES', 'ORACLE'],
-      days_dark: ['3', '5', '7', '48 hours'],
-      detaining_authority: ['state security', 'military intelligence', 'the secret police', 'border security'],
-      asset_knowledge: ['knowledge of ongoing domestic operations', 'access to classified source networks', 'years of accumulated intelligence value'],
-      exfil_route: ['via northern border crossing', 'by sea through a friendly port', 'via commercial aviation with a sterile identity'],
-      asset_condition: ['alive, location confirmed', 'injured but responsive', 'status critical'],
-      asset_condition_post: ['Minor injuries sustained', 'Asset in good health', 'Requires immediate medical attention'],
-      location_detail: ['a detention facility', 'a police holding cell', 'a military installation', 'an unofficial site'],
-    }
-  },
-
-  COUNTER_INTEL: {
-    label: 'COUNTER-INTEL',
-    category: 'INTERNAL SECURITY',
-    location: 'DOMESTIC',
-    urgencyRange: [12, 30],
-    threatRange: [2, 4],
-    invDaysRange: [4, 6],
-    execDaysRange: [1, 2],
-    budgetRange: [2, 6],
-    staffRange: [4, 12],
-    invDepts: ['ANALYSIS', 'COUNTER_INTEL', 'SIGINT'],
-    execDepts: ['COUNTER_INTEL', 'FIELD_OPS'],
-    opNarrative: 'Counter-Intelligence conducts a controlled burn — feeding known-false intelligence into the network to identify the leak point. SIGINT monitors the subject\'s communications for the telltale signal. Once the mole is confirmed with sufficient confidence, Field Operations executes a quiet arrest before the subject can alert their handler or destroy evidence.',
-    initialReports: [
-      'Anomalies detected in compartmented data access patterns. Possible insider threat. Details unclear.',
-      'A foreign intelligence service appears to have advance knowledge of recent operations. Source of the leak is unidentified.',
-      'Anonymous internal report: employee in {dept_name} displaying suspicious behavior. No corroborating evidence yet.',
-    ],
-    fullReports: [
-      'INTELLIGENCE BRIEF — OP {codename}\n\nInternal investigation indicates {suspect_count} individuals with access to the compromised intelligence streams.\n\nPrimary suspect: {suspect_profile}. Access level: {access_level}.\n\nForeign beneficiary: {foreign_service}.\n\nRecommendation: Controlled surveillance and arrest operation once sufficient evidence is accumulated.',
-      'INTELLIGENCE BRIEF — OP {codename}\n\nMole identified with high confidence: {suspect_profile}. Has been passing {leaked_material} to {foreign_service} for an estimated {duration}.\n\nProfile note: {suspect_profile_detail}.\n\nRecommend immediate apprehension before further damage occurs.',
-    ],
-    successMsgs: [
-      '{suspect_profile} arrested. A partial confession has been obtained. {foreign_service} network partially rolled up. Damage assessment is underway.\n\nThe controlled burn worked cleanly. The subject did not suspect the trap until the arrest. Preliminary interrogation suggests the compromise was limited to one compartment.',
-      'Internal threat neutralized. {suspect_profile} is in custody. Leaked material accounted for. Network damage: assessed as limited.\n\nFull debrief of the subject will take weeks. Counter-Intelligence has recommended a security review of all personnel with similar access levels.',
-    ],
-    failureMsgs: [
-      'Surveillance operation blown. Suspect alerted — fled the country. {foreign_service} agent network remains intact. Damage unknown.\n\nThe subject had a pre-arranged exfiltration plan, suggesting a level of preparation we did not anticipate. A full damage assessment has been ordered.',
-      'Wrong suspect apprehended. Actual mole is still active. {foreign_service} has now changed protocols.\n\nThe operational security review identified a flaw in the investigation methodology. Counter-Intelligence is restarting the investigation from scratch. The mole knows we are looking.',
-    ],
-    confSuccess: [6, 12], confFail: [-10, -18],
-    vars: {
-      suspect_count: ['2 to 4', '5 to 8', 'one or two'],
-      suspect_profile: ['a senior analyst', 'a mid-level operations officer', 'a technical specialist', 'an administrative officer with broad access'],
-      access_level: ['TOP SECRET / SCI', 'SECRET / NOFORN', 'full compartmented access'],
-      foreign_service: ['a Russian intelligence service', 'Chinese state intelligence', 'an Iranian proxy', 'an unidentified state actor'],
-      leaked_material: ['operational plans', 'agent identities', 'communications intercepts', 'classified assessments'],
-      duration: ['6 months', 'over a year', '3 years', 'an unknown period'],
-      suspect_profile_detail: ['Recruited via financial pressure', 'Ideologically motivated', 'Honey-trap operation confirmed'],
-      dept_name: ['foreign operations', 'analysis', 'signals', 'field operations'],
-    }
-  },
-
-  RENDITION: {
-    label: 'RENDITION',
-    category: 'COVERT CAPTURE',
-    location: 'FOREIGN',
-    urgencyRange: [8, 20],
-    threatRange: [3, 5],
-    invDaysRange: [3, 5],
-    execDaysRange: [3, 5],
-    budgetRange: [7, 15],
-    staffRange: [8, 22],
-    invDepts: ['ANALYSIS', 'HUMINT', 'FOREIGN_OPS'],
-    execDepts: ['FOREIGN_OPS', 'SPECIAL_OPS', 'FIELD_OPS'],
-    opNarrative: 'A snatch team deploys under civilian cover. Foreign Operations identifies the optimal window; Special Operations executes the capture. The target is to be taken alive and moved through a covert exfiltration chain — safe house to safe house — until they can be transported to a secure interrogation facility. Legal cover must be airtight throughout.',
-    initialReports: [
-      'Target of interest — {rendition_role} — believed to be in {city}, {country}. Confirmation needed.',
-      'Tip from allied service: individual connected to {rendition_link} operating in {country}. Capture may be possible.',
-      'HUMINT reports target "{alias}" residing in {city}, {country}. Access situation unknown.',
-    ],
-    fullReports: [
-      'INTELLIGENCE BRIEF — OP {codename}\n\nTarget: "{alias}", {rendition_role}.\n\nBackground: {rendition_link_detail}. Assessed as high interrogation value.\n\nLocation confirmed: {city}, {country}. Security: {security}.\n\nExtraction plan: {exfil_plan}. Window: {urgency_days} days.\n\nLegal cover: {legal_cover}. Recommend capture-and-render operation.',
-      'INTELLIGENCE BRIEF — OP {codename}\n\nHigh-value rendition target "{alias}" confirmed in {city}.\n\n{rendition_link_detail}\n\nTarget is {security}. Intelligence value: CRITICAL.\n\nRecommend immediate snatch-and-grab operation before target relocates to safer territory.',
-    ],
-    successMsgs: [
-      'Target "{alias}" successfully rendered. Currently in transit to a secure interrogation facility. Legal cover is holding.\n\nInitial assessment of interrogation value: SIGNIFICANT. The target has been cooperative. Early intelligence indicates active plans we were previously unaware of.',
-      'Rendition complete. "{alias}" in custody. {rendition_intel_value}.\n\nThe operation was conducted cleanly. No foreign media coverage. Allied service has been informed through appropriate channels.',
-    ],
-    failureMsgs: [
-      'Rendition operation failed. Target fled. Team engaged by {security} — extracted with casualties.\n\nThe target was more security-conscious than our assessment indicated. Foreign Operations is reviewing the intelligence that led to this evaluation.',
-      'Target "{alias}" proved to be a decoy. Real target alerted and went to ground. Allied service relationship is strained.\n\nA review of the source chain for this intelligence has been initiated. We were played.',
-    ],
-    confSuccess: [10, 18], confFail: [-12, -22],
-    vars: {
-      rendition_role: ['a bomb-maker', 'a terror cell commander', 'a weapons smuggler', 'a financier of hostile operations', 'a former intelligence officer gone rogue'],
-      rendition_link: ['multiple domestic attacks', 'a regional terror network', 'weapons proliferation to non-state actors'],
-      rendition_link_detail: ['Subject is believed to have operational knowledge of planned attacks against allied targets.', 'Subject has led multiple operations resulting in allied casualties.', 'Subject has access to chemical precursor supply chains used in recent attacks.'],
-      security: ['lightly guarded', 'moderately protected (4 guards)', 'well-protected, inside a compound'],
-      exfil_plan: ['commercial flight under a sterile identity', 'by sea through neutral waters', 'overland via allied territory'],
-      legal_cover: ['fully prepared', 'thin but viable', 'questionable — proceed with maximum discretion'],
-      rendition_intel_value: ['Confirmed upcoming operation details extracted', 'Network map partially recovered', 'Multiple associate identities obtained'],
-      alias: ['SCORPION', 'TALON', 'BASILISK', 'COBRA', 'MANTIS', 'HORNET'],
-    }
-  },
-
-  HOSTILE_RESCUE: {
-    label: 'HOSTAGE RESCUE',
-    category: 'RESCUE OPERATION',
-    location: 'FOREIGN',
-    urgencyRange: [3, 8],
-    threatRange: [4, 5],
-    invDaysRange: [1, 2],
-    execDaysRange: [1, 2],
-    budgetRange: [4, 10],
-    staffRange: [10, 30],
-    invDepts: ['ANALYSIS', 'SIGINT', 'FOREIGN_OPS'],
-    execDepts: ['SPECIAL_OPS', 'FOREIGN_OPS'],
-    opNarrative: 'Special Operations leads a direct-action assault on the confirmed hold site. Multiple breach points are hit simultaneously to prevent executions. Foreign Operations secures the exfiltration corridor. The team has one window — if the timing slips, the hostages are at risk. There are no second chances on a rescue operation.',
-    initialReports: [
-      '{hostages} taken hostage by {group} in {city}, {country}. Official channels are unresponsive.',
-      'FLASH: {group} has seized {hostages} at a location in {country}. Military is requesting covert options.',
-      'Embassy in {country} reports {hostages} missing — now believed held by armed {group} in the {city} region.',
-    ],
-    fullReports: [
-      'INTELLIGENCE BRIEF — OP {codename}\n\nHostages: {hostages}. Held by {group} at confirmed location: {hold_site} outside {city}.\n\nGuard estimate: {guard_count}. Hostage condition: {condition}.\n\nDeadline: {urgency_days} days before {deadline_consequence}.\n\nRecommendation: Rapid assault team deployment. Speed is critical.',
-      'INTELLIGENCE BRIEF — OP {codename}\n\nLocation of {hostages} confirmed via SIGINT. Hold site: {hold_site}, {country}.\n\n{group} demands: {demands}. Deadline is firm.\n\nGuard count: {guard_count}. Recommend CQB team — negotiation has been ruled out at this stage.',
-    ],
-    successMsgs: [
-      'All {hostages} recovered alive. {group} holding force neutralized. Exfiltration successful — team and hostages are en route to a secure facility.\n\nInitial medical assessments indicate the hostages are in stable condition. The {city} operation will be cited as a model for rapid-response rescue planning.',
-      'Rescue operation complete. {hostages} secured. Minimal casualties. Team extracted safely.\n\nPost-operation debrief with the recovered personnel is scheduled for tomorrow. Their account of the time in captivity will provide significant intelligence on {group}.',
-    ],
-    failureMsgs: [
-      'Assault location was incorrect. Hostages had been moved before the raid. {group} has begun executing threats — {casualty_note}.\n\nIntelligence failure. The SIGINT fix was outdated. A full timeline review has been ordered.',
-      'Rescue attempt failed. The alarm was raised early — likely a surveillance sweep we missed. {hostages} status is unknown. Team is taking fire — exfiltration is in progress.\n\nThis mission has shifted to a recovery operation. {casualty_note}.',
-    ],
-    confSuccess: [14, 22], confFail: [-20, -35],
-    vars: {
-      hostages: ['3 diplomatic staff', 'a senior official', 'a journalist and 2 aid workers', '5 military advisors', '2 intelligence officers'],
-      group: ['an armed militia', 'a terror cell', 'a criminal cartel', 'a separatist group', 'a political faction'],
-      hold_site: ['an abandoned factory', 'a fortified farmhouse', 'an urban apartment complex', 'a remote compound'],
-      guard_count: ['6 to 8 armed guards', '12 or more militants', '4 to 6 personnel'],
-      condition: ['alive, unharmed', 'alive, one injured', 'status unknown — likely alive'],
-      deadline_consequence: ['executions begin', 'hostages are transferred deeper into hostile territory', 'media exposure is threatened'],
-      demands: ['prisoner release', 'ransom payment', 'withdrawal of forces from the region'],
-      casualty_note: ['one confirmed casualty', 'multiple casualties — situation ongoing', 'casualty count not yet confirmed'],
-    }
-  },
-
-  REGIME_OP: {
-    label: 'REGIME OPERATION',
-    category: 'COVERT INFLUENCE',
-    location: 'FOREIGN',
-    urgencyRange: [15, 35],
-    threatRange: [2, 4],
-    invDaysRange: [4, 7],
-    execDaysRange: [4, 7],
-    budgetRange: [8, 18],
-    staffRange: [5, 15],
-    invDepts: ['ANALYSIS', 'HUMINT', 'FOREIGN_OPS'],
-    execDepts: ['FOREIGN_OPS', 'HUMINT'],
-    opNarrative: 'Foreign Operations activates in-country assets to implement the influence campaign — financial support, media coordination, or liaison with the friendly faction. HUMINT manages the network and ensures operational security. There is no direct-action component. Plausible deniability is the operational imperative. If the operation is traced back, diplomatic consequences will be severe.',
-    initialReports: [
-      'Political situation in {country} presents an opportunity. A preliminary assessment has been requested.',
-      'Opposition elements in {country} have made contact. They are requesting support — nature unclear.',
-      'Instability in {country} is growing. A window to influence the political outcome may be opening.',
-    ],
-    fullReports: [
-      'INTELLIGENCE BRIEF — OP {codename}\n\nTarget nation: {country}. Objective: {regime_objective}.\n\nOpportunity: {opportunity_detail}\n\nKey assets: {key_assets}.\n\nRisk of attribution: {attribution_risk}.\n\nTimeline for influence window: {urgency_days} days.\n\nRecommend covert support operation.',
-      'INTELLIGENCE BRIEF — OP {codename}\n\nOperation objective: {regime_objective} in {country}.\n\n{opportunity_detail}\n\nAssets in-country: {key_assets}. Attribution risk: {attribution_risk}.\n\nRecommended approach: {method}.',
-    ],
-    successMsgs: [
-      'Operation achieved objectives in {country}. {regime_outcome}. Attribution: none confirmed.\n\nThe operation has been one of our cleaner successes this cycle. The in-country network performed well. Our hand is not visible in the outcome.',
-      'Covert influence operation successful. {regime_outcome}. Regional stability has improved.\n\nThe allied assessment of the outcome is highly positive. This operation has strengthened relationships with key regional contacts.',
-    ],
-    failureMsgs: [
-      'Operation compromised. {country} government is publicly blaming foreign interference. Diplomatic fallout is imminent.\n\nThe attribution trail is thin but traceable. Foreign Affairs has been briefed. Expect a difficult period with {country} for the foreseeable future.',
-      'Assets burned. {country} security services have rolled up our in-country network. Objectives not achieved.\n\nYears of patient asset development have been lost. A full damage assessment will take months. The setback to our {country} program is severe.',
-    ],
-    confSuccess: [8, 16], confFail: [-12, -22],
-    vars: {
-      regime_objective: ['support a pro-Western political transition', 'destabilize a hostile government\'s economic programs', 'influence upcoming elections toward a friendly candidate', 'support a dissident movement'],
-      opportunity_detail: ['A pivotal election is approaching and key officials are approachable.', 'An economic crisis has weakened the government\'s grip on power.', 'Military leadership is fractured — a faction has signaled willingness to cooperate.'],
-      key_assets: ['two mid-level officials', 'a media figure with national reach', 'a military contact in the inner circle'],
-      attribution_risk: ['LOW — operation is well-covered', 'MODERATE — some exposure possible', 'HIGH — proceed with extreme caution'],
-      method: ['financial support to opposition media', 'coordination with a friendly military faction', 'disinformation seeding through proxies'],
-      regime_outcome: ['A favorable political shift has occurred', 'Opposition now controls key ministries', 'Government economic programs have been disrupted'],
-    }
-  },
-
-  DOMESTIC_HVT: {
-    label: 'DOMESTIC HVT',
-    category: 'HIGH-VALUE TARGET',
-    location: 'DOMESTIC',
-    urgencyRange: [8, 20],
-    threatRange: [3, 5],
-    invDaysRange: [2, 4],
-    execDaysRange: [2, 3],
-    budgetRange: [3, 8],
-    staffRange: [10, 30],
-    invDepts: ['ANALYSIS', 'HUMINT', 'SIGINT', 'COUNTER_INTEL'],
-    execDepts: ['FIELD_OPS', 'SPECIAL_OPS', 'COUNTER_INTEL'],
-    opNarrative: 'Field Operations establishes rolling surveillance on the target. Counter-Intelligence runs interference against any security detail or counter-surveillance measures. When the optimal window opens — a moment of exposure, a predictable routine, a known location — the team moves. Either a quiet arrest in a controlled environment or a clean neutralization. The goal is zero public exposure.',
-    initialReports: [
-      'Tip indicates a foreign intelligence officer operating on domestic soil under diplomatic cover. Unverified.',
-      'HUMINT suggests {hvt_role} has slipped into the country. Location: possibly {city}. Details unknown.',
-      'Border surveillance has flagged an individual matching the profile of {hvt_role} "{alias}". Currently at large.',
-    ],
-    fullReports: [
-      'INTELLIGENCE BRIEF — OP {codename}\n\nTarget "{alias}" — {hvt_role} — confirmed active in {city}.\n\nBackground: {hvt_bg}\n\nCurrent activity: {current_activity}.\n\nSecurity profile: {security}.\n\nRecommendation: Apprehend or neutralize before the target completes their objective and exits the country.',
-      'INTELLIGENCE BRIEF — OP {codename}\n\n{hvt_role} "{alias}" identified in {city}. {hvt_bg}\n\nConfirmed conducting: {current_activity}.\n\nSecurity: {security}. Window: {urgency_days} days.\n\nRecommend immediate field operation.',
-    ],
-    successMsgs: [
-      'Target "{alias}" apprehended in {city}. Found in possession of {seized_material}. A significant intelligence haul.\n\nThe subject is cooperating. Early debrief suggests the operation was part of a larger program — follow-up intelligence requests have been submitted to allied services.',
-      'HVT neutralized. "{alias}" no longer poses a threat. Operation conducted with full deniability.\n\nPost-action sweep recovered {seized_material}. The target\'s handler has gone to ground — a follow-up surveillance operation has been recommended.',
-    ],
-    failureMsgs: [
-      '"{alias}" evaded capture in {city}. Target is believed to have exited the country via {exfil}. Objective not achieved.\n\nThe operation window closed before we were in position. A request for allied border monitoring has been submitted.',
-      'Operation blown. "{alias}" alerted by an unknown leak. Target escaped. Diplomatic immunity has been invoked by {country}.\n\nThis is a significant setback. The target\'s activities during their time in-country remain partially unaccounted for. A full damage assessment is in progress.',
-    ],
-    confSuccess: [10, 16], confFail: [-12, -20],
-    vars: {
-      hvt_role: ['a foreign intelligence officer', 'a known saboteur', 'a fugitive wanted for terrorism', 'a technology thief', 'a hostile state recruiter'],
-      hvt_bg: ['Subject is responsible for recruiting domestic assets for a hostile foreign service.', 'Subject is conducting industrial espionage on critical defense technology.', 'Subject has active ties to domestic extremist networks.'],
-      current_activity: ['talent recruitment operations', 'technical collection against defense programs', 'meeting with domestic extremist contacts', 'mapping critical infrastructure'],
-      security: ['none — operating alone', 'minimal counter-surveillance measures', 'backed by an embassy security team'],
-      seized_material: ['classified documents', 'a list of recruited assets', 'technical schematics', 'encryption devices'],
-      exfil: ['commercial flight', 'a diplomatic vehicle', 'the northern border'],
-      country: ['Russia', 'China', 'Iran', 'North Korea'],
-    }
-  },
-};
 
 // =============================================================================
 // GAME STATE
@@ -479,15 +134,21 @@ function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
 function fmt(n) { return G.cfg ? `${G.cfg.currencySymbol}${n}M` : `$${n}M`; }
 function week() { return Math.ceil(G.day / 7); }
 
+// All vars in fillVars are pre-resolved strings — simple token replacement
 function fillTemplate(tpl, vars) {
   return tpl.replace(/\{(\w+)\}/g, (_, key) => {
-    if (key === 'city') return vars._city || '—';
-    if (key === 'country') return vars._country || '—';
-    if (key === 'codename') return vars._codename || '—';
-    if (key === 'urgency_days') return vars._urgency || '—';
-    if (vars[key]) return pick(vars[key]);
+    if (vars[key] !== undefined) return vars[key];
     return `[${key}]`;
   });
+}
+
+// Pre-resolve an array of vars into strings (pick once per spawn)
+function resolveVars(varsTemplate, baseVars) {
+  const resolved = { ...baseVars };
+  for (const [k, v] of Object.entries(varsTemplate || {})) {
+    resolved[k] = Array.isArray(v) ? pick(v) : v;
+  }
+  return resolved;
 }
 
 function generateCodename() {
@@ -505,7 +166,7 @@ function generateCodename() {
 function initDepts() {
   const depts = {};
   for (const d of DEPT_CONFIG) {
-    depts[d.id] = { ...d, busy: false, busyType: null, busyMissionId: null, busyDaysLeft: 0 };
+    depts[d.id] = { ...d, busy: false, busyType: null, busyMissionId: null };
   }
   return depts;
 }
@@ -534,33 +195,70 @@ function restartGame() { G.country = null; showScreen('select'); }
 // MISSION GENERATION
 // =============================================================================
 
+// Initialize/reset per-phase fields on the mission from phases[currentPhaseIndex]
+function initPhaseFields(m) {
+  const ph = m.phases[m.currentPhaseIndex];
+  // Merge shared top-level vars with phase-specific vars (all pre-resolved)
+  const phFillVars = resolveVars(ph.vars || {}, m.fillVars);
+  m.currentPhaseFillVars = phFillVars;
+
+  m.invDays    = randInt(...ph.invDaysRange);
+  m.invDepts   = ph.invDepts;
+  m.execDays   = randInt(...ph.execDaysRange);
+  m.execDepts  = ph.execDepts;
+  m.baseBudget = randInt(...ph.budgetRange);
+  m.baseStaff  = randInt(...ph.staffRange);
+  m.confSuccess = ph.confSuccess;
+  m.confFail    = ph.confFail;
+  m.opNarrative = fillTemplate(ph.opNarrative, phFillVars);
+  m.initialReport = fillTemplate(pick(ph.investigateReports), phFillVars);
+  m.fullReport    = fillTemplate(pick(ph.fullBriefs), phFillVars);
+  m.successMsgs   = ph.successOutcomes;
+  m.failureMsgs   = ph.failureOutcomes;
+
+  // Reset phase-level operational state
+  m.assignedInvDept    = null;
+  m.invDaysLeft        = 0;
+  m.assignedBudget     = 0;
+  m.assignedStaff      = 0;
+  m.assignedExecDepts  = [];
+  m.execDaysLeft       = 0;
+  m.successProb        = 0;
+  m.phaseFalseFlag     = false;
+  m.phaseFalseFlagText = '';
+  m.phaseFalseFlagPenalty = false;
+}
+
 function spawnMission(forcedType) {
-  const inbox = G.missions.filter(m => ['INCOMING','INVESTIGATING','READY'].includes(m.status));
+  const inbox = G.missions.filter(m =>
+    ['INCOMING', 'INVESTIGATING', 'READY', 'PHASE_COMPLETE'].includes(m.status));
   if (inbox.length >= 6) return;
+
   const typeId = forcedType || pick(Object.keys(MISSION_TYPES));
   const tmpl = MISSION_TYPES[typeId];
   if (!tmpl) return;
 
-  const codename = generateCodename();
-  const urgency = randInt(...tmpl.urgencyRange);
-  const threat = randInt(...tmpl.threatRange);
-  const invDays = randInt(...tmpl.invDaysRange);
-  const execDays = randInt(...tmpl.execDaysRange);
-  const baseBudget = randInt(...tmpl.budgetRange);
-  const baseStaff = randInt(...tmpl.staffRange);
+  const codename  = generateCodename();
+  const urgency   = randInt(...tmpl.urgencyRange);
+  const threat    = randInt(...tmpl.threatRange);
 
   let cityName, countryName;
   if (tmpl.location === 'DOMESTIC') {
-    cityName = pick(G.cfg.domesticCities);
+    cityName    = pick(G.cfg.domesticCities);
     countryName = G.cfg.name;
   } else {
     const loc = pick(FOREIGN_CITIES);
-    cityName = loc.city; countryName = loc.country;
+    cityName    = loc.city;
+    countryName = loc.country;
   }
 
-  const fillVars = { ...tmpl.vars, _city: cityName, _country: countryName, _codename: codename, _urgency: String(urgency) };
-  const initialReport = fillTemplate(pick(tmpl.initialReports), fillVars);
-  const fullReport = fillTemplate(pick(tmpl.fullReports), fillVars);
+  // Pre-resolve all top-level vars once at spawn time
+  const fillVars = resolveVars(tmpl.vars || {}, {
+    city:        cityName,
+    country:     countryName,
+    codename:    codename,
+    urgency_days: String(urgency),
+  });
 
   const mission = {
     id: `M${++G.missionIdCounter}`,
@@ -568,20 +266,45 @@ function spawnMission(forcedType) {
     label: tmpl.label, category: tmpl.category, location: tmpl.location,
     city: cityName, country: countryName,
     urgency, urgencyLeft: urgency,
-    invDays, execDays, baseBudget, baseStaff,
-    invDepts: tmpl.invDepts, execDepts: tmpl.execDepts,
-    opNarrative: tmpl.opNarrative || '',
-    initialReport, fullReport,
-    successMsgs: tmpl.successMsgs, failureMsgs: tmpl.failureMsgs,
-    confSuccess: tmpl.confSuccess, confFail: tmpl.confFail,
     fillVars,
+    isMultiPhase: tmpl.isMultiPhase || false,
     status: 'INCOMING',
     assignedInvDept: null, invDaysLeft: 0,
     assignedBudget: 0, assignedStaff: 0, assignedExecDepts: [],
     execDaysLeft: 0, successProb: 0,
     resultMsg: '', confDelta: 0, budgetDelta: 0,
     dayReceived: G.day,
+    phaseFalseFlag: false, phaseFalseFlagText: '', phaseFalseFlagPenalty: false,
+    followUpSpawned: false,
   };
+
+  if (tmpl.isMultiPhase) {
+    mission.phases           = tmpl.phases;
+    mission.currentPhaseIndex = 0;
+    mission.completedPhases  = [];
+    mission.lastPhaseMsg     = '';
+    mission.lastPhaseName    = '';
+    mission.lastPhaseShortName = '';
+    mission.lastPhaseConfDelta = 0;
+    initPhaseFields(mission);
+  } else {
+    // Single-phase — resolve all text at spawn time
+    Object.assign(mission, {
+      invDays:    randInt(...tmpl.invDaysRange),
+      execDays:   randInt(...tmpl.execDaysRange),
+      baseBudget: randInt(...tmpl.budgetRange),
+      baseStaff:  randInt(...tmpl.staffRange),
+      invDepts:   tmpl.invDepts,
+      execDepts:  tmpl.execDepts,
+      opNarrative:  tmpl.opNarrative || '',
+      initialReport: fillTemplate(pick(tmpl.initialReports), fillVars),
+      fullReport:    fillTemplate(pick(tmpl.fullReports),    fillVars),
+      successMsgs:   tmpl.successMsgs,
+      failureMsgs:   tmpl.failureMsgs,
+      confSuccess:   tmpl.confSuccess,
+      confFail:      tmpl.confFail,
+    });
+  }
 
   G.missions.unshift(mission);
   addLog(`New mission received: OP ${codename} [${tmpl.label}]`);
@@ -596,7 +319,7 @@ function advanceDay() {
   G.day++;
 
   for (const m of G.missions) {
-    if (m.status === 'INCOMING' || m.status === 'READY') {
+    if (['INCOMING', 'READY', 'PHASE_COMPLETE'].includes(m.status)) {
       m.urgencyLeft = Math.max(0, m.urgencyLeft - 1);
       if (m.urgencyLeft === 0) expireMission(m);
     }
@@ -630,13 +353,24 @@ function advanceDay() {
 
   checkGameOver();
   render();
-
   if (G.selected && !getMission(G.selected)) G.selected = null;
 }
 
 function completeInvestigation(m) {
-  m.status = 'READY';
   freeDept(m.assignedInvDept, m.id);
+  m.assignedInvDept = null;
+
+  // Check for false flag (multi-phase only)
+  if (m.isMultiPhase) {
+    const ph = m.phases[m.currentPhaseIndex];
+    if (ph.falseFlagChance > 0 && Math.random() < ph.falseFlagChance) {
+      m.phaseFalseFlag     = true;
+      m.phaseFalseFlagText = fillTemplate(pick(ph.falseFlagTexts), m.currentPhaseFillVars);
+      addLog(`⚠ OP ${m.codename}: Investigation anomaly detected — review before proceeding.`, 'log-warn');
+    }
+  }
+
+  m.status = 'READY';
   addLog(`Investigation complete: OP ${m.codename} — Intel brief ready.`, 'log-info');
 }
 
@@ -647,36 +381,113 @@ function expireMission(m) {
   addLog(`MISSION EXPIRED: OP ${m.codename}. Confidence ${confHit}%.`, 'log-fail');
 }
 
+// =============================================================================
+// OPERATION RESOLUTION
+// =============================================================================
+
 function resolveOperation(m) {
-  const roll = Math.random() * 100;
-  const success = roll <= m.successProb;
+  const success = Math.random() * 100 <= m.successProb;
 
   G.staffUsed = Math.max(0, G.staffUsed - m.assignedStaff);
-  G.opsCompleted++;
+  for (const did of m.assignedExecDepts || []) freeDept(did, m.id);
 
-  // Free all deployed departments
-  for (const did of m.assignedExecDepts || []) {
-    freeDept(did, m.id);
-  }
+  const fillV = m.isMultiPhase ? m.currentPhaseFillVars : m.fillVars;
+  const msg   = fillTemplate(pick(success ? m.successMsgs : m.failureMsgs), fillV);
 
-  if (success) {
-    m.status = 'SUCCESS';
-    const confGain = randInt(...m.confSuccess);
-    const budgetReturn = Math.floor(m.assignedBudget * 0.1);
-    G.confidence = clamp(G.confidence + confGain, 0, 100);
-    if (budgetReturn > 0) G.budget = Math.min(G.budget + budgetReturn, 999);
-    m.confDelta = confGain; m.budgetDelta = budgetReturn;
-    m.resultMsg = fillTemplate(pick(m.successMsgs), m.fillVars);
-    G.opsSucceeded++;
-    addLog(`SUCCESS: OP ${m.codename}. +${confGain}% confidence.`, 'log-success');
+  if (m.isMultiPhase) {
+    completePhase(m, success ? 'SUCCESS' : 'FAILURE', msg);
   } else {
-    m.status = 'FAILURE';
+    G.opsCompleted++;
+    if (success) {
+      m.status = 'SUCCESS';
+      const confGain    = randInt(...m.confSuccess);
+      const budgetReturn = Math.floor(m.assignedBudget * 0.1);
+      G.confidence = clamp(G.confidence + confGain, 0, 100);
+      if (budgetReturn > 0) G.budget = Math.min(G.budget + budgetReturn, 999);
+      m.confDelta = confGain; m.budgetDelta = budgetReturn;
+      m.resultMsg = msg;
+      G.opsSucceeded++;
+      addLog(`SUCCESS: OP ${m.codename}. +${confGain}% confidence.`, 'log-success');
+    } else {
+      m.status = 'FAILURE';
+      const confLoss = randInt(...m.confFail);
+      G.confidence = clamp(G.confidence + confLoss, 0, 100);
+      m.confDelta = confLoss; m.budgetDelta = 0;
+      m.resultMsg = msg;
+      addLog(`FAILURE: OP ${m.codename}. ${confLoss}% confidence.`, 'log-fail');
+    }
+  }
+}
+
+// =============================================================================
+// MULTI-PHASE MANAGEMENT
+// =============================================================================
+
+function completePhase(m, result, msg) {
+  const ph = m.phases[m.currentPhaseIndex];
+
+  m.completedPhases.push({
+    phaseIndex: m.currentPhaseIndex,
+    phaseId:    ph.id,
+    phaseName:  ph.name,
+    shortName:  ph.shortName,
+    result, msg,
+  });
+
+  if (result === 'FAILURE') {
+    G.opsCompleted++;
+    m.status    = 'FAILURE';
     const confLoss = randInt(...m.confFail);
     G.confidence = clamp(G.confidence + confLoss, 0, 100);
     m.confDelta = confLoss; m.budgetDelta = 0;
-    m.resultMsg = fillTemplate(pick(m.failureMsgs), m.fillVars);
-    addLog(`FAILURE: OP ${m.codename}. ${confLoss}% confidence.`, 'log-fail');
+    m.resultMsg = msg;
+    addLog(`FAILURE: OP ${m.codename} [${ph.shortName}]. ${confLoss}% confidence.`, 'log-fail');
+    return;
   }
+
+  // Phase succeeded
+  const confGain = randInt(...m.confSuccess);
+  if (confGain > 0) {
+    G.confidence = clamp(G.confidence + confGain, 0, 100);
+    addLog(`PHASE COMPLETE: OP ${m.codename} — ${ph.shortName}. +${confGain}% confidence.`, 'log-success');
+  } else {
+    addLog(`PHASE COMPLETE: OP ${m.codename} — ${ph.shortName}. Proceeding.`, 'log-info');
+  }
+
+  // Spawn follow-up mission if this phase triggers one
+  if (ph.spawnsFollowUp && !m.followUpSpawned) {
+    spawnFollowUpMission(m, ph);
+    m.followUpSpawned = true;
+  }
+
+  const nextIdx = m.currentPhaseIndex + 1;
+  if (nextIdx < m.phases.length) {
+    // More phases remain
+    m.lastPhaseMsg       = msg;
+    m.lastPhaseName      = ph.name;
+    m.lastPhaseShortName = ph.shortName;
+    m.lastPhaseConfDelta = confGain;
+    m.currentPhaseIndex  = nextIdx;
+    m.status             = 'PHASE_COMPLETE';
+    initPhaseFields(m); // pre-initialize next phase fields
+  } else {
+    // Final phase — mission success
+    G.opsCompleted++;
+    G.opsSucceeded++;
+    m.status = 'SUCCESS';
+    const budgetReturn = Math.floor(m.assignedBudget * 0.1);
+    if (budgetReturn > 0) G.budget = Math.min(G.budget + budgetReturn, 999);
+    m.confDelta   = confGain;
+    m.budgetDelta = budgetReturn;
+    m.resultMsg   = msg;
+    addLog(`SUCCESS: OP ${m.codename} — Full operation complete. +${confGain}% confidence.`, 'log-success');
+  }
+}
+
+function spawnFollowUpMission(m, phase) {
+  const intelText = pick(phase.followUpIntelTexts || []);
+  if (intelText) addLog(`INTELLIGENCE LEAD — OP ${m.codename}: ${intelText}`, 'log-info');
+  spawnMission(phase.spawnsFollowUp);
 }
 
 // =============================================================================
@@ -704,26 +515,25 @@ function assignDeptDeployed(deptId, missionId) {
 function selectMission(id) { G.selected = id; render(); }
 
 function assignInvestigation(missionId, deptId) {
-  const m = getMission(missionId);
+  const m    = getMission(missionId);
   const dept = G.depts[deptId];
   if (!m || !dept) return;
   if (dept.busy) { addLog(`${dept.name} is currently assigned. Choose another.`, 'log-warn'); render(); return; }
   if (!m.invDepts.includes(deptId)) { addLog(`${dept.name} cannot investigate this mission type.`, 'log-warn'); render(); return; }
 
-  m.status = 'INVESTIGATING';
+  m.status          = 'INVESTIGATING';
   m.assignedInvDept = deptId;
-  m.invDaysLeft = m.invDays;
+  m.invDaysLeft     = m.invDays;
   dept.busy = true; dept.busyType = 'INVESTIGATING'; dept.busyMissionId = missionId;
 
-  addLog(`${dept.name} assigned to investigate OP ${m.codename}. Est. ${m.invDays} days.`, 'log-info');
+  const phaseLabel = m.isMultiPhase ? ` (${m.phases[m.currentPhaseIndex].shortName})` : '';
+  addLog(`${dept.name} assigned to investigate OP ${m.codename}${phaseLabel}. Est. ${m.invDays} days.`, 'log-info');
   render();
 }
 
 function archiveMission(missionId) {
-  const m = getMission(missionId);
-  if (!m) return;
   G.missions = G.missions.filter(x => x.id !== missionId);
-  G.selected = null;
+  if (G.selected === missionId) G.selected = null;
   render();
 }
 
@@ -743,6 +553,42 @@ function dismissMission(missionId) {
   render();
 }
 
+// Acknowledge phase completion and proceed to next phase
+window.acknowledgePhaseProceeding = function(missionId) {
+  const m = getMission(missionId);
+  if (!m || m.status !== 'PHASE_COMPLETE') return;
+  m.status = 'INCOMING';
+  addLog(`OP ${m.codename}: Proceeding to ${m.phases[m.currentPhaseIndex].name}.`, 'log-info');
+  render();
+};
+
+// False flag: proceed with -25% probability penalty
+window.falseFlagProceed = function(missionId) {
+  const m = getMission(missionId);
+  if (!m || !m.phaseFalseFlag) return;
+  m.phaseFalseFlagPenalty = true;
+  m.phaseFalseFlag = false;
+  addLog(`OP ${m.codename}: Proceeding despite anomaly. Success probability reduced.`, 'log-warn');
+  render();
+};
+
+// False flag: reinvestigate — return to INCOMING
+window.falseFlagReinvestigate = function(missionId) {
+  const m = getMission(missionId);
+  if (!m || !m.phaseFalseFlag) return;
+  m.phaseFalseFlag        = false;
+  m.phaseFalseFlagPenalty = false;
+  m.invDays     = randInt(2, 3);
+  m.invDaysLeft = 0;
+  m.status      = 'INCOMING';
+  addLog(`OP ${m.codename}: Reinvestigation ordered. Assign a department to re-examine the evidence.`, 'log-info');
+  render();
+};
+
+// =============================================================================
+// OPERATION MODAL
+// =============================================================================
+
 function openOperationModal(missionId) {
   const m = getMission(missionId);
   if (!m) return;
@@ -750,9 +596,9 @@ function openOperationModal(missionId) {
   const minBudget = Math.max(1, Math.floor(m.baseBudget * 0.5));
   const maxBudget = Math.min(G.budget, m.baseBudget * 2);
   const defBudget = Math.min(G.budget, m.baseBudget);
-  const minStaff = Math.max(1, Math.floor(m.baseStaff * 0.5));
-  const maxStaff = Math.min(G.staffTotal - G.staffUsed, m.baseStaff * 2);
-  const defStaff = Math.min(maxStaff, m.baseStaff);
+  const minStaff  = Math.max(1, Math.floor(m.baseStaff * 0.5));
+  const maxStaff  = Math.min(G.staffTotal - G.staffUsed, m.baseStaff * 2);
+  const defStaff  = Math.min(maxStaff, m.baseStaff);
 
   if (maxBudget < minBudget) {
     addLog(`Insufficient budget for OP ${m.codename}. Need at least ${fmt(minBudget)}.`, 'log-warn');
@@ -768,10 +614,11 @@ function openOperationModal(missionId) {
     if (!G.depts[did].busy) { selectedDepts = [did]; break; }
   }
 
+  const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
   const calcProb = (budget, staff, depts) => {
-    let p = 40;
+    let p = 40 - falseFlagPenalty;
     p += Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
-    p += Math.round(clamp((staff - minStaff) / Math.max(1, m.baseStaff - minStaff), 0, 1) * 20);
+    p += Math.round(clamp((staff - minStaff)   / Math.max(1, m.baseStaff  - minStaff),  0, 1) * 20);
     p += depts.filter(d => m.execDepts.includes(d)).length * 8;
     return clamp(p, 10, 92);
   };
@@ -780,8 +627,8 @@ function openOperationModal(missionId) {
     const dept = G.depts[did];
     const avail = !dept.busy;
     return `<div class="modal-dept-check ${selectedDepts.includes(did) ? 'selected' : ''} ${avail ? '' : 'unavail'}"
-      data-dept="${did}" onclick="toggleExecDept('${did}', '${missionId}')"
-      data-tip="${DEPT_CONFIG.find(d=>d.id===did)?.tip || ''}">
+      data-dept="${did}" onclick="toggleExecDept('${did}','${missionId}')"
+      data-tip="${DEPT_CONFIG.find(d => d.id === did)?.tip || ''}">
       <span class="modal-dept-check-name">${dept.short}</span>
       <span class="modal-dept-check-status" style="color:var(--accent);font-size:9px">REC</span>
       <span class="modal-dept-check-status" style="color:${avail ? 'var(--green)' : 'var(--red)'}">${avail ? 'AVAIL' : 'BUSY'}</span>
@@ -792,17 +639,22 @@ function openOperationModal(missionId) {
     const dept = G.depts[d.id];
     const avail = !dept.busy;
     return `<div class="modal-dept-check ${selectedDepts.includes(d.id) ? 'selected' : ''}"
-      data-dept="${d.id}" onclick="toggleExecDept('${d.id}', '${missionId}')"
+      data-dept="${d.id}" onclick="toggleExecDept('${d.id}','${missionId}')"
       data-tip="${d.tip}">
       <span class="modal-dept-check-name">${dept.short}</span>
-      <span class="modal-dept-check-status" style="color:${avail ? 'var(--text-dim)' : 'var(--red)'}; font-size:9px;">${avail ? 'OPT' : 'BUSY'}</span>
+      <span class="modal-dept-check-status" style="color:${avail ? 'var(--text-dim)' : 'var(--red)'};font-size:9px">${avail ? 'OPT' : 'BUSY'}</span>
     </div>`;
   }).join('');
 
-  const initProb = calcProb(defBudget, defStaff, selectedDepts);
+  const initProb    = calcProb(defBudget, defStaff, selectedDepts);
+  const phaseLabel  = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
+  const penaltyNote = falseFlagPenalty > 0
+    ? `<div style="background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:4px;padding:8px 10px;margin-bottom:12px;font-size:11px;color:var(--red)">⚠ ANOMALY PENALTY: Success probability reduced by 25% due to inconclusive investigation.</div>`
+    : '';
 
-  document.getElementById('modal-title').textContent = `OP ${m.codename} — CONFIGURE OPERATION`;
+  document.getElementById('modal-title').textContent = `OP ${m.codename}${phaseLabel} — CONFIGURE OPERATION`;
   document.getElementById('modal-body').innerHTML = `
+    ${penaltyNote}
     <div class="modal-section">
       <div class="modal-section-title">OPERATION PLAN</div>
       <div class="op-narrative">${m.opNarrative}</div>
@@ -836,7 +688,7 @@ function openOperationModal(missionId) {
       <div class="modal-dept-grid">${otherDepts}</div>
     </div>
     <div class="modal-section">
-      <div class="prob-display" data-tip="Estimated probability of mission success based on resources and department assignments. Higher is better.">
+      <div class="prob-display" data-tip="Estimated probability of mission success.${falseFlagPenalty > 0 ? ' Reduced 25% due to anomaly.' : ''}">
         <div class="prob-label">ESTIMATED SUCCESS PROBABILITY</div>
         <div class="prob-value ${initProb >= 70 ? 'prob-high' : initProb >= 45 ? 'prob-med' : 'prob-low'}" id="op-prob-wrap">
           <span id="op-prob">${initProb}%</span>
@@ -849,7 +701,7 @@ function openOperationModal(missionId) {
     </div>
   `;
 
-  window._currentOpMission = missionId;
+  window._currentOpMission      = missionId;
   window._currentOpSelectedDepts = selectedDepts;
   showModal();
 }
@@ -876,51 +728,53 @@ window.updateModalProb = function(missionId) {
   if (bv) bv.textContent = fmt(b);
   if (sv) sv.textContent = `${s} agents`;
   const minBudget = Math.max(1, Math.floor(m.baseBudget * 0.5));
-  const minStaff = Math.max(1, Math.floor(m.baseStaff * 0.5));
-  let p = 40;
+  const minStaff  = Math.max(1, Math.floor(m.baseStaff  * 0.5));
+  const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
+  let p = 40 - falseFlagPenalty;
   p += Math.round(clamp((b - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
-  p += Math.round(clamp((s - minStaff) / Math.max(1, m.baseStaff - minStaff), 0, 1) * 20);
+  p += Math.round(clamp((s - minStaff)  / Math.max(1, m.baseStaff  - minStaff),  0, 1) * 20);
   p += (window._currentOpSelectedDepts || []).filter(d => m.execDepts.includes(d)).length * 8;
   p = clamp(p, 10, 92);
-  const probEl = document.getElementById('op-prob');
+  const probEl   = document.getElementById('op-prob');
   const probWrap = document.getElementById('op-prob-wrap');
-  if (probEl) probEl.textContent = `${p}%`;
-  if (probWrap) probWrap.className = 'prob-value ' + (p >= 70 ? 'prob-high' : p >= 45 ? 'prob-med' : 'prob-low');
+  if (probEl)   probEl.textContent  = `${p}%`;
+  if (probWrap) probWrap.className  = 'prob-value ' + (p >= 70 ? 'prob-high' : p >= 45 ? 'prob-med' : 'prob-low');
 };
 
 window.executeOperation = function(missionId) {
   const m = getMission(missionId);
   if (!m) return;
-  const bi = document.getElementById('op-budget');
-  const si = document.getElementById('op-staff');
+  const bi     = document.getElementById('op-budget');
+  const si     = document.getElementById('op-staff');
   const budget = bi ? parseInt(bi.value) : m.baseBudget;
-  const staff = si ? parseInt(si.value) : m.baseStaff;
-  const depts = window._currentOpSelectedDepts || [];
+  const staff  = si ? parseInt(si.value) : m.baseStaff;
+  const depts  = window._currentOpSelectedDepts || [];
 
   if (G.budget < budget) { addLog('Insufficient budget.', 'log-warn'); hideModal(); render(); return; }
   if (G.staffTotal - G.staffUsed < staff) { addLog('Insufficient available staff.', 'log-warn'); hideModal(); render(); return; }
 
-  G.budget -= budget;
+  G.budget    -= budget;
   G.staffUsed += staff;
 
   const minBudget = Math.max(1, Math.floor(m.baseBudget * 0.5));
-  const minStaff = Math.max(1, Math.floor(m.baseStaff * 0.5));
-  let p = 40;
+  const minStaff  = Math.max(1, Math.floor(m.baseStaff  * 0.5));
+  const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
+  let p = 40 - falseFlagPenalty;
   p += Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
-  p += Math.round(clamp((staff - minStaff) / Math.max(1, m.baseStaff - minStaff), 0, 1) * 20);
+  p += Math.round(clamp((staff  - minStaff)  / Math.max(1, m.baseStaff  - minStaff),  0, 1) * 20);
   p += depts.filter(d => m.execDepts.includes(d)).length * 8;
   m.successProb = clamp(p, 10, 92);
 
-  m.status = 'EXECUTING';
-  m.execDaysLeft = m.execDays;
-  m.assignedBudget = budget;
-  m.assignedStaff = staff;
+  m.status            = 'EXECUTING';
+  m.execDaysLeft      = m.execDays;
+  m.assignedBudget    = budget;
+  m.assignedStaff     = staff;
   m.assignedExecDepts = depts;
 
-  // Mark assigned departments as DEPLOYED
   for (const did of depts) assignDeptDeployed(did, missionId);
 
-  addLog(`OP ${m.codename} launched. ${fmt(budget)} allocated. ${staff} agents deployed. ETA ${m.execDays} days.`, 'log-info');
+  const phaseLabel = m.isMultiPhase ? ` [${m.phases[m.currentPhaseIndex].shortName}]` : '';
+  addLog(`OP ${m.codename}${phaseLabel} launched. ${fmt(budget)} allocated. ${staff} agents. ETA ${m.execDays}d.`, 'log-info');
   hideModal();
   G.selected = m.id;
   render();
@@ -976,34 +830,34 @@ function render() {
 
 function renderHeader() {
   document.getElementById('hdr-agency').textContent = G.cfg ? `${G.cfg.acronym} — ${G.cfg.agency}` : '—';
-  document.getElementById('hdr-date').textContent = `DAY ${G.day} · WEEK ${week()} · ${G.cfg ? G.cfg.leaderTitle.toUpperCase() : ''}`;
+  document.getElementById('hdr-date').textContent   = `DAY ${G.day} · WEEK ${week()} · ${G.cfg ? G.cfg.leaderTitle.toUpperCase() : ''}`;
 
   const confPct = G.confidence;
-  const bar = document.getElementById('conf-bar');
+  const bar     = document.getElementById('conf-bar');
   if (bar) {
-    bar.style.width = `${confPct}%`;
+    bar.style.width      = `${confPct}%`;
     bar.style.background = confPct >= 60 ? 'var(--green)' : confPct >= 35 ? 'var(--amber)' : 'var(--red)';
   }
-  document.getElementById('res-conf').textContent = `${confPct}%`;
+  document.getElementById('res-conf').textContent   = `${confPct}%`;
   document.getElementById('res-budget').textContent = fmt(G.budget);
-  document.getElementById('res-staff').textContent = `${G.staffUsed} / ${G.staffTotal}`;
+  document.getElementById('res-staff').textContent  = `${G.staffUsed} / ${G.staffTotal}`;
 
-  // Attach tooltips to header resource groups
   const confGroup = document.getElementById('res-conf')?.closest('.res-group');
-  if (confGroup) confGroup.dataset.tip = `Your standing with ${G.cfg?.leaderTitle || 'your leader'}. Falls 2% each week. Plummets after failures or expired high-threat missions. Hit 0% and you are dismissed.`;
+  if (confGroup) confGroup.dataset.tip = `Your standing with ${G.cfg?.leaderTitle}. Falls 2% each week. Hit 0% and you are dismissed.`;
 
   const budgetGroup = document.getElementById('res-budget')?.closest('.res-group');
-  if (budgetGroup) budgetGroup.dataset.tip = `Available operational budget. Spent when launching operations. Regenerates ${fmt(G.cfg?.weeklyBudgetRegen || 0)} per week up to the starting amount. Running dry for a full week ends your tenure.`;
+  if (budgetGroup) budgetGroup.dataset.tip = `Available operational budget. Regenerates ${fmt(G.cfg?.weeklyBudgetRegen || 0)}/week.`;
 
   const staffGroup = document.getElementById('res-staff')?.closest('.res-group');
-  if (staffGroup) staffGroup.dataset.tip = `Agents currently deployed / total available. Staff is committed for the duration of active operations and returns when the operation concludes.`;
+  if (staffGroup) staffGroup.dataset.tip = `Agents deployed / total available. Returned after operation concludes.`;
 
   const advBtn = document.getElementById('btn-advance');
-  if (advBtn) advBtn.dataset.tip = 'Advance time by one day. Investigations and operations progress. New missions may appear.\nKeyboard shortcut: → or N';
+  if (advBtn) advBtn.dataset.tip = 'Advance time by one day. Keyboard: → or N';
 }
 
 function renderInbox() {
-  const inbox = G.missions.filter(m => !['EXECUTING','SUCCESS','FAILURE','ARCHIVED'].includes(m.status));
+  const inbox = G.missions.filter(m =>
+    !['EXECUTING', 'SUCCESS', 'FAILURE', 'ARCHIVED'].includes(m.status));
   document.getElementById('inbox-count').textContent = inbox.length;
   const el = document.getElementById('mission-inbox');
 
@@ -1012,41 +866,59 @@ function renderInbox() {
     return;
   }
 
-  const statusTips = {
-    INCOMING: 'Initial report received. Select and assign a department to investigate — this unlocks the full intelligence brief.',
-    INVESTIGATING: 'A department is working this case. Advance days to let the investigation complete.',
-    READY: 'Full intelligence brief is available. Open this mission to approve or archive the operation.',
-    EXPIRED: 'Mission window has passed. No action was taken — a confidence penalty may have been applied.',
-  };
-
   el.innerHTML = inbox.map(m => {
-    const isSelected = G.selected === m.id;
-    const daysLeft = m.urgencyLeft;
+    const isSelected  = G.selected === m.id;
+    const daysLeft    = m.urgencyLeft;
     const deadlineCls = daysLeft <= 2 ? 'urgent' : daysLeft <= 5 ? 'warn' : '';
-    const statusLabels = {
-      INCOMING: '<span class="mc-status status-incoming" data-tip="Initial intel only. Investigation needed.">INCOMING</span>',
-      INVESTIGATING: '<span class="mc-status status-investigating" data-tip="Department assigned, advancing investigation.">INVESTIGATING</span>',
-      READY: '<span class="mc-status status-ready" data-tip="Full brief available. Review and decide.">BRIEF READY</span>',
-      EXPIRED: '<span class="mc-status status-expired" data-tip="Deadline passed. No action taken.">EXPIRED</span>',
-    };
-    const deadlineTip = daysLeft <= 2 ? 'CRITICAL — this mission expires very soon. Act or it is gone.' : daysLeft <= 5 ? 'Warning — deadline approaching.' : `${daysLeft} days remaining until the mission window closes.`;
+    const phaseTag    = m.isMultiPhase
+      ? ` <span style="font-size:9px;color:var(--teal);font-family:var(--font-mono)">[${m.currentPhaseIndex + 1}/${m.phases.length}]</span>`
+      : '';
+    const statusChip = {
+      INCOMING:      '<span class="mc-status status-incoming">INCOMING</span>',
+      INVESTIGATING: '<span class="mc-status status-investigating">INVESTIGATING</span>',
+      READY:         `<span class="mc-status ${m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'}">${m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY'}</span>`,
+      PHASE_COMPLETE:'<span class="mc-status status-phase-complete">PHASE DONE</span>',
+      EXPIRED:       '<span class="mc-status status-expired">EXPIRED</span>',
+    }[m.status] || '';
+
     return `<div class="mission-card threat-${m.threat} ${isSelected ? 'selected' : ''}"
-      onclick="selectMission('${m.id}')"
-      data-tip="${statusTips[m.status] || ''}">
+      onclick="selectMission('${m.id}')">
       <div class="mc-type">${m.category}</div>
-      <div class="mc-codename">OP ${m.codename}</div>
+      <div class="mc-codename">OP ${m.codename}${phaseTag}</div>
       <div class="mc-meta">
-        ${statusLabels[m.status] || ''}
-        <span class="mc-deadline ${deadlineCls}" data-tip="${deadlineTip}">${daysLeft}d LEFT</span>
+        ${statusChip}
+        <span class="mc-deadline ${deadlineCls}">${daysLeft}d LEFT</span>
       </div>
     </div>`;
   }).join('');
 }
 
+// Phase roadmap HTML for multi-phase missions
+function renderPhaseRoadmap(m) {
+  if (!m.isMultiPhase) return '';
+  const nodes = m.phases.map((ph, i) => {
+    const cp = m.completedPhases.find(c => c.phaseIndex === i);
+    let cls, icon;
+    if (cp) {
+      cls  = cp.result === 'SUCCESS' ? 'phase-node-done' : 'phase-node-fail';
+      icon = cp.result === 'SUCCESS' ? '✓' : '✕';
+    } else if (i === m.currentPhaseIndex) {
+      cls = 'phase-node-active'; icon = '→';
+    } else {
+      cls = 'phase-node-pending'; icon = String(i + 1);
+    }
+    return `<div class="phase-node ${cls}" data-tip="${ph.name}">
+      <div class="phase-node-icon">${icon}</div>
+      <div class="phase-node-label">${ph.shortName}</div>
+    </div>${i < m.phases.length - 1 ? '<div class="phase-connector"></div>' : ''}`;
+  }).join('');
+  return `<div class="phase-roadmap">${nodes}</div>`;
+}
+
 function renderDetail() {
   const detailEl = document.getElementById('mission-detail');
-  const titleEl = document.getElementById('detail-panel-title');
-  const chipEl = document.getElementById('detail-status-chip');
+  const titleEl  = document.getElementById('detail-panel-title');
+  const chipEl   = document.getElementById('detail-status-chip');
 
   if (!G.selected) {
     titleEl.textContent = 'BRIEFING ROOM';
@@ -1064,51 +936,56 @@ function renderDetail() {
 
   titleEl.textContent = `OP ${m.codename}`;
 
-  const statusMap = {
-    INCOMING: ['INCOMING', 'status-incoming'],
-    INVESTIGATING: ['INVESTIGATING', 'status-investigating'],
-    READY: ['BRIEF READY', 'status-ready'],
-    EXECUTING: ['EXECUTING', 'status-executing'],
-    SUCCESS: ['SUCCESS', 'status-success'],
-    FAILURE: ['FAILURE', 'status-failure'],
-    EXPIRED: ['EXPIRED', 'status-expired'],
+  const chipMap = {
+    INCOMING:      ['INCOMING',      'status-incoming'],
+    INVESTIGATING: ['INVESTIGATING',  'status-investigating'],
+    READY:         [m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY', m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'],
+    PHASE_COMPLETE:['PHASE COMPLETE', 'status-phase-complete'],
+    EXECUTING:     ['EXECUTING',      'status-executing'],
+    SUCCESS:       ['SUCCESS',        'status-success'],
+    FAILURE:       ['FAILURE',        'status-failure'],
+    EXPIRED:       ['EXPIRED',        'status-expired'],
   };
-  const [sl, sc] = statusMap[m.status] || ['—', ''];
+  const [sl, sc] = chipMap[m.status] || ['—', ''];
   chipEl.textContent = sl; chipEl.className = `detail-status-chip mc-status ${sc}`;
 
   const threatLabel = m.threat >= 5 ? 'CRITICAL' : m.threat >= 4 ? 'HIGH' : m.threat >= 3 ? 'MODERATE' : 'LOW';
-  const threatCls = m.threat >= 4 ? 'threat-high' : m.threat >= 3 ? 'threat-med' : 'threat-low';
-  const locCls = m.location === 'FOREIGN' ? 'location-foreign' : 'location-domestic';
-  const threatTip = `Threat level ${m.threat}/5. ${m.threat >= 4 ? 'Failure will significantly damage confidence. Dismissing this without acting also carries a penalty.' : 'Moderate consequences for failure.'}`;
+  const threatCls   = m.threat >= 4 ? 'threat-high' : m.threat >= 3 ? 'threat-med' : 'threat-low';
+  const locCls      = m.location === 'FOREIGN' ? 'location-foreign' : 'location-domestic';
 
   let content = `
     <div class="dc-header">
       <div class="dc-codename">OP ${m.codename}</div>
       <div class="dc-meta-row">
         <span class="dc-badge">${m.category}</span>
-        <span class="dc-badge ${threatCls}" data-tip="${threatTip}">THREAT: ${threatLabel}</span>
-        <span class="dc-badge ${locCls}" data-tip="${m.location === 'FOREIGN' ? 'Foreign operation — requires Foreign Operations or Special Operations.' : 'Domestic operation — Field Operations and Special Ops are the primary executors.'}">${m.location === 'FOREIGN' ? `${m.city}, ${m.country}` : `${m.city} [DOMESTIC]`}</span>
-        <span class="dc-badge" data-tip="Days remaining until this mission's window expires."">DEADLINE: ${m.urgencyLeft}d</span>
+        <span class="dc-badge ${threatCls}" data-tip="Threat ${m.threat}/5. ${m.threat >= 4 ? 'Failure seriously damages confidence.' : 'Moderate consequences.'}">THREAT: ${threatLabel}</span>
+        <span class="dc-badge ${locCls}">${m.location === 'FOREIGN' ? `${m.city}, ${m.country}` : `${m.city} [DOMESTIC]`}</span>
+        <span class="dc-badge">DEADLINE: ${m.urgencyLeft}d</span>
       </div>
     </div>
+    ${renderPhaseRoadmap(m)}
   `;
 
   if (m.status === 'INCOMING') {
+    const phaseHdr = m.isMultiPhase
+      ? `<div style="font-size:11px;color:var(--teal);margin-bottom:8px;font-family:var(--font-mono)">PHASE ${m.currentPhaseIndex + 1} OF ${m.phases.length}: ${m.phases[m.currentPhaseIndex].name.toUpperCase()}</div>`
+      : '';
     content += `
       <div class="dc-section">
+        ${phaseHdr}
         <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
         <div class="dc-report">${m.initialReport}</div>
       </div>
       <div class="dc-section">
         <div class="dc-section-title">ASSIGN DEPARTMENT TO INVESTIGATE</div>
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
-          Assign a department to conduct an in-depth investigation. Estimated duration: ${m.invDays} days. The department will be occupied until the investigation completes.
+          Assign a department to investigate. Est. ${m.invDays} day(s). Department will be occupied during investigation.
         </div>
         <div class="dc-dept-grid">
           ${m.invDepts.map(did => {
             const dept = G.depts[did];
             const avail = !dept.busy;
-            const cfg = DEPT_CONFIG.find(d => d.id === did);
+            const cfg   = DEPT_CONFIG.find(d => d.id === did);
             return `<button class="dc-dept-btn" ${avail ? '' : 'disabled'}
               onclick="assignInvestigation('${m.id}','${did}')"
               data-tip="${cfg?.tip || ''}${avail ? '' : '\n\n[Currently occupied — unavailable]'}">
@@ -1119,53 +996,100 @@ function renderDetail() {
       </div>
       <div class="dc-actions">
         <button class="btn-danger" onclick="dismissMission('${m.id}')"
-          data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission without taking action. Low-threat missions can be safely dismissed.'}">
+          data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission without taking action.'}">
           DISMISS / ARCHIVE
         </button>
       </div>
     `;
+
   } else if (m.status === 'INVESTIGATING') {
-    const progress = Math.round(((m.invDays - m.invDaysLeft) / m.invDays) * 100);
+    const progress   = Math.round(((m.invDays - m.invDaysLeft) / m.invDays) * 100);
+    const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name}` : '';
     content += `
       <div class="dc-section">
         <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
         <div class="dc-report">${m.initialReport}</div>
       </div>
       <div class="dc-section">
-        <div class="dc-section-title">INVESTIGATION IN PROGRESS</div>
+        <div class="dc-section-title">INVESTIGATION IN PROGRESS${phaseLabel}</div>
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
-          <strong>${G.depts[m.assignedInvDept]?.name || '—'}</strong> is working the case. ${m.invDaysLeft} day(s) remaining. Advance the day to progress the investigation.
+          <strong>${G.depts[m.assignedInvDept]?.name || '—'}</strong> is working the case. ${m.invDaysLeft} day(s) remaining. Advance the day to progress.
         </div>
         <div class="progress-wrap">
           <div class="progress-fill" style="width:${progress}%;background:var(--accent)"></div>
         </div>
-        <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">
-          The full intelligence brief will be unlocked when the investigation completes.
-        </div>
       </div>
     `;
+
   } else if (m.status === 'READY') {
+    if (m.phaseFalseFlag) {
+      content += `
+        <div class="false-flag-box">
+          <div class="false-flag-title">⚠ INVESTIGATION ANOMALY DETECTED</div>
+          <div class="false-flag-text">${m.phaseFalseFlagText}</div>
+          <div class="false-flag-actions">
+            <button class="btn-danger" onclick="falseFlagProceed('${m.id}')"
+              data-tip="Accept the risk and proceed. Success probability will be reduced by 25%.">
+              PROCEED ANYWAY (−25% PROB)
+            </button>
+            <button class="btn-neutral" onclick="falseFlagReinvestigate('${m.id}')"
+              data-tip="Order a reinvestigation. The mission returns to INCOMING — assign a new department.">
+              REINVESTIGATE
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
+      content += `
+        <div class="dc-section">
+          <div class="dc-section-title">INTELLIGENCE BRIEF — CLASSIFIED${phaseLabel}</div>
+          <div class="dc-report">${m.fullReport}</div>
+        </div>
+        <div class="dc-actions">
+          <button class="btn-primary" onclick="openOperationModal('${m.id}')"
+            data-tip="Open the operation configuration screen. Set budget, staff, and departments, then execute.">
+            APPROVE OPERATION
+          </button>
+          <button class="btn-danger" onclick="dismissMission('${m.id}')"
+            data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission. No operation will be launched.'}">
+            ARCHIVE — DO NOT ACT
+          </button>
+        </div>
+      `;
+    }
+
+  } else if (m.status === 'PHASE_COMPLETE') {
+    const nextPh   = m.phases[m.currentPhaseIndex];
+    const confText = m.lastPhaseConfDelta > 0
+      ? `<span class="delta-item delta-pos">CONFIDENCE +${m.lastPhaseConfDelta}%</span>` : '';
     content += `
-      <div class="dc-section">
-        <div class="dc-section-title">INTELLIGENCE BRIEF — CLASSIFIED</div>
-        <div class="dc-report">${m.fullReport}</div>
+      <div class="result-box success">
+        <div class="result-title">PHASE COMPLETE: ${m.lastPhaseName}</div>
+        <div class="result-msg">${m.lastPhaseMsg}</div>
+        <div class="result-deltas">${confText}</div>
       </div>
-      <div class="dc-actions">
-        <button class="btn-primary" onclick="openOperationModal('${m.id}')"
-          data-tip="Open the operation configuration screen. Set budget, staff, and departments, then execute.">
-          APPROVE OPERATION
-        </button>
-        <button class="btn-danger" onclick="dismissMission('${m.id}')"
-          data-tip="${m.threat >= 4 ? 'WARNING: Choosing not to act on a high-threat mission carries a confidence penalty.' : 'Archive this mission. No operation will be launched.'}">
-          ARCHIVE — DO NOT ACT
+      <div class="phase-next-box">
+        <div class="phase-next-title">NEXT: ${nextPh.name.toUpperCase()}</div>
+        <div class="phase-next-desc">${fillTemplate(nextPh.opNarrative, m.currentPhaseFillVars)}</div>
+      </div>
+      <div class="dc-actions" style="margin-top:12px">
+        <button class="btn-primary" onclick="acknowledgePhaseProceeding('${m.id}')"
+          data-tip="Confirm phase completion and begin the next phase. You will need to assign a department to investigate.">
+          PROCEED TO NEXT PHASE
         </button>
       </div>
     `;
+
   } else if (m.status === 'EXECUTING') {
-    const progress = Math.round(((m.execDays - m.execDaysLeft) / m.execDays) * 100);
-    const deployedNames = (m.assignedExecDepts || []).map(did => G.depts[did]?.short || did).join(', ') || 'None';
+    const progress    = Math.round(((m.execDays - m.execDaysLeft) / m.execDays) * 100);
+    const deployed    = (m.assignedExecDepts || []).map(did => G.depts[did]?.short || did).join(', ') || 'None';
+    const phaseLabel  = m.isMultiPhase
+      ? `<div style="font-size:11px;color:var(--teal);margin-bottom:8px;font-family:var(--font-mono)">EXECUTING: ${m.phases[m.currentPhaseIndex].name.toUpperCase()}</div>`
+      : '';
     content += `
       <div class="dc-section">
+        ${phaseLabel}
         <div class="dc-section-title">OPERATION IN PROGRESS</div>
         <div style="font-size:13px;color:var(--purple);margin-bottom:6px;font-family:var(--font-disp);font-weight:600">
           ${m.execDaysLeft} day(s) until operation completion.
@@ -1180,11 +1104,12 @@ function renderDetail() {
         <div style="margin-top:12px;font-size:11px;color:var(--text-dim);line-height:1.8">
           Budget committed: <strong style="color:var(--text)">${fmt(m.assignedBudget)}</strong><br>
           Staff deployed: <strong style="color:var(--text)">${m.assignedStaff} agents</strong><br>
-          Departments: <strong style="color:var(--text)">${deployedNames}</strong><br>
+          Departments: <strong style="color:var(--text)">${deployed}</strong><br>
           Estimated success: <strong style="color:${m.successProb >= 70 ? 'var(--green)' : m.successProb >= 45 ? 'var(--amber)' : 'var(--red)'}">${m.successProb}%</strong>
         </div>
       </div>
     `;
+
   } else if (m.status === 'SUCCESS') {
     content += `
       <div class="result-box success">
@@ -1199,6 +1124,7 @@ function renderDetail() {
         <button class="btn-neutral" onclick="archiveMission('${m.id}')">DEBRIEF COMPLETE — ARCHIVE</button>
       </div>
     `;
+
   } else if (m.status === 'FAILURE') {
     content += `
       <div class="result-box failure">
@@ -1212,6 +1138,7 @@ function renderDetail() {
         <button class="btn-neutral" onclick="archiveMission('${m.id}')">DEBRIEF COMPLETE — ARCHIVE</button>
       </div>
     `;
+
   } else if (m.status === 'EXPIRED') {
     content += `
       <div class="result-box failure">
@@ -1230,27 +1157,27 @@ function renderDetail() {
 function renderDepts() {
   const el = document.getElementById('dept-panel');
   el.innerHTML = DEPT_CONFIG.map(d => {
-    const dept = G.depts[d.id];
-    const busy = dept.busy;
+    const dept       = G.depts[d.id];
+    const busy       = dept.busy;
     const isDeployed = dept.busyType === 'DEPLOYED';
-    const busyMission = busy ? getMission(dept.busyMissionId) : null;
+    const busyM      = busy ? getMission(dept.busyMissionId) : null;
     let statusLabel, statusCls, daysInfo = '';
 
     if (!busy) {
       statusLabel = 'AVAILABLE'; statusCls = 'dept-free';
     } else if (isDeployed) {
       statusLabel = 'DEPLOYED'; statusCls = 'dept-deployed';
-      daysInfo = busyMission ? `OP ${busyMission.codename} · ${busyMission.execDaysLeft}d` : '';
+      daysInfo    = busyM ? `OP ${busyM.codename} · ${busyM.execDaysLeft}d` : '';
     } else {
       statusLabel = 'INVESTIGATING'; statusCls = 'dept-busy';
-      daysInfo = busyMission ? `OP ${busyMission.codename} · ${busyMission.invDaysLeft}d` : '';
+      daysInfo    = busyM ? `OP ${busyM.codename} · ${busyM.invDaysLeft}d` : '';
     }
 
     const statusTip = !busy
       ? 'Available for assignment.'
       : isDeployed
-        ? `Deployed on OP ${busyMission?.codename || '?'}. Will return when the operation concludes.`
-        : `Investigating OP ${busyMission?.codename || '?'}. ${busyMission?.invDaysLeft || '?'} day(s) remaining.`;
+        ? `Deployed on OP ${busyM?.codename || '?'}. Returns when the operation concludes.`
+        : `Investigating OP ${busyM?.codename || '?'}. ${busyM?.invDaysLeft || '?'} day(s) remaining.`;
 
     return `<div class="dept-card" data-tip="${d.tip}">
       <div class="dept-name">${d.name}</div>
@@ -1272,10 +1199,13 @@ function renderActiveOps() {
     return;
   }
   el.innerHTML = ops.map(m => {
-    const progress = Math.round(((m.execDays - m.execDaysLeft) / m.execDays) * 100);
+    const progress  = Math.round(((m.execDays - m.execDaysLeft) / m.execDays) * 100);
+    const phaseTag  = m.isMultiPhase
+      ? ` <span style="font-size:9px;color:var(--teal)">· ${m.phases[m.currentPhaseIndex].shortName}</span>`
+      : '';
     return `<div class="active-op-card" onclick="selectMission('${m.id}')" style="cursor:pointer"
-      data-tip="Click to view operation details. ${m.execDaysLeft}d remaining. Estimated success: ${m.successProb}%.">
-      <div class="aoc-name">OP ${m.codename}</div>
+      data-tip="Click to view. ${m.execDaysLeft}d remaining. ${m.successProb}% est. success.${m.isMultiPhase ? ` Phase ${m.currentPhaseIndex + 1}/${m.phases.length}.` : ''}">
+      <div class="aoc-name">OP ${m.codename}${phaseTag}</div>
       <div class="aoc-days">${m.execDaysLeft}d remaining · ${m.successProb}% est.</div>
       <div class="progress-wrap" style="margin-top:4px">
         <div class="progress-fill" style="width:${progress}%;background:var(--purple)"></div>
@@ -1295,8 +1225,7 @@ function renderLog() {
 
 function initTooltips() {
   const tip = document.createElement('div');
-  tip.id = 'game-tooltip';
-  tip.className = 'game-tooltip';
+  tip.id = 'game-tooltip'; tip.className = 'game-tooltip';
   document.body.appendChild(tip);
 
   document.addEventListener('mousemove', e => {
@@ -1304,19 +1233,17 @@ function initTooltips() {
     if (el && el.dataset.tip) {
       tip.textContent = el.dataset.tip;
       tip.classList.add('visible');
-      const x = e.clientX + 16;
-      const y = e.clientY - 8;
-      tip.style.left = '0px'; tip.style.top = '0px'; // reset for measurement
+      const x = e.clientX + 16, y = e.clientY - 8;
+      tip.style.left = '0px'; tip.style.top = '0px';
       requestAnimationFrame(() => {
         const tw = tip.offsetWidth, th = tip.offsetHeight;
-        tip.style.left = Math.min(x, window.innerWidth - tw - 10) + 'px';
-        tip.style.top = Math.max(8, Math.min(y, window.innerHeight - th - 10)) + 'px';
+        tip.style.left = Math.min(x, window.innerWidth  - tw - 10) + 'px';
+        tip.style.top  = Math.max(8, Math.min(y, window.innerHeight - th - 10)) + 'px';
       });
     } else {
       tip.classList.remove('visible');
     }
   });
-
   document.addEventListener('mouseleave', () => tip.classList.remove('visible'));
 }
 
@@ -1328,25 +1255,28 @@ function showHelp() {
   document.getElementById('modal-title').textContent = 'DIRECTOR\'S HANDBOOK';
   document.getElementById('modal-body').innerHTML = `
     <div class="help-content">
-
       <div class="help-section">
         <div class="help-section-title">OVERVIEW</div>
         <p>You are the Director of a covert intelligence agency answering directly to your head of state. Missions arrive as raw, unverified intelligence reports. Your job: investigate them, decide what to do, and execute operations before the window closes.</p>
         <p style="margin-top:8px">Your tenure depends on keeping <strong>Confidence</strong> above zero. Successes earn it. Failures and expired missions cost it. Resources are finite. The threats are not.</p>
       </div>
-
       <div class="help-section">
         <div class="help-section-title">MISSION FLOW</div>
         <div class="help-flow">
           <div class="help-flow-step"><span class="help-step-num">1</span><div><strong>INCOMING</strong> — A vague initial report lands on your desk. Assign a department to investigate and unlock the full intelligence brief.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">2</span><div><strong>INVESTIGATING</strong> — The assigned department works the case. Advance days to let it complete. The department is occupied and unavailable during this time.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">3</span><div><strong>BRIEF READY</strong> — Full classified intelligence is unlocked. Review it and decide: approve the operation, or archive and do nothing.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">4</span><div><strong>CONFIGURE</strong> — Set budget and staff levels, choose departments to support the operation. More resources and matching departments = higher success probability. Each recommended department adds +8%.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">5</span><div><strong>EXECUTING</strong> — The operation runs. Assigned departments are DEPLOYED and unavailable. Advance days until resolution.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">6</span><div><strong>RESULT</strong> — Success earns confidence and a small budget recovery. Failure costs confidence. Archive the mission to clear it from your desk.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">2</span><div><strong>INVESTIGATING</strong> — The assigned department works the case. Advance days to let it complete.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">3</span><div><strong>BRIEF READY</strong> — Full classified intelligence is unlocked. Review and decide: approve or archive.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">4</span><div><strong>CONFIGURE</strong> — Set budget and staff. Each recommended department adds +8% success probability.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">5</span><div><strong>EXECUTING</strong> — The operation runs. Departments are DEPLOYED and unavailable.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">6</span><div><strong>RESULT</strong> — Success earns confidence and a small budget recovery. Failure costs confidence.</div></div>
         </div>
       </div>
-
+      <div class="help-section">
+        <div class="help-section-title">MULTI-PHASE OPERATIONS</div>
+        <p>Some operations require multiple sequential phases — surveillance, evidence collection, and a final action. Each phase must be investigated and executed in turn. A phase roadmap is displayed in the briefing panel.</p>
+        <p style="margin-top:8px"><strong>⚠ Investigation Anomalies</strong> — A false flag may be detected during evidence-gathering phases. You can proceed with a −25% probability penalty, or reinvestigate at the cost of time.</p>
+        <p style="margin-top:8px"><strong>Follow-up Missions</strong> — Some phases (e.g. interrogation) generate new missions based on intelligence extracted during the operation.</p>
+      </div>
       <div class="help-section">
         <div class="help-section-title">DEPARTMENTS</div>
         ${DEPT_CONFIG.map(d => `<div class="help-dept-row">
@@ -1354,29 +1284,26 @@ function showHelp() {
           <div class="help-dept-tip">${d.tip}</div>
         </div>`).join('')}
       </div>
-
       <div class="help-section">
         <div class="help-section-title">RESOURCES</div>
-        <div class="help-resource-row"><strong>CONFIDENCE</strong> — Your standing with your head of state. Declines 2% per week by default. Falls sharply after failures or if high-threat missions expire. Reaches 0% and you are dismissed.</div>
-        <div class="help-resource-row" style="margin-top:8px"><strong>BUDGET</strong> — Operational funds. Spent when launching operations. Regenerates partially each week. Running completely dry for a full week defunds the agency.</div>
-        <div class="help-resource-row" style="margin-top:8px"><strong>STAFF</strong> — Available agents. Committed to active operations and returned to the pool when operations conclude.</div>
+        <div class="help-resource-row"><strong>CONFIDENCE</strong> — Your standing with your head of state. Declines 2% per week. Plummets after failures. Reaches 0% and you are dismissed.</div>
+        <div class="help-resource-row" style="margin-top:8px"><strong>BUDGET</strong> — Operational funds. Spent when launching operations. Regenerates partially each week. Running dry ends the agency.</div>
+        <div class="help-resource-row" style="margin-top:8px"><strong>STAFF</strong> — Available agents. Committed to active operations and returned when they conclude.</div>
       </div>
-
       <div class="help-section">
         <div class="help-section-title">MISSION TYPES</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
           ${Object.values(MISSION_TYPES).map(t => `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:8px 10px">
             <div style="font-family:var(--font-disp);font-weight:700;font-size:11px;color:var(--text-hi);margin-bottom:2px">${t.label}</div>
-            <div style="font-size:10px;color:var(--text-dim)">${t.location === 'FOREIGN' ? '🌍 Foreign' : '🏠 Domestic'} · Threat ${t.threatRange[0]}–${t.threatRange[1]}</div>
+            <div style="font-size:10px;color:var(--text-dim)">${t.location === 'FOREIGN' ? '🌍 Foreign' : '🏠 Domestic'} · ${t.isMultiPhase ? `Multi-phase (${t.phases.length} phases)` : `Threat ${t.threatRange[0]}–${t.threatRange[1]}`}</div>
           </div>`).join('')}
         </div>
       </div>
-
       <div class="help-section">
         <div class="help-section-title">CONTROLS</div>
-        <div class="help-resource-row"><strong>ADVANCE DAY</strong> — Advances time one day. Keyboard: <strong>→</strong> or <strong>N</strong></div>
+        <div class="help-resource-row"><strong>ADVANCE DAY</strong> — Keyboard: <strong>→</strong> or <strong>N</strong></div>
         <div class="help-resource-row" style="margin-top:4px"><strong>ESC</strong> — Close any open modal.</div>
-        <div class="help-resource-row" style="margin-top:4px"><strong>? button</strong> — Open this handbook at any time.</div>
+        <div class="help-resource-row" style="margin-top:4px"><strong>?</strong> — Open this handbook at any time.</div>
         <div class="help-resource-row" style="margin-top:4px">Hover over most interface elements for contextual help.</div>
       </div>
     </div>
@@ -1388,9 +1315,9 @@ function showHelp() {
 // MODAL SYSTEM
 // =============================================================================
 
-function showModal() { document.getElementById('modal-overlay').classList.remove('hidden'); }
-function hideModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-function closeModalBg(e) { if (e.target === document.getElementById('modal-overlay')) hideModal(); }
+function showModal()    { document.getElementById('modal-overlay').classList.remove('hidden'); }
+function hideModal()    { document.getElementById('modal-overlay').classList.add('hidden'); }
+function closeModalBg(e){ if (e.target === document.getElementById('modal-overlay')) hideModal(); }
 
 // =============================================================================
 // SCREEN MANAGEMENT

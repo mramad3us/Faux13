@@ -1120,3 +1120,127 @@ html, body {
 }
 .help-dept-tip { color: var(--text-dim); font-size: 11px; line-height: 1.5; }
 .help-resource-row { color: var(--text); }
+
+/* ============================================================
+   PHASE ROADMAP
+   ============================================================ */
+.phase-roadmap {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--bg4);
+  border-bottom: 1px solid var(--border);
+  gap: 0;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.phase-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 58px;
+  cursor: default;
+}
+.phase-node-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+.phase-node-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-align: center;
+  line-height: 1.2;
+}
+.phase-node-done .phase-node-icon  { background: rgba(45,204,112,0.15); border: 1px solid var(--green); color: var(--green); }
+.phase-node-done .phase-node-label { color: var(--green); }
+.phase-node-active .phase-node-icon  { background: rgba(61,158,255,0.15); border: 1px solid var(--accent); color: var(--accent); }
+.phase-node-active .phase-node-label { color: var(--accent); }
+.phase-node-fail .phase-node-icon  { background: rgba(231,76,60,0.15); border: 1px solid var(--red); color: var(--red); }
+.phase-node-fail .phase-node-label { color: var(--red); }
+.phase-node-pending .phase-node-icon  { background: var(--bg3); border: 1px solid var(--border2); color: var(--text-dim); }
+.phase-node-pending .phase-node-label { color: var(--text-dim); opacity: 0.6; }
+.phase-connector {
+  flex: 1;
+  height: 1px;
+  background: var(--border2);
+  margin-bottom: 16px;
+  min-width: 12px;
+}
+
+/* ============================================================
+   FALSE FLAG WARNING BOX
+   ============================================================ */
+.false-flag-box {
+  background: rgba(243,156,18,0.08);
+  border: 1px solid rgba(243,156,18,0.4);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 12px;
+}
+.false-flag-title {
+  font-family: var(--font-disp);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--amber);
+  margin-bottom: 10px;
+}
+.false-flag-text {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+.false-flag-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   PHASE COMPLETE / NEXT PHASE BOX
+   ============================================================ */
+.phase-next-box {
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--teal);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-top: 12px;
+}
+.phase-next-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--teal);
+  margin-bottom: 6px;
+}
+.phase-next-desc {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* ============================================================
+   STATUS CHIPS — NEW STATES
+   ============================================================ */
+.status-phase-complete {
+  color: var(--teal);
+  background: rgba(26,188,156,0.1);
+  border: 1px solid rgba(26,188,156,0.3);
+}
+.status-anomaly {
+  color: var(--amber);
+  background: rgba(243,156,18,0.1);
+  border: 1px solid rgba(243,156,18,0.3);
+}
