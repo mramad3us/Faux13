@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadow Directive</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Exo+2:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== COUNTRY SELECTION SCREEN ===== -->
+<div id="screen-select" class="screen active">
+  <div class="select-content">
+    <div class="classified-banner">TOP SECRET / SCI — EYES ONLY</div>
+    <h1 class="game-title">SHADOW<span class="title-accent">DIRECTIVE</span></h1>
+    <p class="game-subtitle">SELECT YOUR OPERATIONAL JURISDICTION</p>
+    <div class="country-grid" id="country-grid">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN GAME SCREEN ===== -->
+<div id="screen-game" class="screen">
+
+  <!-- Header Bar -->
+  <header class="game-header">
+    <div class="hdr-left">
+      <div class="hdr-seal">◈</div>
+      <div>
+        <div class="hdr-agency" id="hdr-agency">—</div>
+        <div class="hdr-date" id="hdr-date">DAY 1 · WEEK 1</div>
+      </div>
+    </div>
+    <div class="hdr-center">
+      <div class="res-group">
+        <span class="res-lbl">CONFIDENCE</span>
+        <div class="conf-bar-wrap">
+          <div class="conf-bar-fill" id="conf-bar" style="width:70%"></div>
+        </div>
+        <span class="res-val" id="res-conf">70%</span>
+      </div>
+      <div class="res-sep">|</div>
+      <div class="res-group">
+        <span class="res-lbl">BUDGET</span>
+        <span class="res-val" id="res-budget">$60M</span>
+      </div>
+      <div class="res-sep">|</div>
+      <div class="res-group">
+        <span class="res-lbl">STAFF</span>
+        <span class="res-val" id="res-staff">0 / 300</span>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <button class="btn-help" id="btn-help" data-tip="Open the Director's Handbook — mechanics, departments, and tips. Keyboard: ?">?</button>
+      <button class="btn-advance" id="btn-advance">ADVANCE DAY ›</button>
+    </div>
+  </header>
+
+  <!-- Game Body: 3 columns -->
+  <div class="game-body">
+
+    <!-- LEFT: Mission Inbox -->
+    <div class="panel panel-left">
+      <div class="panel-hdr">
+        <span class="panel-title">MISSION INBOX</span>
+        <span class="panel-badge" id="inbox-count">0</span>
+      </div>
+      <div class="mission-list" id="mission-inbox"></div>
+    </div>
+
+    <!-- CENTER: Detail / Briefing -->
+    <div class="panel panel-center">
+      <div class="panel-hdr">
+        <span class="panel-title" id="detail-panel-title">BRIEFING ROOM</span>
+        <span class="detail-status-chip" id="detail-status-chip"></span>
+      </div>
+      <div class="detail-body" id="mission-detail">
+        <div class="detail-empty">
+          <div class="empty-icon">◈</div>
+          <div class="empty-title">AWAITING SELECTION</div>
+          <div class="empty-sub">Select a mission from the inbox to review its intelligence brief.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Departments + Active Ops -->
+    <div class="panel panel-right">
+      <div class="panel-hdr">
+        <span class="panel-title">DEPARTMENTS</span>
+      </div>
+      <div id="dept-panel"></div>
+
+      <div class="panel-hdr" style="margin-top:10px">
+        <span class="panel-title">ACTIVE OPERATIONS</span>
+        <span class="panel-badge" id="active-count">0</span>
+      </div>
+      <div id="active-ops-panel">
+        <div class="no-ops-msg">No active operations.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer: Event Log -->
+  <div class="game-footer">
+    <div class="log-hdr">OPERATIONAL LOG</div>
+    <div class="log-scroll" id="event-log"></div>
+  </div>
+
+</div>
+
+<!-- ===== GAME OVER SCREEN ===== -->
+<div id="screen-gameover" class="screen">
+  <div class="gameover-wrap">
+    <div class="go-stamp">OPERATION TERMINATED</div>
+    <h2 class="go-title" id="go-title">TENURE ENDED</h2>
+    <p class="go-msg" id="go-message"></p>
+    <div class="go-stats" id="go-stats"></div>
+    <button class="btn-primary" onclick="restartGame()">NEW OPERATION</button>
+  </div>
+</div>
+
+<!-- ===== OPERATION CONFIG MODAL ===== -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="closeModalBg(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modal-title">OPERATION CONFIGURATION</span>
+      <button class="modal-close" onclick="hideModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
