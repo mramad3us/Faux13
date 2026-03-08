@@ -1505,3 +1505,24 @@ html, body {
 .log-xp {
   color: var(--accent);
 }
+
+/* ============================================================
+   V1.4 — ABORT BUTTON
+   ============================================================ */
+.btn-abort-game {
+  background: transparent;
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  color: var(--red);
+  padding: 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.btn-abort-game:hover {
+  color: #fff;
+  border-color: var(--red);
+  background: rgba(231, 76, 60, 0.7);
+}

@@ -10,8 +10,8 @@
 
 const COUNTRIES = {
   USA: {
-    name: 'United States', agency: 'National Special Activities Directorate',
-    acronym: 'NSAD', flag: '🇺🇸',
+    name: 'United States', agency: 'Special Activities Agency',
+    acronym: 'SAA', flag: '🇺🇸',
     leader: 'POTUS', leaderTitle: 'the President', leaderFormal: 'Mr. President',
     currency: '$', currencySymbol: '$',
     budget: 60, confidence: 70,
@@ -27,8 +27,8 @@ const COUNTRIES = {
     domesticCities: ['New York', 'Chicago', 'Los Angeles', 'Washington D.C.', 'Miami', 'Houston', 'Seattle', 'Boston', 'Atlanta', 'Denver'],
   },
   UK: {
-    name: 'United Kingdom', agency: 'Strategic Intelligence Executive',
-    acronym: 'SIE', flag: '🇬🇧',
+    name: 'United Kingdom', agency: 'Joint Covert Operations Bureau',
+    acronym: 'JCOB', flag: '🇬🇧',
     leader: 'the Prime Minister', leaderTitle: 'the Prime Minister', leaderFormal: 'Prime Minister',
     currency: '£', currencySymbol: '£',
     budget: 40, confidence: 65,
@@ -221,8 +221,8 @@ function deptAssignments(deptId) {
 // GAME INITIALIZATION
 // =============================================================================
 
-function initDepts() {
-  const caps  = G.cfg.deptCapacities;
+function initDepts(cfg) {
+  const caps  = cfg.deptCapacities;
   const depts = {};
   for (const d of DEPT_CONFIG) {
     depts[d.id] = {
@@ -248,7 +248,7 @@ function startGame(countryCode) {
     day: 1, budget: cfg.budget, confidence: cfg.confidence,
     xp: 0, xpThisMonth: 0,
     monthOpsCompleted: 0, monthOpsSucceeded: 0, lastRecapDay: 0,
-    missions: [], depts: initDepts(), log: [],
+    missions: [], depts: initDepts(cfg), log: [],
     selected: null, opsCompleted: 0, opsSucceeded: 0,
     missionIdCounter: 0, usedCodenames: new Set(), nextSpawnDay: 1,
     upgrades: initUpgrades(),
@@ -262,6 +262,24 @@ function startGame(countryCode) {
 }
 
 function restartGame() { G.country = null; showScreen('select'); }
+
+function confirmAbortGame() {
+  document.getElementById('modal-title').textContent = 'ABORT OPERATION';
+  document.getElementById('modal-body').innerHTML = `
+    <div style="padding:12px 0">
+      <div style="font-size:14px;color:var(--text-hi);margin-bottom:12px;font-family:var(--font-disp);font-weight:600">CONFIRM ABORT</div>
+      <div style="font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:20px">
+        All current operation progress will be lost. You will be returned to the country selection screen.
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" onclick="window.abortGame()">ABORT — RETURN TO MENU</button>
+      <button class="btn-neutral" onclick="hideModal()">CANCEL</button>
+    </div>
+  `;
+  showModal();
+}
+window.abortGame = function() { hideModal(); restartGame(); };
 
 // =============================================================================
 // XP SYSTEM
@@ -1583,5 +1601,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-advance').addEventListener('click', advanceDay);
   document.getElementById('btn-help').addEventListener('click', showHelp);
   document.getElementById('btn-capabilities')?.addEventListener('click', () => showCapabilitiesMenu(false));
+  document.getElementById('btn-abort-game')?.addEventListener('click', confirmAbortGame);
   initTooltips();
 });
