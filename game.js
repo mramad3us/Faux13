@@ -119,27 +119,88 @@ const DEPT_CONFIG = [
 // =============================================================================
 
 const FOREIGN_CITIES = [
+  // Russia / Former Soviet
   { city: 'Moscow', country: 'Russia' },
-  { city: 'Tehran', country: 'Iran' },
-  { city: 'Pyongyang', country: 'North Korea' },
-  { city: 'Damascus', country: 'Syria' },
-  { city: 'Caracas', country: 'Venezuela' },
-  { city: 'Havana', country: 'Cuba' },
+  { city: 'St. Petersburg', country: 'Russia' },
+  { city: 'Vladivostok', country: 'Russia' },
   { city: 'Minsk', country: 'Belarus' },
-  { city: 'Kabul', country: 'Afghanistan' },
+  { city: 'Kyiv', country: 'Ukraine' },
+  { city: 'Tbilisi', country: 'Georgia' },
+  { city: 'Almaty', country: 'Kazakhstan' },
+  { city: 'Tashkent', country: 'Uzbekistan' },
+  { city: 'Baku', country: 'Azerbaijan' },
+  // Middle East
+  { city: 'Tehran', country: 'Iran' },
+  { city: 'Mashhad', country: 'Iran' },
+  { city: 'Damascus', country: 'Syria' },
   { city: 'Baghdad', country: 'Iraq' },
+  { city: 'Mosul', country: 'Iraq' },
+  { city: 'Beirut', country: 'Lebanon' },
+  { city: 'Amman', country: 'Jordan' },
+  { city: 'Sanaa', country: 'Yemen' },
+  // Central / Eastern Europe
+  { city: 'Belgrade', country: 'Serbia' },
+  { city: 'Bucharest', country: 'Romania' },
+  { city: 'Sofia', country: 'Bulgaria' },
+  { city: 'Budapest', country: 'Hungary' },
+  { city: 'Warsaw', country: 'Poland' },
+  { city: 'Prague', country: 'Czech Republic' },
+  // East Asia
+  { city: 'Pyongyang', country: 'North Korea' },
+  { city: 'Beijing', country: 'China' },
+  { city: 'Shanghai', country: 'China' },
+  { city: 'Shenyang', country: 'China' },
+  // Southeast Asia
+  { city: 'Rangoon', country: 'Myanmar' },
+  { city: 'Phnom Penh', country: 'Cambodia' },
+  { city: 'Vientiane', country: 'Laos' },
+  { city: 'Bangkok', country: 'Thailand' },
+  { city: 'Manila', country: 'Philippines' },
+  { city: 'Jakarta', country: 'Indonesia' },
+  { city: 'Kuala Lumpur', country: 'Malaysia' },
+  // South Asia
+  { city: 'Islamabad', country: 'Pakistan' },
+  { city: 'Lahore', country: 'Pakistan' },
+  { city: 'Kabul', country: 'Afghanistan' },
+  { city: 'Quetta', country: 'Pakistan' },
+  { city: 'Dhaka', country: 'Bangladesh' },
+  { city: 'Kathmandu', country: 'Nepal' },
+  // Africa
   { city: 'Tripoli', country: 'Libya' },
   { city: 'Khartoum', country: 'Sudan' },
-  { city: 'Islamabad', country: 'Pakistan' },
-  { city: 'Bogotá', country: 'Colombia' },
+  { city: 'Cairo', country: 'Egypt' },
+  { city: 'Algiers', country: 'Algeria' },
   { city: 'Lagos', country: 'Nigeria' },
-  { city: 'Belgrade', country: 'Serbia' },
+  { city: 'Kano', country: 'Nigeria' },
+  { city: 'Nairobi', country: 'Kenya' },
+  { city: 'Mogadishu', country: 'Somalia' },
+  { city: 'Addis Ababa', country: 'Ethiopia' },
+  { city: 'Dakar', country: 'Senegal' },
+  { city: 'Kinshasa', country: 'Congo (DRC)' },
+  { city: 'Bamako', country: 'Mali' },
+  { city: 'Niamey', country: 'Niger' },
+  { city: 'Ndjamena', country: 'Chad' },
+  // Latin America
+  { city: 'Caracas', country: 'Venezuela' },
+  { city: 'Havana', country: 'Cuba' },
+  { city: 'Bogotá', country: 'Colombia' },
+  { city: 'Medellín', country: 'Colombia' },
+  { city: 'Managua', country: 'Nicaragua' },
+  { city: 'Tegucigalpa', country: 'Honduras' },
 ];
 
-const CODENAME_ADJ = ['IRON', 'SHADOW', 'BLACK', 'SILENT', 'STEEL', 'CRIMSON', 'GOLDEN', 'BROKEN', 'DARK',
-  'SWIFT', 'BURNING', 'COLD', 'GHOST', 'HOLLOW', 'WHITE', 'SILVER', 'STONE', 'BLIND', 'FALLEN'];
-const CODENAME_NOUN = ['FALCON', 'HAMMER', 'DAWN', 'TIDE', 'SERPENT', 'ARROW', 'STORM', 'SHIELD',
-  'WOLF', 'LANCE', 'STAR', 'ANVIL', 'BLADE', 'CROWN', 'GATE', 'RAVEN', 'TOWER', 'MIRROR', 'VEIL', 'FIST'];
+const CODENAME_ADJ = [
+  'IRON', 'SHADOW', 'BLACK', 'SILENT', 'STEEL', 'CRIMSON', 'GOLDEN', 'BROKEN', 'DARK',
+  'SWIFT', 'BURNING', 'COLD', 'GHOST', 'WHITE', 'SILVER', 'STONE', 'BLIND', 'FALLEN',
+  'OBSIDIAN', 'PHANTOM', 'STERLING', 'FROZEN', 'AMBER', 'AZURE', 'SCARLET', 'MIDNIGHT', 'TITAN',
+  'CHROME', 'ONYX', 'COPPER', 'COBALT', 'EMBER', 'GRANITE', 'JADE', 'INDIGO', 'ROUGE', 'VIOLET', 'THORN', 'HOLLOW',
+];
+const CODENAME_NOUN = [
+  'FALCON', 'HAMMER', 'DAWN', 'TIDE', 'SERPENT', 'ARROW', 'STORM', 'SHIELD',
+  'WOLF', 'LANCE', 'STAR', 'ANVIL', 'BLADE', 'CROWN', 'GATE', 'RAVEN', 'TOWER', 'MIRROR', 'VEIL', 'FIST',
+  'DAGGER', 'TEMPEST', 'SPECTER', 'ORACLE', 'SOVEREIGN', 'CITADEL', 'TEMPLAR', 'PHANTOM',
+  'BASTION', 'WARDEN', 'GAVEL', 'REAPER', 'CONDOR', 'VIPER', 'HAWK', 'WRAITH', 'WARLOCK', 'VECTOR', 'CROSSBOW', 'MANTIS',
+];
 
 // =============================================================================
 // GAME STATE
@@ -295,6 +356,34 @@ function gainXP(amount, source) {
 }
 
 // =============================================================================
+// INTEL / INVESTIGATION HELPERS
+// =============================================================================
+
+function rollInvestigationOutcome(eff) {
+  const e = clamp(eff, 0, 100) / 100;
+  const r = Math.random() * 100;
+  const cfCeil   = 15 - e * 12;                    // 3–15%
+  const failCeil = cfCeil + 25 - e * 8;            // 17–40%
+  const partCeil = failCeil + 30;                   // flat +30
+  const sucCeil  = partCeil + 20 + e * 10;         // 50–60% above partCeil
+  if (r < cfCeil)   return 'CRITICAL_FAILURE';
+  if (r < failCeil) return 'FAILURE';
+  if (r < partCeil) return 'PARTIAL';
+  if (r < sucCeil)  return 'SUCCESS';
+  return 'CRITICAL_SUCCESS';
+}
+
+function buildIntelFields(src, fillVars) {
+  return (src.intelFields || []).map(f => ({
+    key: f.key, label: f.label,
+    value: src.intelFieldValues?.[f.key]
+      ? fillTemplate(pick(src.intelFieldValues[f.key]), fillVars)
+      : '—',
+    revealed: false,
+  }));
+}
+
+// =============================================================================
 // MISSION GENERATION
 // =============================================================================
 
@@ -316,10 +405,11 @@ function initPhaseFields(m) {
   m.successMsgs   = ph.successOutcomes;
   m.failureMsgs   = ph.failureOutcomes;
 
-  m.partialReport = ph.partialBriefs ? fillTemplate(pick(ph.partialBriefs), m.currentPhaseFillVars) : null;
-  m.intelDepth    = 0;
-  m.deepenDays    = ph.deepenDays || 1;
-  m.deepening     = false;
+  m.intelFields    = buildIntelFields(ph, phFillVars);
+  m.intelBonus     = false;
+  m.blown          = false;
+  m.blownDaysLeft  = 0;
+  m.lastInvOutcome = null;
 
   m.assignedInvDept    = null;
   m.invDaysLeft        = 0;
@@ -354,6 +444,7 @@ function spawnMission(forcedType) {
 
   const fillVars = resolveVars(tmpl.vars || {}, {
     city: cityName, country: countryName, codename, urgency_days: String(urgency),
+    agency: G.cfg.acronym, leaderTitle: G.cfg.leaderTitle,
   });
 
   const mission = {
@@ -399,6 +490,8 @@ function spawnMission(forcedType) {
     mission.lastPhaseName     = '';
     mission.lastPhaseShortName = '';
     mission.lastPhaseConfDelta = 0;
+    mission.agencyJustification = tmpl.agencyJustification
+      ? fillTemplate(tmpl.agencyJustification, fillVars) : '';
     initPhaseFields(mission);
   } else {
     Object.assign(mission, {
@@ -410,14 +503,17 @@ function spawnMission(forcedType) {
       opNarrative:   tmpl.opNarrative || '',
       initialReport: fillTemplate(pick(tmpl.initialReports), fillVars),
       fullReport:    fillTemplate(pick(tmpl.fullReports),    fillVars),
-      partialReport: tmpl.partialReports ? fillTemplate(pick(tmpl.partialReports), fillVars) : null,
-      intelDepth:    0,
-      deepenDays:    tmpl.deepenDays || 1,
-      deepening:     false,
       successMsgs:   tmpl.successMsgs,
       failureMsgs:   tmpl.failureMsgs,
       confSuccess:   tmpl.confSuccess,
       confFail:      tmpl.confFail,
+      intelFields:   buildIntelFields(tmpl, fillVars),
+      intelBonus:    false,
+      blown:         false,
+      blownDaysLeft: 0,
+      lastInvOutcome: null,
+      agencyJustification: tmpl.agencyJustification
+        ? fillTemplate(tmpl.agencyJustification, fillVars) : '',
     });
   }
 
@@ -437,6 +533,13 @@ function advanceDay() {
     if (['INCOMING', 'READY', 'PHASE_COMPLETE', 'DEAD_END'].includes(m.status)) {
       m.urgencyLeft = Math.max(0, m.urgencyLeft - 1);
       if (m.urgencyLeft === 0) expireMission(m);
+    }
+    if (m.status === 'BLOWN') {
+      m.blownDaysLeft = Math.max(0, m.blownDaysLeft - 1);
+      if (m.blownDaysLeft === 0) {
+        addLog(`OP ${m.codename}: target fled — mission expired.`, 'log-warn');
+        expireMission(m);
+      }
     }
     if (m.status === 'INVESTIGATING') {
       m.invDaysLeft = Math.max(0, m.invDaysLeft - 1);
@@ -478,17 +581,36 @@ function advanceDay() {
 }
 
 function completeInvestigation(m) {
-  if (m.deepening) {
-    m.intelDepth      = 1;
-    m.deepening       = false;
-    m.assignedInvDept = null;
-    addLog(`Deep investigation complete: OP ${m.codename} — Full intel confirmed.`, 'log-info');
-    m.status = 'READY';
+  const tmpl     = MISSION_TYPES[m.typeId];
+  const phaseObj = m.isMultiPhase ? m.phases[m.currentPhaseIndex] : null;
+  const effMap   = phaseObj?.invDeptEfficiency ?? tmpl?.invDeptEfficiency ?? {};
+  const eff      = effMap[m.assignedInvDept] ?? 50;
+  const outcome  = rollInvestigationOutcome(eff);
+  m.assignedInvDept = null;
+  m.lastInvOutcome  = outcome;
+
+  if (outcome === 'CRITICAL_FAILURE') {
+    m.blown = true; m.blownDaysLeft = 2; m.status = 'BLOWN';
+    addLog(`⚠ CRITICAL: OP ${m.codename} — investigation compromised. Target alerted.`, 'log-warn');
     render(); return;
   }
 
-  m.assignedInvDept = null; // frees the dept unit automatically
+  // Reveal fields based on outcome tier
+  const hidden    = m.intelFields.filter(f => !f.revealed);
+  const toReveal  = outcome === 'FAILURE'          ? 1
+    : outcome === 'PARTIAL'         ? Math.ceil(hidden.length * 0.4)
+    : outcome === 'SUCCESS'         ? Math.ceil(hidden.length * 0.7)
+    : hidden.length; // CRITICAL_SUCCESS: all
+  hidden.slice(0, toReveal).forEach(f => { f.revealed = true; });
 
+  if (outcome === 'CRITICAL_SUCCESS') {
+    m.intelBonus = true;
+    addLog(`OP ${m.codename}: CRITICAL SUCCESS — all intel confirmed. Execution bonus +10%.`, 'log-success');
+  } else {
+    addLog(`Investigation complete: OP ${m.codename} — ${toReveal} intel field(s) revealed [${outcome}].`, 'log-info');
+  }
+
+  // Multi-phase false flag check
   if (m.isMultiPhase) {
     const ph = m.phases[m.currentPhaseIndex];
     if (ph.falseFlagChance > 0 && Math.random() < ph.falseFlagChance) {
@@ -508,7 +630,6 @@ function completeInvestigation(m) {
   }
 
   m.status = 'READY';
-  addLog(`Investigation complete: OP ${m.codename} — Intel brief ready.`, 'log-info');
 }
 
 function expireMission(m) {
@@ -795,10 +916,14 @@ window.reassignSuspect = function(missionId) {
 // =============================================================================
 
 function calcOpProb(m, budget, depts) {
-  const minBudget    = Math.max(1, Math.floor(m.baseBudget * 0.5));
+  const minBudget        = Math.max(1, Math.floor(m.baseBudget * 0.5));
   const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
-  const fuzzyPenalty = (m.intelDepth === 0 && m.partialReport) ? 15 : 0;
-  let p = 35 - falseFlagPenalty - fuzzyPenalty;
+  const total            = m.intelFields?.length || 0;
+  const revealed         = m.intelFields?.filter(f => f.revealed).length || 0;
+  const intelPenalty     = total > 0 ? Math.round((1 - revealed / total) * 30) : 0;
+  const intelBonusAmt    = m.intelBonus ? 10 : 0;
+  const blownPenalty     = m.blown ? 25 : 0;
+  let p = 35 - falseFlagPenalty - intelPenalty - blownPenalty + intelBonusAmt;
   p += Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
   p += depts.filter(d =>  m.execDepts.includes(d)).length * 12; // recommended
   p += depts.filter(d => !m.execDepts.includes(d)).length *  5; // optional
@@ -828,8 +953,14 @@ function openOperationModal(missionId) {
   const penaltyNote = m.phaseFalseFlagPenalty
     ? `<div class="op-penalty-note">⚠ ANOMALY PENALTY: −25% success probability due to inconclusive investigation.</div>`
     : '';
-  const fuzzyNote = (m.intelDepth === 0 && m.partialReport)
-    ? `<div class="op-penalty-note op-penalty-fuzzy">⚠ PARTIAL INTEL: −15% success probability. Deepen investigation for full intel.</div>`
+  const _total    = m.intelFields?.length || 0;
+  const _revealed = m.intelFields?.filter(f => f.revealed).length || 0;
+  const _intelPen = _total > 0 ? Math.round((1 - _revealed / _total) * 30) : 0;
+  const intelNote = _intelPen > 0
+    ? `<div class="op-penalty-note op-penalty-fuzzy">⚠ PARTIAL INTEL: −${_intelPen}% success probability. ${_revealed}/${_total} fields confirmed.</div>`
+    : (m.intelBonus ? `<div class="op-penalty-note op-penalty-bonus">★ CRITICAL INTEL BONUS: +10% success probability. All fields confirmed.</div>` : '');
+  const blownNote = m.blown
+    ? `<div class="op-penalty-note op-penalty-blown">⚠ TARGET ALERTED: −25% success probability. ${m.blownDaysLeft} day(s) until exfiltration.</div>`
     : '';
   const initProb = calcOpProb(m, defBudget, selectedDepts);
 
@@ -858,7 +989,7 @@ function openOperationModal(missionId) {
 
   document.getElementById('modal-title').textContent = `OP ${m.codename}${phaseLabel} — CONFIGURE OPERATION`;
   document.getElementById('modal-body').innerHTML = `
-    ${penaltyNote}${fuzzyNote}
+    ${penaltyNote}${intelNote}${blownNote}
     <div class="modal-section">
       <div class="modal-section-title">OPERATION PLAN</div>
       <div class="op-narrative">${m.opNarrative}</div>
@@ -1355,7 +1486,7 @@ function renderInbox() {
 
   el.innerHTML = inbox.map(m => {
     const isSelected  = G.selected === m.id;
-    const daysLeft    = m.urgencyLeft;
+    const daysLeft    = m.status === 'BLOWN' ? m.blownDaysLeft : m.urgencyLeft;
     const deadlineCls = daysLeft <= 2 ? 'urgent' : daysLeft <= 5 ? 'warn' : '';
     const phaseTag    = m.isMultiPhase
       ? ` <span style="font-size:9px;color:var(--teal);font-family:var(--font-mono)">[${m.currentPhaseIndex + 1}/${m.phases.length}]</span>`
@@ -1364,6 +1495,7 @@ function renderInbox() {
       INCOMING:       '<span class="mc-status status-incoming">INCOMING</span>',
       INVESTIGATING:  '<span class="mc-status status-investigating">INVESTIGATING</span>',
       READY:          `<span class="mc-status ${m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'}">${m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY'}</span>`,
+      BLOWN:          '<span class="mc-status status-blown">BLOWN</span>',
       PHASE_COMPLETE: '<span class="mc-status status-phase-complete">PHASE DONE</span>',
       DEAD_END:       '<span class="mc-status status-dead-end">DEAD END</span>',
       EXPIRED:        '<span class="mc-status status-expired">EXPIRED</span>',
@@ -1421,6 +1553,7 @@ function renderDetail() {
     INCOMING:       ['INCOMING',       'status-incoming'],
     INVESTIGATING:  ['INVESTIGATING',  'status-investigating'],
     READY:          [m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY', m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'],
+    BLOWN:          ['BLOWN',          'status-blown'],
     PHASE_COMPLETE: ['PHASE COMPLETE', 'status-phase-complete'],
     DEAD_END:       ['DEAD END',       'status-dead-end'],
     EXECUTING:      ['EXECUTING',      'status-executing'],
@@ -1482,21 +1615,34 @@ function renderDetail() {
             ${buildSuspectPanel(m, false)}
           </div>`
         : '';
+      const _tmpl = MISSION_TYPES[m.typeId];
+      const _phObj = m.isMultiPhase ? m.phases[m.currentPhaseIndex] : null;
+      const _effMap = _phObj?.invDeptEfficiency ?? _tmpl?.invDeptEfficiency ?? {};
+      const effClass = e => e >= 75 ? 'eff-high' : e >= 50 ? 'eff-med' : 'eff-low';
       const deptGrid = `<div class="dc-dept-grid">
           ${m.invDepts.map(did => {
             const dept  = G.depts[did];
             const avail = deptAvail(did);
             const total = dept.capacity;
             const cfg   = DEPT_CONFIG.find(d => d.id === did);
+            const eff   = _effMap[did] ?? 50;
             return `<button class="dc-dept-btn ${avail > 0 ? '' : 'unavail'}" ${avail > 0 ? '' : 'disabled'}
               onclick="assignInvestigation('${m.id}','${did}')"
               data-tip="${cfg?.tip || ''}${avail > 0 ? '' : '\n\nNo units available — all committed to other missions.'}">
               ${dept.short}
               <span class="dc-dept-avail">${avail}/${total}</span>
+              <span class="dept-eff-badge ${effClass(eff)}">${eff}%</span>
             </button>`;
           }).join('')}
         </div>`;
+      const agencyJustHtml = m.agencyJustification
+        ? `<div class="agency-justification">
+            <span class="agency-just-lbl">OPERATIONAL AUTHORITY</span>
+            <div class="agency-just-text">${m.agencyJustification}</div>
+          </div>`
+        : '';
       content += `
+        ${agencyJustHtml}
         <div class="dc-section">
           ${phaseHdr}
           <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
@@ -1523,11 +1669,7 @@ function renderDetail() {
     const progress   = Math.round(((m.invDays - m.invDaysLeft) / m.invDays) * 100);
     const deptName   = G.depts[m.assignedInvDept]?.name || '—';
     const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name}` : '';
-    const deepeningNote = m.deepening
-      ? `<div class="intel-deepening-note">DEEP INVESTIGATION IN PROGRESS — Full intel package being assembled.</div>`
-      : '';
     content += `
-      ${deepeningNote}
       <div class="dc-section">
         <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
         <div class="dc-report">${m.initialReport}</div>
@@ -1561,36 +1703,69 @@ function renderDetail() {
           </div>
         </div>
       `;
-    } else if (m.intelDepth === 0 && m.partialReport) {
-      const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
-      content += `
-        <div class="dc-section">
-          <div class="dc-section-title">PRELIMINARY INTELLIGENCE BRIEF${phaseLabel} <span class="intel-depth-note">[PARTIAL — UNCONFIRMED]</span></div>
-          <div class="dc-report intel-partial">${m.partialReport}</div>
-        </div>
-        <div class="dc-actions">
-          <button class="btn-primary" onclick="openOperationModal('${m.id}')"
-            data-tip="Execute with partial intel. −15% success probability penalty.">
-            EXECUTE WITH PARTIAL INTEL
-          </button>
-          <button class="btn-neutral" onclick="deepenInvestigation('${m.id}')"
-            data-tip="Commit a department to deepen investigation for full intel. Costs ${m.deepenDays} additional day(s).">
-            DEEPEN INVESTIGATION
-          </button>
-          <button class="btn-danger" onclick="dismissMission('${m.id}')"
-            data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive without action.'}">
-            ARCHIVE — DO NOT ACT
-          </button>
-        </div>
-      `;
     } else {
-      const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
-      const confirmedBadge = m.intelDepth === 1 ? `<span class="intel-confirmed-badge">FULL INTEL CONFIRMED</span>` : '';
+      const phaseLabel   = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
+      const intelFields  = m.intelFields || [];
+      const totalFields  = intelFields.length;
+      const revealedCnt  = intelFields.filter(f => f.revealed).length;
+      const allRevealed  = totalFields === 0 || revealedCnt === totalFields;
+      const outcomeBadge = m.lastInvOutcome
+        ? `<span class="intel-outcome-banner outcome-${m.lastInvOutcome.toLowerCase()}">${m.lastInvOutcome.replace('_', ' ')}</span>`
+        : '';
+      const intelTable   = totalFields > 0 ? `
+        <div class="intel-fields-table">
+          ${intelFields.map(f => f.revealed
+            ? `<div class="intel-field-row intel-field-revealed">
+                <span class="intel-field-label">${f.label}</span>
+                <span class="intel-field-value">${f.value}</span>
+               </div>`
+            : `<div class="intel-field-row intel-field-hidden">
+                <span class="intel-field-label">${f.label}</span>
+                <span class="intel-field-value">UNKNOWN</span>
+               </div>`
+          ).join('')}
+        </div>
+        <div class="intel-coverage-note">${revealedCnt}/${totalFields} intel fields confirmed ${outcomeBadge}</div>
+      ` : '';
+
+      // Build continue-investigation dept sub-grid
+      const _tmpl2  = MISSION_TYPES[m.typeId];
+      const _phObj2 = m.isMultiPhase ? m.phases[m.currentPhaseIndex] : null;
+      const _eff2   = _phObj2?.invDeptEfficiency ?? _tmpl2?.invDeptEfficiency ?? {};
+      const effCls2 = e => e >= 75 ? 'eff-high' : e >= 50 ? 'eff-med' : 'eff-low';
+      const contInvGrid = m.invDepts.map(did => {
+        const dept  = G.depts[did];
+        const avail = deptAvail(did);
+        const total = dept.capacity;
+        const cfg   = DEPT_CONFIG.find(d => d.id === did);
+        const eff   = _eff2[did] ?? 50;
+        return `<button class="dc-dept-btn ${avail > 0 ? '' : 'unavail'}" ${avail > 0 ? '' : 'disabled'}
+          onclick="assignInvestigation('${m.id}','${did}')"
+          data-tip="${cfg?.tip || ''}${avail > 0 ? '' : '\n\nNo units available.'}">
+          ${dept.short}
+          <span class="dc-dept-avail">${avail}/${total}</span>
+          <span class="dept-eff-badge ${effCls2(eff)}">${eff}%</span>
+        </button>`;
+      }).join('');
+
+      const continueInvSection = !allRevealed ? `
+        <div class="continue-inv-section">
+          <div class="dc-section-title">CONTINUE INVESTIGATION</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Assign a department to reveal more intel fields. Mission re-enters INVESTIGATING.</div>
+          <div class="dc-dept-grid">${contInvGrid}</div>
+        </div>
+      ` : '';
+
+      const bonusBadge = m.intelBonus
+        ? `<span style="color:var(--green);font-size:10px;font-family:var(--font-mono);margin-left:8px">★ +10% BONUS</span>` : '';
+
       content += `
         <div class="dc-section">
-          <div class="dc-section-title">INTELLIGENCE BRIEF — CLASSIFIED${phaseLabel} ${confirmedBadge}</div>
-          <div class="dc-report">${m.fullReport}</div>
+          <div class="dc-section-title">INTELLIGENCE BRIEF — CLASSIFIED${phaseLabel}${bonusBadge}</div>
+          ${intelTable}
+          <div class="dc-report" style="margin-top:10px">${m.fullReport}</div>
         </div>
+        ${continueInvSection}
         <div class="dc-actions">
           <button class="btn-primary" onclick="openOperationModal('${m.id}')"
             data-tip="Configure and execute the operation.">
@@ -1603,6 +1778,25 @@ function renderDetail() {
         </div>
       `;
     }
+
+  } else if (m.status === 'BLOWN') {
+    content += `
+      <div class="blown-warning">
+        <div class="blown-title">⚠ OPERATION COMPROMISED — TARGET ALERTED</div>
+        <div class="blown-msg">Investigation was exposed. Target is mobilizing — ${m.blownDaysLeft} day(s) before exfiltration window closes.
+        Immediate execution carries a −25% probability penalty.</div>
+      </div>
+      <div class="dc-actions" style="margin-top:12px">
+        <button class="btn-danger" onclick="openOperationModal('${m.id}')"
+          data-tip="Execute now with −25% penalty. Target may flee within ${m.blownDaysLeft} day(s).">
+          EXECUTE NOW (−25%)
+        </button>
+        <button class="btn-neutral" onclick="dismissMission('${m.id}')"
+          data-tip="Abort this operation. Confidence penalty applies.">
+          ARCHIVE / ABORT
+        </button>
+      </div>
+    `;
 
   } else if (m.status === 'PHASE_COMPLETE') {
     const nextPh   = m.phases[m.currentPhaseIndex];
