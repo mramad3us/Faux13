@@ -154,6 +154,7 @@ let G = {
   selected: null, opsCompleted: 0, opsSucceeded: 0,
   missionIdCounter: 0, usedCodenames: new Set(), nextSpawnDay: 1,
   upgrades: {}, // tracks upgrade purchase counts per upgrade id
+  hvts: [], hvtIdCounter: 0,
 };
 
 // =============================================================================
@@ -252,6 +253,7 @@ function startGame(countryCode) {
     selected: null, opsCompleted: 0, opsSucceeded: 0,
     missionIdCounter: 0, usedCodenames: new Set(), nextSpawnDay: 1,
     upgrades: initUpgrades(),
+    hvts: [], hvtIdCounter: 0,
   };
   showScreen('game');
   spawnMission();
@@ -547,6 +549,7 @@ function resolveOperation(m) {
       G.opsSucceeded++;
       G.monthOpsSucceeded++;
       gainXP(m.threat * 3, `OP ${m.codename} success`);
+      registerOrUpdateHvt(m);
       addLog(`SUCCESS: OP ${m.codename}. +${confGain}% confidence.`, 'log-success');
     } else {
       m.status = 'FAILURE';
@@ -555,6 +558,7 @@ function resolveOperation(m) {
       m.confDelta = confLoss; m.budgetDelta = 0;
       m.resultMsg = msg;
       gainXP(1, `OP ${m.codename} (failed)`);
+      registerOrUpdateHvtFailed(m);
       addLog(`FAILURE: OP ${m.codename}. ${confLoss}% confidence.`, 'log-fail');
     }
   }
@@ -618,6 +622,7 @@ function completePhase(m, result, msg) {
     m.confDelta = confGain; m.budgetDelta = budgetReturn;
     m.resultMsg = msg;
     gainXP(m.threat * 4, `OP ${m.codename} full chain`);
+    registerOrUpdateHvt(m);
     addLog(`SUCCESS: OP ${m.codename} — Full operation complete. +${confGain}% confidence.`, 'log-success');
   }
 }
@@ -1156,6 +1161,135 @@ function triggerGameOver(title, msg) {
 }
 
 // =============================================================================
+// HVT / THREAT TRACKER
+// =============================================================================
+
+window.switchRightTab = function(tab) {
+  document.querySelectorAll('.panel-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.right-tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${tab}`)?.classList.add('active');
+  document.getElementById(`right-tab-${tab}`)?.classList.add('active');
+};
+
+const HVT_REGISTER_TYPES = new Set(['FOREIGN_HVT', 'DOMESTIC_HVT', 'RENDITION', 'SURVEILLANCE_TAKEDOWN', 'LONG_HUNT_HVT', 'MOLE_HUNT']);
+const HVT_FAIL_TYPES      = new Set(['FOREIGN_HVT', 'DOMESTIC_HVT', 'LONG_HUNT_HVT']);
+
+function hvtAliasFromMission(m) {
+  if (m.selectedSuspectIdx !== null && m.suspects?.[m.selectedSuspectIdx])
+    return m.suspects[m.selectedSuspectIdx].alias;
+  return m.fillVars?.alias || m.fillVars?.target_alias || m.fillVars?.suspect_name || 'UNKNOWN';
+}
+function hvtRoleFromMission(m) {
+  if (m.selectedSuspectIdx !== null && m.suspects?.[m.selectedSuspectIdx])
+    return m.suspects[m.selectedSuspectIdx].role;
+  return m.fillVars?.hvt_role || m.fillVars?.target_role || m.fillVars?.rendition_role || 'Unknown';
+}
+
+function registerOrUpdateHvt(m) {
+  if (!HVT_REGISTER_TYPES.has(m.typeId)) return;
+  const idx = G.hvts.findIndex(h => h.linkedMissionIds.includes(m.id));
+  if (idx >= 0) {
+    const h = G.hvts[idx];
+    h.status = 'NEUTRALIZED';
+    h.gaps   = [];
+    return;
+  }
+  G.hvts.push({
+    id: `H${++G.hvtIdCounter}`,
+    type: (m.typeId.includes('HVT') || m.typeId === 'RENDITION') ? 'HVT' : 'ORG',
+    alias: hvtAliasFromMission(m),
+    role:  hvtRoleFromMission(m),
+    org:   m.category,
+    threat: m.threat,
+    status: 'NEUTRALIZED',
+    knownFields: { city: m.city, country: m.country || null },
+    gaps: [],
+    linkedMissionIds: [m.id],
+    addedDay: G.day,
+  });
+}
+
+function registerOrUpdateHvtFailed(m) {
+  if (!HVT_FAIL_TYPES.has(m.typeId)) return;
+  const idx = G.hvts.findIndex(h => h.linkedMissionIds.includes(m.id));
+  if (idx >= 0) {
+    const h = G.hvts[idx];
+    if (!h.linkedMissionIds.includes(m.id)) h.linkedMissionIds.push(m.id);
+    return; // already tracked — don't downgrade from NEUTRALIZED
+  }
+  G.hvts.push({
+    id: `H${++G.hvtIdCounter}`,
+    type: 'HVT',
+    alias: hvtAliasFromMission(m),
+    role:  hvtRoleFromMission(m),
+    org:   m.category,
+    threat: m.threat,
+    status: 'ACTIVE',
+    knownFields: { city: m.city, country: m.country || null },
+    gaps: ['Identity requires verification', 'Current location unconfirmed', 'Security detail size unknown'],
+    linkedMissionIds: [m.id],
+    addedDay: G.day,
+  });
+}
+
+window.openHvtMissionModal = function(hvtId) {
+  const h = G.hvts.find(h => h.id === hvtId);
+  if (!h || h.status !== 'ACTIVE') return;
+
+  // Build list of applicable mission types based on HVT location context
+  const isForeign = !!(h.knownFields.country && h.knownFields.country !== (G.cfg?.name || ''));
+  let availableTypeIds = isForeign
+    ? ['FOREIGN_HVT', 'LONG_HUNT_HVT', 'RENDITION']
+    : ['DOMESTIC_HVT', 'SURVEILLANCE_TAKEDOWN'];
+  if (h.knownFields.address) availableTypeIds.push('SEARCH_PREMISES');
+  availableTypeIds = availableTypeIds.filter(t => MISSION_TYPES[t]);
+
+  if (availableTypeIds.length === 0) {
+    addLog('No available mission types for this target.', 'log-warn');
+    return;
+  }
+
+  document.getElementById('modal-title').textContent = `ASSIGN MISSION — ${h.alias}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-section">
+      <div class="modal-section-title">TARGET: ${h.alias}</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">${h.role}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px">${h.org} · ${h.knownFields.city || ''}${h.knownFields.country ? ', ' + h.knownFields.country : ''}</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">SELECT MISSION TYPE</div>
+      <div class="hvt-mission-grid">
+        ${availableTypeIds.map(typeId => {
+          const tmpl = MISSION_TYPES[typeId];
+          return `<div class="hvt-mission-option" onclick="spawnHvtMission('${hvtId}','${typeId}')">
+            <div class="hvt-mo-label">${tmpl.label}</div>
+            <div class="hvt-mo-cat">${tmpl.category}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-neutral" onclick="hideModal()">CANCEL</button>
+    </div>
+  `;
+  showModal();
+};
+
+window.spawnHvtMission = function(hvtId, typeId) {
+  const h = G.hvts.find(h => h.id === hvtId);
+  if (!h) return;
+  spawnMission(typeId);
+  const newest = G.missions[0];
+  if (newest) {
+    newest.linkedHvtId = hvtId;
+    if (!h.linkedMissionIds.includes(newest.id)) h.linkedMissionIds.push(newest.id);
+    addLog(`New mission spawned for target ${h.alias}: OP ${newest.codename}.`, 'log-info');
+  }
+  hideModal();
+  render();
+};
+
+// =============================================================================
 // LOGGING
 // =============================================================================
 
@@ -1176,6 +1310,7 @@ function render() {
   renderDetail();
   renderDepts();
   renderActiveOps();
+  renderThreats();
   renderLog();
 }
 
@@ -1648,6 +1783,74 @@ function renderActiveOps() {
       </div>
     </div>`;
   }).join('');
+}
+
+function renderThreats() {
+  const countEl = document.getElementById('threat-count');
+  const panelEl = document.getElementById('threats-panel');
+  if (!countEl || !panelEl) return;
+
+  const active      = G.hvts.filter(h => h.status === 'ACTIVE');
+  const neutralized = G.hvts.filter(h => h.status === 'NEUTRALIZED');
+  countEl.textContent = active.length;
+
+  if (G.hvts.length === 0) {
+    panelEl.innerHTML = '<div class="no-ops-msg">No tracked threats.</div>';
+    return;
+  }
+
+  const buildCard = h => {
+    const isActive   = h.status === 'ACTIVE';
+    const typeBadge  = `<span class="threat-type-badge ${h.type === 'HVT' ? 'hvt-badge' : 'org-badge'}">${h.type}</span>`;
+    const statusChip = isActive
+      ? `<span class="threat-status-chip threat-status-active">ACTIVE</span>`
+      : `<span class="threat-status-chip threat-status-neutralized">NEUTRALIZED</span>`;
+
+    const knownHtml = Object.entries(h.knownFields || {}).filter(([, v]) => v).map(([k, v]) =>
+      `<div class="threat-field-row">
+        <span class="threat-field-key">${k.toUpperCase()}</span>
+        <span class="threat-field-val">${v}</span>
+      </div>`).join('');
+
+    const gapsHtml = h.gaps && h.gaps.length > 0
+      ? `<div class="threat-gaps">
+          <div class="threat-gaps-title">INTEL GAPS</div>
+          ${h.gaps.map(g => `<div class="threat-gap-item">• ${g}</div>`).join('')}
+        </div>`
+      : '';
+
+    const linkedBadges = h.linkedMissionIds.map(mid => {
+      const m = getMission(mid);
+      return m ? `<span class="threat-linked-badge" onclick="selectMission('${mid}')" style="cursor:pointer">OP ${m.codename}</span>` : '';
+    }).filter(Boolean).join('');
+
+    const assignBtn = isActive
+      ? `<button class="btn-threat-assign" onclick="openHvtMissionModal('${h.id}')">ASSIGN MISSION</button>`
+      : '';
+
+    return `<div class="threat-card ${isActive ? 'threat-card-active' : 'threat-card-neutralized'}">
+      <div class="threat-card-hdr">
+        ${typeBadge}
+        <span class="threat-alias">${h.alias}</span>
+        ${statusChip}
+      </div>
+      <div class="threat-role">${h.role}</div>
+      <div class="threat-org">${h.org}</div>
+      ${knownHtml ? `<div class="threat-known-fields">${knownHtml}</div>` : ''}
+      ${gapsHtml}
+      ${linkedBadges ? `<div class="threat-linked">${linkedBadges}</div>` : ''}
+      ${assignBtn}
+    </div>`;
+  };
+
+  let html = '';
+  if (active.length > 0) {
+    html += `<div class="threat-section-title">ACTIVE THREATS</div>${active.map(buildCard).join('')}`;
+  }
+  if (neutralized.length > 0) {
+    html += `<div class="threat-section-title">NEUTRALIZED</div>${neutralized.map(buildCard).join('')}`;
+  }
+  panelEl.innerHTML = html;
 }
 
 function renderLog() {

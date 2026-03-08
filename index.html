@@ -89,19 +89,27 @@
       </div>
     </div>
 
-    <!-- RIGHT: Departments + Active Ops -->
+    <!-- RIGHT: Departments + Active Ops / Threats -->
     <div class="panel panel-right">
-      <div class="panel-hdr">
-        <span class="panel-title">DEPARTMENTS</span>
+      <div class="panel-hdr panel-hdr-tabs">
+        <button class="panel-tab active" id="tab-depts"
+          onclick="switchRightTab('depts')">DEPARTMENTS</button>
+        <button class="panel-tab" id="tab-threats"
+          onclick="switchRightTab('threats')">THREATS
+          <span class="panel-badge" id="threat-count">0</span></button>
       </div>
-      <div id="dept-panel"></div>
-
-      <div class="panel-hdr" style="margin-top:10px">
-        <span class="panel-title">ACTIVE OPERATIONS</span>
-        <span class="panel-badge" id="active-count">0</span>
+      <div id="right-tab-depts" class="right-tab-pane active">
+        <div id="dept-panel"></div>
+        <div class="panel-hdr" style="margin-top:10px">
+          <span class="panel-title">ACTIVE OPERATIONS</span>
+          <span class="panel-badge" id="active-count">0</span>
+        </div>
+        <div id="active-ops-panel">
+          <div class="no-ops-msg">No active operations.</div>
+        </div>
       </div>
-      <div id="active-ops-panel">
-        <div class="no-ops-msg">No active operations.</div>
+      <div id="right-tab-threats" class="right-tab-pane">
+        <div id="threats-panel"><div class="no-ops-msg">No tracked threats.</div></div>
       </div>
     </div>
 
