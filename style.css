@@ -1573,3 +1573,96 @@ html, body {
   border-color: rgba(243, 156, 18, 0.3);
   color: var(--amber);
 }
+
+/* ============================================================
+   V1.4 — SUSPECT SELECTION
+   ============================================================ */
+.suspect-instructions {
+  font-size: 11px;
+  color: var(--amber);
+  font-family: var(--font-mono);
+  margin-bottom: 10px;
+  letter-spacing: 0.3px;
+}
+.suspect-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.suspect-card {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.suspect-card.selectable {
+  cursor: pointer;
+  border-color: var(--border2);
+}
+.suspect-card.selectable:hover {
+  border-color: var(--accent);
+  background: var(--bg4);
+}
+.suspect-card.selected {
+  border-color: var(--accent);
+  background: rgba(61, 158, 255, 0.06);
+}
+.suspect-card.suspect-eliminated {
+  opacity: 0.4;
+  cursor: default;
+}
+.suspect-alias {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-hi);
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 3px;
+}
+.suspect-role {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+  line-height: 1.4;
+}
+.suspect-confidence {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  display: inline-block;
+  padding: 2px 5px;
+  border-radius: var(--radius);
+}
+.conf-high  { background: rgba(45,204,112,0.12); color: var(--green); border: 1px solid var(--green-dim); }
+.conf-med   { background: rgba(243,156,18,0.10); color: var(--amber); border: 1px solid var(--amber-dim); }
+.conf-low   { background: rgba(231,76,60,0.10);  color: var(--red);   border: 1px solid var(--red-dim);  }
+.suspect-selected-mark {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--accent);
+  margin-top: 5px;
+  letter-spacing: 0.8px;
+}
+/* DEAD END status */
+.status-dead-end { background: rgba(155, 89, 182, 0.15); color: var(--purple); border: 1px solid rgba(155,89,182,0.3); }
+.dead-end-box {
+  background: rgba(155, 89, 182, 0.06);
+  border: 1px solid rgba(155, 89, 182, 0.25);
+  border-left: 3px solid var(--purple);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+.dead-end-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--purple);
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+.dead-end-msg {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}

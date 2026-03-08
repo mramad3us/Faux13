@@ -371,6 +371,24 @@ function spawnMission(forcedType) {
     followUpSpawned: false,
   };
 
+  // Suspect generation
+  const sv = tmpl.suspectVars;
+  if (tmpl.hasSuspects && sv) {
+    const count     = randInt(...(tmpl.targetSuspectCount || [1, 1]));
+    const targetIdx = randInt(0, count - 1);
+    mission.suspects = Array.from({ length: count }, (_, i) => ({
+      alias:      i === targetIdx ? pick(sv.alias)           : pick(sv.decoy_alias || sv.alias),
+      role:       i === targetIdx ? pick(sv.role)            : pick(sv.decoy_role  || sv.role),
+      confidence: pick(sv.confidence),
+      isTarget:   i === targetIdx,
+      eliminated: false,
+    }));
+    mission.selectedSuspectIdx = count === 1 ? 0 : null;
+  } else {
+    mission.suspects           = [];
+    mission.selectedSuspectIdx = null;
+  }
+
   if (tmpl.isMultiPhase) {
     mission.phases            = tmpl.phases;
     mission.currentPhaseIndex = 0;
@@ -414,7 +432,7 @@ function advanceDay() {
   G.day++;
 
   for (const m of G.missions) {
-    if (['INCOMING', 'READY', 'PHASE_COMPLETE'].includes(m.status)) {
+    if (['INCOMING', 'READY', 'PHASE_COMPLETE', 'DEAD_END'].includes(m.status)) {
       m.urgencyLeft = Math.max(0, m.urgencyLeft - 1);
       if (m.urgencyLeft === 0) expireMission(m);
     }
@@ -475,6 +493,15 @@ function completeInvestigation(m) {
       m.phaseFalseFlag     = true;
       m.phaseFalseFlagText = fillTemplate(pick(ph.falseFlagTexts), m.currentPhaseFillVars);
       addLog(`⚠ OP ${m.codename}: Investigation anomaly — review before proceeding.`, 'log-warn');
+    }
+  }
+
+  // Wrong-suspect check
+  if (m.suspects && m.suspects.length > 0 && m.selectedSuspectIdx !== null) {
+    if (!m.suspects[m.selectedSuspectIdx].isTarget) {
+      m.status = 'DEAD_END';
+      addLog(`OP ${m.codename}: Investigation inconclusive — subject not linked to threat.`, 'log-warn');
+      render(); return;
     }
   }
 
@@ -701,6 +728,60 @@ window.deepenInvestigation = function(missionId) {
   m.assignedInvDept = deepenDeptId;
   m.invDaysLeft     = m.deepenDays;
   addLog(`Deep investigation initiated: OP ${m.codename}. ${G.depts[deepenDeptId].short} assigned for ${m.deepenDays} day(s).`, 'log-info');
+  render();
+};
+
+// =============================================================================
+// SUSPECT SELECTION
+// =============================================================================
+
+function buildSuspectPanel(m, selectable) {
+  if (!m.suspects || m.suspects.length === 0) return '';
+  const cards = m.suspects.map((s, i) => {
+    if (s.eliminated) {
+      return `<div class="suspect-card suspect-eliminated">
+        <div class="suspect-alias">${s.alias}</div>
+        <div class="suspect-role">${s.role}</div>
+        <div class="suspect-confidence conf-low">ELIMINATED</div>
+      </div>`;
+    }
+    const isSelected = m.selectedSuspectIdx === i;
+    const confCls    = s.confidence === 'HIGH' ? 'conf-high' : s.confidence === 'MODERATE' ? 'conf-med' : 'conf-low';
+    const selMark    = isSelected ? `<div class="suspect-selected-mark">✓ SELECTED</div>` : '';
+    if (selectable && !isSelected) {
+      return `<div class="suspect-card selectable" onclick="selectSuspect('${m.id}', ${i})">
+        <div class="suspect-alias">${s.alias}</div>
+        <div class="suspect-role">${s.role}</div>
+        <div class="suspect-confidence ${confCls}">${s.confidence} CONFIDENCE</div>
+      </div>`;
+    }
+    return `<div class="suspect-card ${isSelected ? 'selected' : ''}">
+      <div class="suspect-alias">${s.alias}</div>
+      <div class="suspect-role">${s.role}</div>
+      <div class="suspect-confidence ${confCls}">${s.confidence} CONFIDENCE</div>
+      ${selMark}
+    </div>`;
+  }).join('');
+  return `<div class="suspect-grid">${cards}</div>`;
+}
+
+window.selectSuspect = function(missionId, idx) {
+  const m = getMission(missionId);
+  if (!m) return;
+  m.selectedSuspectIdx = idx;
+  addLog(`OP ${m.codename}: Suspect "${m.suspects[idx].alias}" selected as primary target.`, 'log-info');
+  render();
+};
+
+window.reassignSuspect = function(missionId) {
+  const m = getMission(missionId);
+  if (!m || m.status !== 'DEAD_END') return;
+  const idx = m.selectedSuspectIdx;
+  if (idx !== null && m.suspects[idx]) m.suspects[idx].eliminated = true;
+  m.selectedSuspectIdx = null;
+  m.status             = 'INCOMING';
+  m.urgencyLeft        = Math.max(0, m.urgencyLeft - 1);
+  addLog(`OP ${m.codename}: Surveillance reassigned — suspect eliminated from consideration.`, 'log-warn');
   render();
 };
 
@@ -1149,6 +1230,7 @@ function renderInbox() {
       INVESTIGATING:  '<span class="mc-status status-investigating">INVESTIGATING</span>',
       READY:          `<span class="mc-status ${m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'}">${m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY'}</span>`,
       PHASE_COMPLETE: '<span class="mc-status status-phase-complete">PHASE DONE</span>',
+      DEAD_END:       '<span class="mc-status status-dead-end">DEAD END</span>',
       EXPIRED:        '<span class="mc-status status-expired">EXPIRED</span>',
     }[m.status] || '';
 
@@ -1205,6 +1287,7 @@ function renderDetail() {
     INVESTIGATING:  ['INVESTIGATING',  'status-investigating'],
     READY:          [m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY', m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'],
     PHASE_COMPLETE: ['PHASE COMPLETE', 'status-phase-complete'],
+    DEAD_END:       ['DEAD END',       'status-dead-end'],
     EXECUTING:      ['EXECUTING',      'status-executing'],
     SUCCESS:        ['SUCCESS',        'status-success'],
     FAILURE:        ['FAILURE',        'status-failure'],
@@ -1234,18 +1317,37 @@ function renderDetail() {
     const phaseHdr = m.isMultiPhase
       ? `<div style="font-size:11px;color:var(--teal);margin-bottom:8px;font-family:var(--font-mono)">PHASE ${m.currentPhaseIndex + 1} OF ${m.phases.length}: ${m.phases[m.currentPhaseIndex].name.toUpperCase()}</div>`
       : '';
-    content += `
-      <div class="dc-section">
-        ${phaseHdr}
-        <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
-        <div class="dc-report">${m.initialReport}</div>
-      </div>
-      <div class="dc-section">
-        <div class="dc-section-title">ASSIGN DEPARTMENT TO INVESTIGATE</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
-          Assign a department to lead the investigation. Costs 1 unit for ${m.invDays} day(s). Other missions can simultaneously use the same department if capacity allows.
+    const hasUnselectedSuspects = m.suspects && m.suspects.length > 1 && m.selectedSuspectIdx === null;
+
+    if (hasUnselectedSuspects) {
+      // Suspect selection gate: show report + suspect grid, no dept assignment yet
+      content += `
+        <div class="dc-section">
+          ${phaseHdr}
+          <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
+          <div class="dc-report">${m.initialReport}</div>
         </div>
-        <div class="dc-dept-grid">
+        <div class="dc-section">
+          <div class="dc-section-title">SUSPECT IDENTIFICATION</div>
+          <div class="suspect-instructions">Multiple subjects flagged. Select the primary target before assigning an investigation department.</div>
+          ${buildSuspectPanel(m, true)}
+        </div>
+        <div class="dc-actions">
+          <button class="btn-danger" onclick="dismissMission('${m.id}')"
+            data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission without taking action.'}">
+            DISMISS / ARCHIVE
+          </button>
+        </div>
+      `;
+    } else {
+      // Suspect already selected (or no suspects): show report + read-only suspect panel + dept assignment
+      const suspectSection = m.suspects && m.suspects.length > 0
+        ? `<div class="dc-section">
+            <div class="dc-section-title">IDENTIFIED SUSPECT</div>
+            ${buildSuspectPanel(m, false)}
+          </div>`
+        : '';
+      const deptGrid = `<div class="dc-dept-grid">
           ${m.invDepts.map(did => {
             const dept  = G.depts[did];
             const avail = deptAvail(did);
@@ -1258,15 +1360,29 @@ function renderDetail() {
               <span class="dc-dept-avail">${avail}/${total}</span>
             </button>`;
           }).join('')}
+        </div>`;
+      content += `
+        <div class="dc-section">
+          ${phaseHdr}
+          <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
+          <div class="dc-report">${m.initialReport}</div>
         </div>
-      </div>
-      <div class="dc-actions">
-        <button class="btn-danger" onclick="dismissMission('${m.id}')"
-          data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission without taking action.'}">
-          DISMISS / ARCHIVE
-        </button>
-      </div>
-    `;
+        ${suspectSection}
+        <div class="dc-section">
+          <div class="dc-section-title">ASSIGN DEPARTMENT TO INVESTIGATE</div>
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
+            Assign a department to lead the investigation. Costs 1 unit for ${m.invDays} day(s). Other missions can simultaneously use the same department if capacity allows.
+          </div>
+          ${deptGrid}
+        </div>
+        <div class="dc-actions">
+          <button class="btn-danger" onclick="dismissMission('${m.id}')"
+            data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission without taking action.'}">
+            DISMISS / ARCHIVE
+          </button>
+        </div>
+      `;
+    }
 
   } else if (m.status === 'INVESTIGATING') {
     const progress   = Math.round(((m.invDays - m.invDaysLeft) / m.invDays) * 100);
@@ -1433,6 +1549,29 @@ function renderDetail() {
       </div>
       <div class="dc-actions" style="margin-top:12px">
         <button class="btn-neutral" onclick="archiveMission('${m.id}')">DEBRIEF COMPLETE — ARCHIVE</button>
+      </div>
+    `;
+
+  } else if (m.status === 'DEAD_END') {
+    const suspectAlias = m.suspects?.[m.selectedSuspectIdx]?.alias || 'UNKNOWN';
+    content += `
+      <div class="dead-end-box">
+        <div class="dead-end-title">INVESTIGATION INCONCLUSIVE</div>
+        <div class="dead-end-msg">Subject "${suspectAlias}" is not linked to the identified threat. Surveillance target was incorrect — the real actor remains at large.</div>
+      </div>
+      <div class="dc-section" style="margin-top:12px">
+        <div class="dc-section-title">ASSESSED SUSPECT</div>
+        ${buildSuspectPanel(m, false)}
+      </div>
+      <div class="dc-actions" style="margin-top:12px">
+        <button class="btn-neutral" onclick="reassignSuspect('${m.id}')"
+          data-tip="Mark this suspect as eliminated and reassign surveillance to a remaining subject. Costs 1 urgency day.">
+          REASSIGN SURVEILLANCE (−1 URGENCY DAY)
+        </button>
+        <button class="btn-danger" onclick="dismissMission('${m.id}')"
+          data-tip="Dismiss this mission without further action.">
+          DISMISS
+        </button>
       </div>
     `;
 
