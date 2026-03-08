@@ -1,7 +1,7 @@
 'use strict';
 // =============================================================================
-// SHADOW DIRECTIVE v1.2  —  Multi-phase operations
-// MISSION_TYPES is now loaded from missions.js (must be included before this)
+// SHADOW DIRECTIVE v1.3  —  Per-department resources, XP & capabilities system
+// MISSION_TYPES loaded from missions.js (must precede this file)
 // =============================================================================
 
 // =============================================================================
@@ -14,74 +14,103 @@ const COUNTRIES = {
     acronym: 'NSAD', flag: '🇺🇸',
     leader: 'POTUS', leaderTitle: 'the President', leaderFormal: 'Mr. President',
     currency: '$', currencySymbol: '$',
-    budget: 60, staff: 300, confidence: 70,
+    budget: 60, confidence: 70,
     reportsTo: 'Reports directly to POTUS',
-    desc: 'The world\'s most powerful intelligence apparatus at your command. Vast resources, but under intense scrutiny.',
-    budgetLabel: '$60M', staffLabel: '300', confLabel: '70%',
-    domesticCities: ['New York', 'Chicago', 'Los Angeles', 'Washington D.C.', 'Miami', 'Houston', 'Seattle', 'Boston', 'Atlanta', 'Denver'],
+    desc: 'The world\'s most powerful intelligence apparatus. Vast resources, but under intense scrutiny.',
+    budgetLabel: '$60M', confLabel: '70%',
     weeklyBudgetRegen: 4,
+    // Per-department starting capacities
+    deptCapacities: {
+      ANALYSIS: 8, HUMINT: 6, SIGINT: 5,
+      FIELD_OPS: 4, SPECIAL_OPS: 2, FOREIGN_OPS: 4, COUNTER_INTEL: 5,
+    },
+    domesticCities: ['New York', 'Chicago', 'Los Angeles', 'Washington D.C.', 'Miami', 'Houston', 'Seattle', 'Boston', 'Atlanta', 'Denver'],
   },
   UK: {
     name: 'United Kingdom', agency: 'Strategic Intelligence Executive',
     acronym: 'SIE', flag: '🇬🇧',
     leader: 'the Prime Minister', leaderTitle: 'the Prime Minister', leaderFormal: 'Prime Minister',
     currency: '£', currencySymbol: '£',
-    budget: 40, staff: 200, confidence: 65,
+    budget: 40, confidence: 65,
     reportsTo: 'Reports directly to the Prime Minister',
-    desc: 'A proud tradition of intelligence excellence. Moderate resources with strong allied networks.',
-    budgetLabel: '£40M', staffLabel: '200', confLabel: '65%',
-    domesticCities: ['London', 'Manchester', 'Birmingham', 'Glasgow', 'Leeds', 'Bristol', 'Edinburgh', 'Cardiff', 'Liverpool', 'Sheffield'],
+    desc: 'A proud tradition of excellence. Moderate resources with strong allied networks.',
+    budgetLabel: '£40M', confLabel: '65%',
     weeklyBudgetRegen: 3,
+    deptCapacities: {
+      ANALYSIS: 7, HUMINT: 5, SIGINT: 5,
+      FIELD_OPS: 3, SPECIAL_OPS: 2, FOREIGN_OPS: 3, COUNTER_INTEL: 4,
+    },
+    domesticCities: ['London', 'Manchester', 'Birmingham', 'Glasgow', 'Leeds', 'Bristol', 'Edinburgh', 'Cardiff', 'Liverpool', 'Sheffield'],
   },
   FRANCE: {
     name: 'France', agency: 'Direction Spéciale des Opérations',
     acronym: 'DSO', flag: '🇫🇷',
     leader: 'the Président', leaderTitle: 'the Président de la République', leaderFormal: 'Monsieur le Président',
     currency: '€', currencySymbol: '€',
-    budget: 25, staff: 150, confidence: 60,
+    budget: 25, confidence: 60,
     reportsTo: 'Reports directly to the Président de la République',
     desc: 'Lean and ruthless. Limited resources demand efficiency and audacity.',
-    budgetLabel: '€25M', staffLabel: '150', confLabel: '60%',
-    domesticCities: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Bordeaux', 'Lille', 'Nice', 'Nantes', 'Strasbourg', 'Rennes'],
+    budgetLabel: '€25M', confLabel: '60%',
     weeklyBudgetRegen: 2,
+    deptCapacities: {
+      ANALYSIS: 6, HUMINT: 4, SIGINT: 4,
+      FIELD_OPS: 3, SPECIAL_OPS: 1, FOREIGN_OPS: 3, COUNTER_INTEL: 4,
+    },
+    domesticCities: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Bordeaux', 'Lille', 'Nice', 'Nantes', 'Strasbourg', 'Rennes'],
   }
 };
 
+// Each department's resource pool — unit names and base caps are defined here;
+// starting capacity is set per-country in COUNTRIES.deptCapacities.
 const DEPT_CONFIG = [
   {
     id: 'ANALYSIS', name: 'Analysis Bureau', short: 'ANALYSIS',
+    unitName: 'analysts', unitNameSingle: 'analyst',
+    baseCapacity: 8, maxCapacity: 14, xpCostPerUnit: 4,
     desc: 'Processes raw intel, produces assessments',
-    tip: 'Best general-purpose investigator — required for most mission types. Turns vague intercepts into actionable intelligence briefings. Does not contribute to direct-action operations.',
+    tip: 'Best general-purpose investigator — required for most mission types. Analysts can be spread across many simultaneous investigations. Does not contribute to direct-action operations.',
   },
   {
     id: 'HUMINT', name: 'Human Intelligence', short: 'HUMINT',
+    unitName: 'handlers', unitNameSingle: 'handler',
+    baseCapacity: 6, maxCapacity: 10, xpCostPerUnit: 5,
     desc: 'Runs agents, assets, and informants',
-    tip: 'Manages human agents and informants worldwide. Essential for cell-based threats, networks, and operations requiring in-person access. Strong execution bonus when the target involves human networks.',
+    tip: 'Manages human agents and informants worldwide. Handlers can be committed to multiple simultaneous operations. Essential for cell-based threats and HVT tracking.',
   },
   {
     id: 'SIGINT', name: 'Signals Intelligence', short: 'SIGINT',
+    unitName: 'intercept teams', unitNameSingle: 'intercept team',
+    baseCapacity: 5, maxCapacity: 10, xpCostPerUnit: 5,
     desc: 'Electronic surveillance and interception',
-    tip: 'Electronic surveillance and communications interception. Best at locating mobile targets and tracking planning activity. Particularly effective on tech-savvy or communications-dependent threats.',
+    tip: 'Electronic surveillance and communications interception. Intercept teams can monitor multiple targets simultaneously. Particularly effective on tech-savvy or communications-dependent threats.',
   },
   {
     id: 'FIELD_OPS', name: 'Field Operations', short: 'FIELD OPS',
+    unitName: 'field teams', unitNameSingle: 'field team',
+    baseCapacity: 4, maxCapacity: 10, xpCostPerUnit: 6,
     desc: 'Domestic covert field teams',
-    tip: 'Domestic covert field teams for surveillance, arrest, and direct action. Primary executor for most domestic operations. Cannot be used for foreign missions. Will show DEPLOYED and become unavailable during active operations.',
+    tip: 'Domestic covert field teams for surveillance, arrest, and direct action. Each team can only run one active mission. Field teams are a limited resource — deploying too many simultaneously leaves you exposed.',
   },
   {
     id: 'SPECIAL_OPS', name: 'Special Activities', short: 'SPECIAL OPS',
+    unitName: 'strike units', unitNameSingle: 'strike unit',
+    baseCapacity: 2, maxCapacity: 6, xpCostPerUnit: 12,
     desc: 'Paramilitary and direct-action capability',
-    tip: 'Paramilitary direct-action unit. Highest execution success bonus of any department. Required for high-threat neutralizations, hostage rescue, and renditions. Scarce — do not waste on low-priority missions.',
+    tip: 'Paramilitary direct-action units. Extremely scarce and high-impact. Each unit can only run one operation at a time. Prioritize carefully — committing your last unit to a low-value mission may leave you unable to respond to a critical threat.',
   },
   {
     id: 'FOREIGN_OPS', name: 'Foreign Operations', short: 'FOREIGN OPS',
+    unitName: 'operatives', unitNameSingle: 'operative',
+    baseCapacity: 4, maxCapacity: 10, xpCostPerUnit: 6,
     desc: 'International clandestine operations',
-    tip: 'Runs all international clandestine operations. Required for foreign HVT, rendition, asset rescue, and regime operations. Cannot be used on domestic missions. Will show DEPLOYED during active foreign operations.',
+    tip: 'Runs all international clandestine operations. Each operative can only run one foreign operation at a time. Required for foreign HVT, rendition, asset rescue, and regime operations.',
   },
   {
     id: 'COUNTER_INTEL', name: 'Counter-Intelligence', short: 'COUNTER-INTEL',
+    unitName: 'officers', unitNameSingle: 'officer',
+    baseCapacity: 5, maxCapacity: 10, xpCostPerUnit: 5,
     desc: 'Internal security and mole-hunting',
-    tip: 'Internal security and mole-hunting. Specializes in counter-espionage investigations. Required for insider threat and domestic HVT operations. Also provides a defensive bonus against enemy intelligence activity.',
+    tip: 'Internal security and mole-hunting. Officers can handle multiple investigations simultaneously. Required for insider threat and domestic HVT operations.',
   },
 ];
 
@@ -118,10 +147,13 @@ const CODENAME_NOUN = ['FALCON', 'HAMMER', 'DAWN', 'TIDE', 'SERPENT', 'ARROW', '
 
 let G = {
   country: null, cfg: null,
-  day: 1, budget: 0, staffUsed: 0, staffTotal: 0, confidence: 0,
+  day: 1, budget: 0, confidence: 0,
+  xp: 0, xpThisMonth: 0,
+  monthOpsCompleted: 0, monthOpsSucceeded: 0, lastRecapDay: 0,
   missions: [], depts: {}, log: [],
   selected: null, opsCompleted: 0, opsSucceeded: 0,
   missionIdCounter: 0, usedCodenames: new Set(), nextSpawnDay: 1,
+  upgrades: {}, // tracks upgrade purchase counts per upgrade id
 };
 
 // =============================================================================
@@ -130,24 +162,19 @@ let G = {
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
-function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 function fmt(n) { return G.cfg ? `${G.cfg.currencySymbol}${n}M` : `$${n}M`; }
 function week() { return Math.ceil(G.day / 7); }
 
-// All vars in fillVars are pre-resolved strings — simple token replacement
 function fillTemplate(tpl, vars) {
-  return tpl.replace(/\{(\w+)\}/g, (_, key) => {
-    if (vars[key] !== undefined) return vars[key];
-    return `[${key}]`;
-  });
+  return tpl.replace(/\{(\w+)\}/g, (_, key) =>
+    vars[key] !== undefined ? vars[key] : `[${key}]`);
 }
 
-// Pre-resolve an array of vars into strings (pick once per spawn)
 function resolveVars(varsTemplate, baseVars) {
   const resolved = { ...baseVars };
-  for (const [k, v] of Object.entries(varsTemplate || {})) {
+  for (const [k, v] of Object.entries(varsTemplate || {}))
     resolved[k] = Array.isArray(v) ? pick(v) : v;
-  }
   return resolved;
 }
 
@@ -160,15 +187,57 @@ function generateCodename() {
 }
 
 // =============================================================================
+// DEPARTMENT RESOURCE SYSTEM
+// =============================================================================
+
+// Dynamically computed from active missions — always accurate, never stale
+function deptAllocated(deptId) {
+  let n = 0;
+  for (const m of G.missions) {
+    if (m.status === 'INVESTIGATING' && m.assignedInvDept === deptId) n++;
+    if (m.status === 'EXECUTING' && (m.assignedExecDepts || []).includes(deptId)) n++;
+  }
+  return n;
+}
+
+function deptAvail(deptId) {
+  const d = G.depts[deptId];
+  return d ? Math.max(0, d.capacity - deptAllocated(deptId)) : 0;
+}
+
+// All missions currently using this dept (for dept panel display)
+function deptAssignments(deptId) {
+  const result = [];
+  for (const m of G.missions) {
+    if (m.status === 'INVESTIGATING' && m.assignedInvDept === deptId)
+      result.push({ id: m.id, codename: m.codename, phase: 'INV', daysLeft: m.invDaysLeft });
+    if (m.status === 'EXECUTING' && (m.assignedExecDepts || []).includes(deptId))
+      result.push({ id: m.id, codename: m.codename, phase: 'EXEC', daysLeft: m.execDaysLeft });
+  }
+  return result;
+}
+
+// =============================================================================
 // GAME INITIALIZATION
 // =============================================================================
 
 function initDepts() {
+  const caps  = G.cfg.deptCapacities;
   const depts = {};
   for (const d of DEPT_CONFIG) {
-    depts[d.id] = { ...d, busy: false, busyType: null, busyMissionId: null };
+    depts[d.id] = {
+      id: d.id, name: d.name, short: d.short,
+      unitName: d.unitName, unitNameSingle: d.unitNameSingle,
+      capacity: caps[d.id] ?? d.baseCapacity,
+    };
   }
   return depts;
+}
+
+function initUpgrades() {
+  const u = { budgetRegen: 0, budgetCap: 0 };
+  for (const d of DEPT_CONFIG) u[d.id] = 0;
+  return u;
 }
 
 function startGame(countryCode) {
@@ -176,10 +245,13 @@ function startGame(countryCode) {
   if (!cfg) return;
   G = {
     country: countryCode, cfg,
-    day: 1, budget: cfg.budget, staffUsed: 0, staffTotal: cfg.staff, confidence: cfg.confidence,
+    day: 1, budget: cfg.budget, confidence: cfg.confidence,
+    xp: 0, xpThisMonth: 0,
+    monthOpsCompleted: 0, monthOpsSucceeded: 0, lastRecapDay: 0,
     missions: [], depts: initDepts(), log: [],
     selected: null, opsCompleted: 0, opsSucceeded: 0,
     missionIdCounter: 0, usedCodenames: new Set(), nextSpawnDay: 1,
+    upgrades: initUpgrades(),
   };
   showScreen('game');
   spawnMission();
@@ -192,35 +264,41 @@ function startGame(countryCode) {
 function restartGame() { G.country = null; showScreen('select'); }
 
 // =============================================================================
+// XP SYSTEM
+// =============================================================================
+
+function gainXP(amount, source) {
+  if (amount <= 0) return;
+  G.xp           += amount;
+  G.xpThisMonth  += amount;
+  addLog(`+${amount} XP — ${source}.`, 'log-xp');
+}
+
+// =============================================================================
 // MISSION GENERATION
 // =============================================================================
 
-// Initialize/reset per-phase fields on the mission from phases[currentPhaseIndex]
 function initPhaseFields(m) {
   const ph = m.phases[m.currentPhaseIndex];
-  // Merge shared top-level vars with phase-specific vars (all pre-resolved)
   const phFillVars = resolveVars(ph.vars || {}, m.fillVars);
   m.currentPhaseFillVars = phFillVars;
 
-  m.invDays    = randInt(...ph.invDaysRange);
-  m.invDepts   = ph.invDepts;
-  m.execDays   = randInt(...ph.execDaysRange);
-  m.execDepts  = ph.execDepts;
-  m.baseBudget = randInt(...ph.budgetRange);
-  m.baseStaff  = randInt(...ph.staffRange);
-  m.confSuccess = ph.confSuccess;
-  m.confFail    = ph.confFail;
-  m.opNarrative = fillTemplate(ph.opNarrative, phFillVars);
+  m.invDays      = randInt(...ph.invDaysRange);
+  m.invDepts     = ph.invDepts;
+  m.execDays     = randInt(...ph.execDaysRange);
+  m.execDepts    = ph.execDepts;
+  m.baseBudget   = randInt(...ph.budgetRange);
+  m.confSuccess  = ph.confSuccess;
+  m.confFail     = ph.confFail;
+  m.opNarrative  = fillTemplate(ph.opNarrative, phFillVars);
   m.initialReport = fillTemplate(pick(ph.investigateReports), phFillVars);
-  m.fullReport    = fillTemplate(pick(ph.fullBriefs), phFillVars);
+  m.fullReport    = fillTemplate(pick(ph.fullBriefs),         phFillVars);
   m.successMsgs   = ph.successOutcomes;
   m.failureMsgs   = ph.failureOutcomes;
 
-  // Reset phase-level operational state
   m.assignedInvDept    = null;
   m.invDaysLeft        = 0;
   m.assignedBudget     = 0;
-  m.assignedStaff      = 0;
   m.assignedExecDepts  = [];
   m.execDaysLeft       = 0;
   m.successProb        = 0;
@@ -235,29 +313,22 @@ function spawnMission(forcedType) {
   if (inbox.length >= 6) return;
 
   const typeId = forcedType || pick(Object.keys(MISSION_TYPES));
-  const tmpl = MISSION_TYPES[typeId];
+  const tmpl   = MISSION_TYPES[typeId];
   if (!tmpl) return;
 
-  const codename  = generateCodename();
-  const urgency   = randInt(...tmpl.urgencyRange);
-  const threat    = randInt(...tmpl.threatRange);
+  const codename = generateCodename();
+  const urgency  = randInt(...tmpl.urgencyRange);
+  const threat   = randInt(...tmpl.threatRange);
 
   let cityName, countryName;
   if (tmpl.location === 'DOMESTIC') {
-    cityName    = pick(G.cfg.domesticCities);
-    countryName = G.cfg.name;
+    cityName = pick(G.cfg.domesticCities); countryName = G.cfg.name;
   } else {
-    const loc = pick(FOREIGN_CITIES);
-    cityName    = loc.city;
-    countryName = loc.country;
+    const loc = pick(FOREIGN_CITIES); cityName = loc.city; countryName = loc.country;
   }
 
-  // Pre-resolve all top-level vars once at spawn time
   const fillVars = resolveVars(tmpl.vars || {}, {
-    city:        cityName,
-    country:     countryName,
-    codename:    codename,
-    urgency_days: String(urgency),
+    city: cityName, country: countryName, codename, urgency_days: String(urgency),
   });
 
   const mission = {
@@ -270,8 +341,7 @@ function spawnMission(forcedType) {
     isMultiPhase: tmpl.isMultiPhase || false,
     status: 'INCOMING',
     assignedInvDept: null, invDaysLeft: 0,
-    assignedBudget: 0, assignedStaff: 0, assignedExecDepts: [],
-    execDaysLeft: 0, successProb: 0,
+    assignedBudget: 0, assignedExecDepts: [], execDaysLeft: 0, successProb: 0,
     resultMsg: '', confDelta: 0, budgetDelta: 0,
     dayReceived: G.day,
     phaseFalseFlag: false, phaseFalseFlagText: '', phaseFalseFlagPenalty: false,
@@ -279,24 +349,22 @@ function spawnMission(forcedType) {
   };
 
   if (tmpl.isMultiPhase) {
-    mission.phases           = tmpl.phases;
+    mission.phases            = tmpl.phases;
     mission.currentPhaseIndex = 0;
-    mission.completedPhases  = [];
-    mission.lastPhaseMsg     = '';
-    mission.lastPhaseName    = '';
+    mission.completedPhases   = [];
+    mission.lastPhaseMsg      = '';
+    mission.lastPhaseName     = '';
     mission.lastPhaseShortName = '';
     mission.lastPhaseConfDelta = 0;
     initPhaseFields(mission);
   } else {
-    // Single-phase — resolve all text at spawn time
     Object.assign(mission, {
       invDays:    randInt(...tmpl.invDaysRange),
       execDays:   randInt(...tmpl.execDaysRange),
       baseBudget: randInt(...tmpl.budgetRange),
-      baseStaff:  randInt(...tmpl.staffRange),
       invDepts:   tmpl.invDepts,
       execDepts:  tmpl.execDepts,
-      opNarrative:  tmpl.opNarrative || '',
+      opNarrative:   tmpl.opNarrative || '',
       initialReport: fillTemplate(pick(tmpl.initialReports), fillVars),
       fullReport:    fillTemplate(pick(tmpl.fullReports),    fillVars),
       successMsgs:   tmpl.successMsgs,
@@ -330,7 +398,7 @@ function advanceDay() {
         completeInvestigation(m);
       } else if (m.urgencyLeft === 0) {
         expireMission(m);
-        freeDept(m.assignedInvDept, m.id);
+        m.assignedInvDept = null; // free the slot
       }
     }
     if (m.status === 'EXECUTING') {
@@ -343,7 +411,7 @@ function advanceDay() {
     const drain = -2;
     G.confidence = clamp(G.confidence + drain, 0, 100);
     G.budget = Math.min(G.budget + G.cfg.weeklyBudgetRegen, G.cfg.budget);
-    addLog(`Weekly briefing: Confidence ${drain}%. Budget regenerated +${fmt(G.cfg.weeklyBudgetRegen)}.`, 'log-warn');
+    addLog(`Weekly briefing: Confidence ${drain}%. Budget +${fmt(G.cfg.weeklyBudgetRegen)}.`, 'log-warn');
   }
 
   if (G.day >= G.nextSpawnDay) {
@@ -354,19 +422,23 @@ function advanceDay() {
   checkGameOver();
   render();
   if (G.selected && !getMission(G.selected)) G.selected = null;
+
+  // Monthly recap — every 30 days
+  if (G.day - G.lastRecapDay >= 30) {
+    G.lastRecapDay = G.day;
+    showCapabilitiesMenu(true);
+  }
 }
 
 function completeInvestigation(m) {
-  freeDept(m.assignedInvDept, m.id);
-  m.assignedInvDept = null;
+  m.assignedInvDept = null; // frees the dept unit automatically
 
-  // Check for false flag (multi-phase only)
   if (m.isMultiPhase) {
     const ph = m.phases[m.currentPhaseIndex];
     if (ph.falseFlagChance > 0 && Math.random() < ph.falseFlagChance) {
       m.phaseFalseFlag     = true;
       m.phaseFalseFlagText = fillTemplate(pick(ph.falseFlagTexts), m.currentPhaseFillVars);
-      addLog(`⚠ OP ${m.codename}: Investigation anomaly detected — review before proceeding.`, 'log-warn');
+      addLog(`⚠ OP ${m.codename}: Investigation anomaly — review before proceeding.`, 'log-warn');
     }
   }
 
@@ -376,6 +448,9 @@ function completeInvestigation(m) {
 
 function expireMission(m) {
   m.status = 'EXPIRED';
+  // Clear any in-progress assignment so the dept unit is freed
+  m.assignedInvDept   = null;
+  m.assignedExecDepts = [];
   const confHit = -randInt(5, 12);
   G.confidence = clamp(G.confidence + confHit, 0, 100);
   addLog(`MISSION EXPIRED: OP ${m.codename}. Confidence ${confHit}%.`, 'log-fail');
@@ -387,9 +462,8 @@ function expireMission(m) {
 
 function resolveOperation(m) {
   const success = Math.random() * 100 <= m.successProb;
-
-  G.staffUsed = Math.max(0, G.staffUsed - m.assignedStaff);
-  for (const did of m.assignedExecDepts || []) freeDept(did, m.id);
+  // Freeing resources: just clear the exec depts — deptAllocated won't count
+  // non-EXECUTING missions so the capacity is freed automatically once status changes.
 
   const fillV = m.isMultiPhase ? m.currentPhaseFillVars : m.fillVars;
   const msg   = fillTemplate(pick(success ? m.successMsgs : m.failureMsgs), fillV);
@@ -398,6 +472,7 @@ function resolveOperation(m) {
     completePhase(m, success ? 'SUCCESS' : 'FAILURE', msg);
   } else {
     G.opsCompleted++;
+    G.monthOpsCompleted++;
     if (success) {
       m.status = 'SUCCESS';
       const confGain    = randInt(...m.confSuccess);
@@ -407,6 +482,8 @@ function resolveOperation(m) {
       m.confDelta = confGain; m.budgetDelta = budgetReturn;
       m.resultMsg = msg;
       G.opsSucceeded++;
+      G.monthOpsSucceeded++;
+      gainXP(m.threat * 3, `OP ${m.codename} success`);
       addLog(`SUCCESS: OP ${m.codename}. +${confGain}% confidence.`, 'log-success');
     } else {
       m.status = 'FAILURE';
@@ -414,6 +491,7 @@ function resolveOperation(m) {
       G.confidence = clamp(G.confidence + confLoss, 0, 100);
       m.confDelta = confLoss; m.budgetDelta = 0;
       m.resultMsg = msg;
+      gainXP(1, `OP ${m.codename} (failed)`);
       addLog(`FAILURE: OP ${m.codename}. ${confLoss}% confidence.`, 'log-fail');
     }
   }
@@ -427,25 +505,23 @@ function completePhase(m, result, msg) {
   const ph = m.phases[m.currentPhaseIndex];
 
   m.completedPhases.push({
-    phaseIndex: m.currentPhaseIndex,
-    phaseId:    ph.id,
-    phaseName:  ph.name,
-    shortName:  ph.shortName,
-    result, msg,
+    phaseIndex: m.currentPhaseIndex, phaseId: ph.id,
+    phaseName: ph.name, shortName: ph.shortName, result, msg,
   });
 
   if (result === 'FAILURE') {
     G.opsCompleted++;
-    m.status    = 'FAILURE';
+    G.monthOpsCompleted++;
+    m.status = 'FAILURE';
     const confLoss = randInt(...m.confFail);
     G.confidence = clamp(G.confidence + confLoss, 0, 100);
     m.confDelta = confLoss; m.budgetDelta = 0;
     m.resultMsg = msg;
+    gainXP(1, `OP ${m.codename} phase failed`);
     addLog(`FAILURE: OP ${m.codename} [${ph.shortName}]. ${confLoss}% confidence.`, 'log-fail');
     return;
   }
 
-  // Phase succeeded
   const confGain = randInt(...m.confSuccess);
   if (confGain > 0) {
     G.confidence = clamp(G.confidence + confGain, 0, 100);
@@ -454,7 +530,6 @@ function completePhase(m, result, msg) {
     addLog(`PHASE COMPLETE: OP ${m.codename} — ${ph.shortName}. Proceeding.`, 'log-info');
   }
 
-  // Spawn follow-up mission if this phase triggers one
   if (ph.spawnsFollowUp && !m.followUpSpawned) {
     spawnFollowUpMission(m, ph);
     m.followUpSpawned = true;
@@ -462,24 +537,24 @@ function completePhase(m, result, msg) {
 
   const nextIdx = m.currentPhaseIndex + 1;
   if (nextIdx < m.phases.length) {
-    // More phases remain
     m.lastPhaseMsg       = msg;
     m.lastPhaseName      = ph.name;
     m.lastPhaseShortName = ph.shortName;
     m.lastPhaseConfDelta = confGain;
     m.currentPhaseIndex  = nextIdx;
     m.status             = 'PHASE_COMPLETE';
-    initPhaseFields(m); // pre-initialize next phase fields
+    initPhaseFields(m);
   } else {
-    // Final phase — mission success
     G.opsCompleted++;
+    G.monthOpsCompleted++;
     G.opsSucceeded++;
+    G.monthOpsSucceeded++;
     m.status = 'SUCCESS';
     const budgetReturn = Math.floor(m.assignedBudget * 0.1);
     if (budgetReturn > 0) G.budget = Math.min(G.budget + budgetReturn, 999);
-    m.confDelta   = confGain;
-    m.budgetDelta = budgetReturn;
-    m.resultMsg   = msg;
+    m.confDelta = confGain; m.budgetDelta = budgetReturn;
+    m.resultMsg = msg;
+    gainXP(m.threat * 4, `OP ${m.codename} full chain`);
     addLog(`SUCCESS: OP ${m.codename} — Full operation complete. +${confGain}% confidence.`, 'log-success');
   }
 }
@@ -488,24 +563,6 @@ function spawnFollowUpMission(m, phase) {
   const intelText = pick(phase.followUpIntelTexts || []);
   if (intelText) addLog(`INTELLIGENCE LEAD — OP ${m.codename}: ${intelText}`, 'log-info');
   spawnMission(phase.spawnsFollowUp);
-}
-
-// =============================================================================
-// DEPARTMENT MANAGEMENT
-// =============================================================================
-
-function freeDept(deptId, missionId) {
-  const d = G.depts[deptId];
-  if (d && d.busyMissionId === missionId) {
-    d.busy = false; d.busyType = null; d.busyMissionId = null;
-  }
-}
-
-function assignDeptDeployed(deptId, missionId) {
-  const d = G.depts[deptId];
-  if (d && !d.busy) {
-    d.busy = true; d.busyType = 'DEPLOYED'; d.busyMissionId = missionId;
-  }
 }
 
 // =============================================================================
@@ -518,16 +575,24 @@ function assignInvestigation(missionId, deptId) {
   const m    = getMission(missionId);
   const dept = G.depts[deptId];
   if (!m || !dept) return;
-  if (dept.busy) { addLog(`${dept.name} is currently assigned. Choose another.`, 'log-warn'); render(); return; }
-  if (!m.invDepts.includes(deptId)) { addLog(`${dept.name} cannot investigate this mission type.`, 'log-warn'); render(); return; }
+
+  if (deptAvail(deptId) < 1) {
+    const cfg = DEPT_CONFIG.find(d => d.id === deptId);
+    addLog(`All ${cfg?.unitName || 'units'} of ${dept.name} are currently deployed. Wait for one to return.`, 'log-warn');
+    render(); return;
+  }
+  if (!m.invDepts.includes(deptId)) {
+    addLog(`${dept.name} cannot investigate this mission type.`, 'log-warn');
+    render(); return;
+  }
 
   m.status          = 'INVESTIGATING';
   m.assignedInvDept = deptId;
   m.invDaysLeft     = m.invDays;
-  dept.busy = true; dept.busyType = 'INVESTIGATING'; dept.busyMissionId = missionId;
 
   const phaseLabel = m.isMultiPhase ? ` (${m.phases[m.currentPhaseIndex].shortName})` : '';
-  addLog(`${dept.name} assigned to investigate OP ${m.codename}${phaseLabel}. Est. ${m.invDays} days.`, 'log-info');
+  const avail      = deptAvail(deptId); // still shows pre-assignment since we just set status
+  addLog(`${dept.name} assigned to OP ${m.codename}${phaseLabel}. Est. ${m.invDays} days.`, 'log-info');
   render();
 }
 
@@ -540,7 +605,9 @@ function archiveMission(missionId) {
 function dismissMission(missionId) {
   const m = getMission(missionId);
   if (!m) return;
-  if (m.status === 'INVESTIGATING') freeDept(m.assignedInvDept, missionId);
+  // Clear any assignment — deptAllocated recomputes from active missions
+  m.assignedInvDept   = null;
+  m.assignedExecDepts = [];
   const confHit = m.threat >= 4 ? -randInt(5, 10) : 0;
   if (confHit < 0) {
     G.confidence = clamp(G.confidence + confHit, 0, 100);
@@ -553,7 +620,6 @@ function dismissMission(missionId) {
   render();
 }
 
-// Acknowledge phase completion and proceed to next phase
 window.acknowledgePhaseProceeding = function(missionId) {
   const m = getMission(missionId);
   if (!m || m.status !== 'PHASE_COMPLETE') return;
@@ -562,32 +628,40 @@ window.acknowledgePhaseProceeding = function(missionId) {
   render();
 };
 
-// False flag: proceed with -25% probability penalty
 window.falseFlagProceed = function(missionId) {
   const m = getMission(missionId);
   if (!m || !m.phaseFalseFlag) return;
   m.phaseFalseFlagPenalty = true;
-  m.phaseFalseFlag = false;
+  m.phaseFalseFlag        = false;
   addLog(`OP ${m.codename}: Proceeding despite anomaly. Success probability reduced.`, 'log-warn');
   render();
 };
 
-// False flag: reinvestigate — return to INCOMING
 window.falseFlagReinvestigate = function(missionId) {
   const m = getMission(missionId);
   if (!m || !m.phaseFalseFlag) return;
   m.phaseFalseFlag        = false;
   m.phaseFalseFlagPenalty = false;
-  m.invDays     = randInt(2, 3);
-  m.invDaysLeft = 0;
-  m.status      = 'INCOMING';
-  addLog(`OP ${m.codename}: Reinvestigation ordered. Assign a department to re-examine the evidence.`, 'log-info');
+  m.invDays               = randInt(2, 3);
+  m.invDaysLeft           = 0;
+  m.status                = 'INCOMING';
+  addLog(`OP ${m.codename}: Reinvestigation ordered.`, 'log-info');
   render();
 };
 
 // =============================================================================
 // OPERATION MODAL
 // =============================================================================
+
+function calcOpProb(m, budget, depts) {
+  const minBudget = Math.max(1, Math.floor(m.baseBudget * 0.5));
+  const penalty   = m.phaseFalseFlagPenalty ? 25 : 0;
+  let p = 35 - penalty;
+  p += Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
+  p += depts.filter(d =>  m.execDepts.includes(d)).length * 12; // recommended
+  p += depts.filter(d => !m.execDepts.includes(d)).length *  5; // optional
+  return clamp(p, 10, 92);
+}
 
 function openOperationModal(missionId) {
   const m = getMission(missionId);
@@ -596,61 +670,46 @@ function openOperationModal(missionId) {
   const minBudget = Math.max(1, Math.floor(m.baseBudget * 0.5));
   const maxBudget = Math.min(G.budget, m.baseBudget * 2);
   const defBudget = Math.min(G.budget, m.baseBudget);
-  const minStaff  = Math.max(1, Math.floor(m.baseStaff * 0.5));
-  const maxStaff  = Math.min(G.staffTotal - G.staffUsed, m.baseStaff * 2);
-  const defStaff  = Math.min(maxStaff, m.baseStaff);
 
   if (maxBudget < minBudget) {
     addLog(`Insufficient budget for OP ${m.codename}. Need at least ${fmt(minBudget)}.`, 'log-warn');
     render(); return;
   }
-  if (maxStaff < minStaff) {
-    addLog(`Insufficient available staff for OP ${m.codename}.`, 'log-warn');
-    render(); return;
-  }
 
+  // Pre-select first available recommended dept
   let selectedDepts = [];
   for (const did of m.execDepts) {
-    if (!G.depts[did].busy) { selectedDepts = [did]; break; }
+    if (deptAvail(did) > 0) { selectedDepts = [did]; break; }
   }
 
-  const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
-  const calcProb = (budget, staff, depts) => {
-    let p = 40 - falseFlagPenalty;
-    p += Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
-    p += Math.round(clamp((staff - minStaff)   / Math.max(1, m.baseStaff  - minStaff),  0, 1) * 20);
-    p += depts.filter(d => m.execDepts.includes(d)).length * 8;
-    return clamp(p, 10, 92);
+  const phaseLabel  = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
+  const penaltyNote = m.phaseFalseFlagPenalty
+    ? `<div class="op-penalty-note">⚠ ANOMALY PENALTY: −25% success probability due to inconclusive investigation.</div>`
+    : '';
+  const initProb = calcOpProb(m, defBudget, selectedDepts);
+
+  // Build department rows: recommended first, then others
+  const buildDeptRow = (did, isRec) => {
+    const dept  = G.depts[did];
+    const cfg   = DEPT_CONFIG.find(d => d.id === did);
+    const avail = deptAvail(did);
+    const total = dept.capacity;
+    const alloc = deptAllocated(did);
+    const canSelect = avail > 0;
+    const sel       = selectedDepts.includes(did);
+    return `<div class="modal-dept-check ${sel ? 'selected' : ''} ${canSelect ? '' : 'unavail'}"
+      data-dept="${did}" onclick="toggleExecDept('${did}','${missionId}')"
+      data-tip="${cfg?.tip || ''}">
+      <span class="modal-dept-check-name">${dept.short}</span>
+      <span class="modal-dept-avail">${avail}/${total}</span>
+      <span class="modal-dept-check-status" style="color:${isRec ? 'var(--accent)' : 'var(--text-dim)'};font-size:9px">${isRec ? 'REC' : 'OPT'}</span>
+      <span class="modal-dept-check-status" style="color:${avail > 0 ? 'var(--green)' : 'var(--red)'}">${avail > 0 ? 'AVAIL' : 'FULL'}</span>
+    </div>`;
   };
 
-  const deptRows = m.execDepts.map(did => {
-    const dept = G.depts[did];
-    const avail = !dept.busy;
-    return `<div class="modal-dept-check ${selectedDepts.includes(did) ? 'selected' : ''} ${avail ? '' : 'unavail'}"
-      data-dept="${did}" onclick="toggleExecDept('${did}','${missionId}')"
-      data-tip="${DEPT_CONFIG.find(d => d.id === did)?.tip || ''}">
-      <span class="modal-dept-check-name">${dept.short}</span>
-      <span class="modal-dept-check-status" style="color:var(--accent);font-size:9px">REC</span>
-      <span class="modal-dept-check-status" style="color:${avail ? 'var(--green)' : 'var(--red)'}">${avail ? 'AVAIL' : 'BUSY'}</span>
-    </div>`;
-  }).join('');
-
-  const otherDepts = DEPT_CONFIG.filter(d => !m.execDepts.includes(d.id)).map(d => {
-    const dept = G.depts[d.id];
-    const avail = !dept.busy;
-    return `<div class="modal-dept-check ${selectedDepts.includes(d.id) ? 'selected' : ''}"
-      data-dept="${d.id}" onclick="toggleExecDept('${d.id}','${missionId}')"
-      data-tip="${d.tip}">
-      <span class="modal-dept-check-name">${dept.short}</span>
-      <span class="modal-dept-check-status" style="color:${avail ? 'var(--text-dim)' : 'var(--red)'};font-size:9px">${avail ? 'OPT' : 'BUSY'}</span>
-    </div>`;
-  }).join('');
-
-  const initProb    = calcProb(defBudget, defStaff, selectedDepts);
-  const phaseLabel  = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
-  const penaltyNote = falseFlagPenalty > 0
-    ? `<div style="background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:4px;padding:8px 10px;margin-bottom:12px;font-size:11px;color:var(--red)">⚠ ANOMALY PENALTY: Success probability reduced by 25% due to inconclusive investigation.</div>`
-    : '';
+  const recRows   = m.execDepts.map(did => buildDeptRow(did, true)).join('');
+  const otherRows = DEPT_CONFIG.filter(d => !m.execDepts.includes(d.id))
+                               .map(d => buildDeptRow(d.id, false)).join('');
 
   document.getElementById('modal-title').textContent = `OP ${m.codename}${phaseLabel} — CONFIGURE OPERATION`;
   document.getElementById('modal-body').innerHTML = `
@@ -660,35 +719,28 @@ function openOperationModal(missionId) {
       <div class="op-narrative">${m.opNarrative}</div>
     </div>
     <div class="modal-section">
-      <div class="modal-section-title">ALLOCATED RESOURCES</div>
+      <div class="modal-section-title">BUDGET ALLOCATION</div>
       <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">
-        Minimum: ${fmt(minBudget)} / ${minStaff} agents. Recommended: ${fmt(m.baseBudget)} / ${m.baseStaff} agents. More resources = higher success probability.
+        Minimum: ${fmt(minBudget)}. Recommended: ${fmt(m.baseBudget)}. More funding = higher success.
       </div>
       <div class="modal-slider-row">
         <label>BUDGET</label>
         <input type="range" id="op-budget" min="${minBudget}" max="${maxBudget}" value="${defBudget}"
           oninput="updateModalProb('${missionId}')"
-          data-tip="Set the operational budget. More funding improves success probability. Available: ${fmt(G.budget)}">
+          data-tip="Available: ${fmt(G.budget)}">
         <span class="modal-slider-val" id="op-budget-val">${fmt(defBudget)}</span>
       </div>
-      <div class="modal-slider-row">
-        <label>STAFF</label>
-        <input type="range" id="op-staff" min="${minStaff}" max="${maxStaff}" value="${defStaff}"
-          oninput="updateModalProb('${missionId}')"
-          data-tip="Number of agents to deploy. More staff improves success probability. Available: ${G.staffTotal - G.staffUsed}">
-        <span class="modal-slider-val" id="op-staff-val">${defStaff} agents</span>
-      </div>
     </div>
     <div class="modal-section">
-      <div class="modal-section-title">RECOMMENDED DEPARTMENTS <span style="font-size:9px;color:var(--text-dim)">(each adds +8% success)</span></div>
-      <div class="modal-dept-grid">${deptRows}</div>
+      <div class="modal-section-title">RECOMMENDED DEPARTMENTS <span style="font-size:9px;color:var(--text-dim)">(each +12% success)</span></div>
+      <div class="modal-dept-grid">${recRows}</div>
     </div>
     <div class="modal-section">
-      <div class="modal-section-title">OPTIONAL SUPPORT</div>
-      <div class="modal-dept-grid">${otherDepts}</div>
+      <div class="modal-section-title">OPTIONAL SUPPORT <span style="font-size:9px;color:var(--text-dim)">(each +5% success)</span></div>
+      <div class="modal-dept-grid">${otherRows}</div>
     </div>
     <div class="modal-section">
-      <div class="prob-display" data-tip="Estimated probability of mission success.${falseFlagPenalty > 0 ? ' Reduced 25% due to anomaly.' : ''}">
+      <div class="prob-display" data-tip="Estimated success probability. Budget and recommended departments are the main drivers.${m.phaseFalseFlagPenalty ? ' Reduced 25% due to anomaly.' : ''}">
         <div class="prob-label">ESTIMATED SUCCESS PROBABILITY</div>
         <div class="prob-value ${initProb >= 70 ? 'prob-high' : initProb >= 45 ? 'prob-med' : 'prob-low'}" id="op-prob-wrap">
           <span id="op-prob">${initProb}%</span>
@@ -701,7 +753,7 @@ function openOperationModal(missionId) {
     </div>
   `;
 
-  window._currentOpMission      = missionId;
+  window._currentOpMission       = missionId;
   window._currentOpSelectedDepts = selectedDepts;
   showModal();
 }
@@ -709,7 +761,12 @@ function openOperationModal(missionId) {
 window.toggleExecDept = function(deptId, missionId) {
   const arr = window._currentOpSelectedDepts;
   const idx = arr.indexOf(deptId);
-  if (idx >= 0) arr.splice(idx, 1); else arr.push(deptId);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+  } else {
+    if (deptAvail(deptId) < 1) return; // can't add a full dept
+    arr.push(deptId);
+  }
   document.querySelectorAll('.modal-dept-check').forEach(el => {
     if (el.dataset.dept === deptId) el.classList.toggle('selected', arr.includes(deptId));
   });
@@ -720,64 +777,218 @@ window.updateModalProb = function(missionId) {
   const m = getMission(missionId);
   if (!m) return;
   const bi = document.getElementById('op-budget');
-  const si = document.getElementById('op-staff');
-  if (!bi || !si) return;
-  const b = parseInt(bi.value), s = parseInt(si.value);
+  if (!bi) return;
+  const b  = parseInt(bi.value);
   const bv = document.getElementById('op-budget-val');
-  const sv = document.getElementById('op-staff-val');
   if (bv) bv.textContent = fmt(b);
-  if (sv) sv.textContent = `${s} agents`;
-  const minBudget = Math.max(1, Math.floor(m.baseBudget * 0.5));
-  const minStaff  = Math.max(1, Math.floor(m.baseStaff  * 0.5));
-  const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
-  let p = 40 - falseFlagPenalty;
-  p += Math.round(clamp((b - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
-  p += Math.round(clamp((s - minStaff)  / Math.max(1, m.baseStaff  - minStaff),  0, 1) * 20);
-  p += (window._currentOpSelectedDepts || []).filter(d => m.execDepts.includes(d)).length * 8;
-  p = clamp(p, 10, 92);
-  const probEl   = document.getElementById('op-prob');
+  const p       = calcOpProb(m, b, window._currentOpSelectedDepts || []);
+  const probEl  = document.getElementById('op-prob');
   const probWrap = document.getElementById('op-prob-wrap');
-  if (probEl)   probEl.textContent  = `${p}%`;
-  if (probWrap) probWrap.className  = 'prob-value ' + (p >= 70 ? 'prob-high' : p >= 45 ? 'prob-med' : 'prob-low');
+  if (probEl)   probEl.textContent = `${p}%`;
+  if (probWrap) probWrap.className = 'prob-value ' + (p >= 70 ? 'prob-high' : p >= 45 ? 'prob-med' : 'prob-low');
 };
 
 window.executeOperation = function(missionId) {
   const m = getMission(missionId);
   if (!m) return;
   const bi     = document.getElementById('op-budget');
-  const si     = document.getElementById('op-staff');
   const budget = bi ? parseInt(bi.value) : m.baseBudget;
-  const staff  = si ? parseInt(si.value) : m.baseStaff;
   const depts  = window._currentOpSelectedDepts || [];
 
   if (G.budget < budget) { addLog('Insufficient budget.', 'log-warn'); hideModal(); render(); return; }
-  if (G.staffTotal - G.staffUsed < staff) { addLog('Insufficient available staff.', 'log-warn'); hideModal(); render(); return; }
 
-  G.budget    -= budget;
-  G.staffUsed += staff;
+  // Verify dept availability (re-check at commit time)
+  for (const did of depts) {
+    if (deptAvail(did) < 1) {
+      const cfg = DEPT_CONFIG.find(d => d.id === did);
+      addLog(`${cfg?.name || did} has no available ${cfg?.unitName || 'units'}.`, 'log-warn');
+      hideModal(); render(); return;
+    }
+  }
 
-  const minBudget = Math.max(1, Math.floor(m.baseBudget * 0.5));
-  const minStaff  = Math.max(1, Math.floor(m.baseStaff  * 0.5));
-  const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
-  let p = 40 - falseFlagPenalty;
-  p += Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
-  p += Math.round(clamp((staff  - minStaff)  / Math.max(1, m.baseStaff  - minStaff),  0, 1) * 20);
-  p += depts.filter(d => m.execDepts.includes(d)).length * 8;
-  m.successProb = clamp(p, 10, 92);
+  G.budget -= budget;
 
+  m.successProb       = calcOpProb(m, budget, depts);
   m.status            = 'EXECUTING';
   m.execDaysLeft      = m.execDays;
   m.assignedBudget    = budget;
-  m.assignedStaff     = staff;
   m.assignedExecDepts = depts;
+  // Note: deptAllocated automatically increases because status=EXECUTING and depts are listed
 
-  for (const did of depts) assignDeptDeployed(did, missionId);
-
-  const phaseLabel = m.isMultiPhase ? ` [${m.phases[m.currentPhaseIndex].shortName}]` : '';
-  addLog(`OP ${m.codename}${phaseLabel} launched. ${fmt(budget)} allocated. ${staff} agents. ETA ${m.execDays}d.`, 'log-info');
+  const deptSummary  = depts.map(d => G.depts[d]?.short || d).join(', ') || 'no depts';
+  const phaseLabel   = m.isMultiPhase ? ` [${m.phases[m.currentPhaseIndex].shortName}]` : '';
+  addLog(`OP ${m.codename}${phaseLabel} launched. ${fmt(budget)} · ${depts.length} dept(s) · ETA ${m.execDays}d.`, 'log-info');
   hideModal();
   G.selected = m.id;
   render();
+};
+
+// =============================================================================
+// CAPABILITIES / MONTHLY RECAP
+// =============================================================================
+
+// Budget upgrade caps
+const BUDGET_UPGRADES = [
+  { id: 'budgetRegen', label: '+2M weekly budget regen', xpCost: 8,  maxPurchases: 4,
+    apply: () => { G.cfg.weeklyBudgetRegen += 2; } },
+  { id: 'budgetCap',   label: '+10M max budget cap',     xpCost: 15, maxPurchases: 3,
+    apply: () => { G.cfg.budget += 10; } },
+];
+
+function showCapabilitiesMenu(isMonthly = false) {
+  const prevXP   = G.xp - G.xpThisMonth;
+  const monthXP  = G.xpThisMonth;
+
+  const monthSummaryHtml = isMonthly ? `
+    <div class="recap-summary">
+      <div class="recap-stat-row">
+        <div class="recap-stat"><span class="recap-val">${G.monthOpsCompleted}</span><span class="recap-lbl">OPS THIS MONTH</span></div>
+        <div class="recap-stat"><span class="recap-val" style="color:var(--green)">${G.monthOpsSucceeded}</span><span class="recap-lbl">SUCCESSES</span></div>
+        <div class="recap-stat"><span class="recap-val" style="color:var(--red)">${G.monthOpsCompleted - G.monthOpsSucceeded}</span><span class="recap-lbl">FAILURES</span></div>
+        <div class="recap-stat"><span class="recap-val" style="color:var(--accent)">+${monthXP}</span><span class="recap-lbl">XP EARNED</span></div>
+      </div>
+    </div>` : '';
+
+  // Reset monthly counters after showing the summary
+  if (isMonthly) {
+    G.monthOpsCompleted  = 0;
+    G.monthOpsSucceeded  = 0;
+    G.xpThisMonth        = 0;
+  }
+
+  const renderUpgradeRows = () => {
+    let html = '';
+
+    // Department upgrades
+    for (const dcfg of DEPT_CONFIG) {
+      const dept     = G.depts[dcfg.id];
+      const purchased = G.upgrades[dcfg.id] || 0;
+      const maxExtra  = dcfg.maxCapacity - dept.capacity; // remaining upgrades possible
+      const cost      = dcfg.xpCostPerUnit;
+      const canAfford = G.xp >= cost;
+      const canBuy    = maxExtra > 0 && canAfford;
+      html += `<div class="upgrade-row" id="upg-${dcfg.id}">
+        <div class="upgrade-info">
+          <span class="upgrade-label">${dcfg.name}</span>
+          <span class="upgrade-current">+1 ${dcfg.unitNameSingle} &nbsp;<span style="color:var(--text-dim)">(${dept.capacity} → ${dept.capacity + 1}${maxExtra <= 0 ? ' — MAX' : ''})</span></span>
+        </div>
+        <div class="upgrade-cost-wrap">
+          <span class="upgrade-cost">${cost} XP</span>
+          <button class="btn-upgrade ${canBuy ? '' : 'disabled'}" ${canBuy ? '' : 'disabled'}
+            onclick="buyUpgrade('dept','${dcfg.id}')">ACQUIRE</button>
+        </div>
+      </div>`;
+    }
+
+    // Budget upgrades
+    for (const bu of BUDGET_UPGRADES) {
+      const purchased = G.upgrades[bu.id] || 0;
+      const remaining = bu.maxPurchases - purchased;
+      const canAfford = G.xp >= bu.xpCost;
+      const canBuy    = remaining > 0 && canAfford;
+      html += `<div class="upgrade-row" id="upg-${bu.id}">
+        <div class="upgrade-info">
+          <span class="upgrade-label">${bu.label}</span>
+          <span class="upgrade-current" style="color:var(--text-dim)">(${remaining > 0 ? `${remaining} remaining` : 'MAX'})</span>
+        </div>
+        <div class="upgrade-cost-wrap">
+          <span class="upgrade-cost">${bu.xpCost} XP</span>
+          <button class="btn-upgrade ${canBuy ? '' : 'disabled'}" ${canBuy ? '' : 'disabled'}
+            onclick="buyUpgrade('budget','${bu.id}')">ACQUIRE</button>
+        </div>
+      </div>`;
+    }
+
+    return html;
+  };
+
+  document.getElementById('modal-title').textContent =
+    isMonthly ? `MONTHLY OPERATIONAL REVIEW — DAY ${G.day}` : 'CAPABILITIES & UPGRADES';
+
+  document.getElementById('modal-body').innerHTML = `
+    ${monthSummaryHtml}
+    <div class="xp-bank-display">
+      <span class="xp-bank-label">XP BANK</span>
+      <span class="xp-bank-val" id="xp-bank-current">${G.xp} XP</span>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">DEPARTMENT RESOURCES</div>
+      <div id="upgrade-list">${renderUpgradeRows()}</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-neutral" onclick="hideModal()">CONTINUE</button>
+    </div>
+  `;
+  showModal();
+}
+
+window.buyUpgrade = function(type, id) {
+  const dept = G.depts[id];
+  const dcfg = DEPT_CONFIG.find(d => d.id === id);
+
+  if (type === 'dept') {
+    if (!dcfg || !dept) return;
+    const cost     = dcfg.xpCostPerUnit;
+    const maxExtra = dcfg.maxCapacity - dept.capacity;
+    if (maxExtra <= 0 || G.xp < cost) return;
+    G.xp -= cost;
+    dept.capacity++;
+    G.upgrades[id] = (G.upgrades[id] || 0) + 1;
+    addLog(`UPGRADE: +1 ${dcfg.unitNameSingle} for ${dcfg.name}. Capacity now ${dept.capacity}.`, 'log-info');
+  } else if (type === 'budget') {
+    const bu = BUDGET_UPGRADES.find(b => b.id === id);
+    if (!bu) return;
+    const purchased = G.upgrades[id] || 0;
+    if (purchased >= bu.maxPurchases || G.xp < bu.xpCost) return;
+    G.xp -= bu.xpCost;
+    G.upgrades[id] = purchased + 1;
+    bu.apply();
+    addLog(`UPGRADE: ${bu.label}.`, 'log-info');
+  }
+
+  // Refresh modal body in-place
+  const xpEl = document.getElementById('xp-bank-current');
+  if (xpEl) xpEl.textContent = `${G.xp} XP`;
+  const listEl = document.getElementById('upgrade-list');
+  if (listEl) {
+    // Re-render upgrade rows
+    let html = '';
+    for (const d of DEPT_CONFIG) {
+      const dpt      = G.depts[d.id];
+      const maxExtra = d.maxCapacity - dpt.capacity;
+      const cost     = d.xpCostPerUnit;
+      const canBuy   = maxExtra > 0 && G.xp >= cost;
+      html += `<div class="upgrade-row" id="upg-${d.id}">
+        <div class="upgrade-info">
+          <span class="upgrade-label">${d.name}</span>
+          <span class="upgrade-current">+1 ${d.unitNameSingle} &nbsp;<span style="color:var(--text-dim)">(${dpt.capacity} → ${dpt.capacity + 1}${maxExtra <= 0 ? ' — MAX' : ''})</span></span>
+        </div>
+        <div class="upgrade-cost-wrap">
+          <span class="upgrade-cost">${cost} XP</span>
+          <button class="btn-upgrade ${canBuy ? '' : 'disabled'}" ${canBuy ? '' : 'disabled'}
+            onclick="buyUpgrade('dept','${d.id}')">ACQUIRE</button>
+        </div>
+      </div>`;
+    }
+    for (const bu of BUDGET_UPGRADES) {
+      const purchased = G.upgrades[bu.id] || 0;
+      const remaining = bu.maxPurchases - purchased;
+      const canBuy    = remaining > 0 && G.xp >= bu.xpCost;
+      html += `<div class="upgrade-row" id="upg-${bu.id}">
+        <div class="upgrade-info">
+          <span class="upgrade-label">${bu.label}</span>
+          <span class="upgrade-current" style="color:var(--text-dim)">(${remaining > 0 ? `${remaining} remaining` : 'MAX'})</span>
+        </div>
+        <div class="upgrade-cost-wrap">
+          <span class="upgrade-cost">${bu.xpCost} XP</span>
+          <button class="btn-upgrade ${canBuy ? '' : 'disabled'}" ${canBuy ? '' : 'disabled'}
+            onclick="buyUpgrade('budget','${bu.id}')">ACQUIRE</button>
+        </div>
+      </div>`;
+    }
+    listEl.innerHTML = html;
+  }
+  render(); // update header XP display
 };
 
 // =============================================================================
@@ -799,7 +1010,7 @@ function triggerGameOver(title, msg) {
     <div class="go-stat"><span class="go-stat-val">${G.day}</span><span class="go-stat-lbl">DAYS</span></div>
     <div class="go-stat"><span class="go-stat-val">${G.opsSucceeded}</span><span class="go-stat-lbl">SUCCESSES</span></div>
     <div class="go-stat"><span class="go-stat-val">${G.opsCompleted}</span><span class="go-stat-lbl">OPERATIONS</span></div>
-    <div class="go-stat"><span class="go-stat-val">${G.confidence}%</span><span class="go-stat-lbl">FINAL CONF.</span></div>
+    <div class="go-stat"><span class="go-stat-val">${G.xp}</span><span class="go-stat-lbl">TOTAL XP</span></div>
   `;
   showScreen('gameover');
 }
@@ -840,16 +1051,17 @@ function renderHeader() {
   }
   document.getElementById('res-conf').textContent   = `${confPct}%`;
   document.getElementById('res-budget').textContent = fmt(G.budget);
-  document.getElementById('res-staff').textContent  = `${G.staffUsed} / ${G.staffTotal}`;
+  const xpEl = document.getElementById('res-xp');
+  if (xpEl) xpEl.textContent = `${G.xp} XP`;
 
   const confGroup = document.getElementById('res-conf')?.closest('.res-group');
   if (confGroup) confGroup.dataset.tip = `Your standing with ${G.cfg?.leaderTitle}. Falls 2% each week. Hit 0% and you are dismissed.`;
 
   const budgetGroup = document.getElementById('res-budget')?.closest('.res-group');
-  if (budgetGroup) budgetGroup.dataset.tip = `Available operational budget. Regenerates ${fmt(G.cfg?.weeklyBudgetRegen || 0)}/week.`;
+  if (budgetGroup) budgetGroup.dataset.tip = `Available operational budget. Regenerates ${fmt(G.cfg?.weeklyBudgetRegen || 0)}/week. Running dry ends the agency.`;
 
-  const staffGroup = document.getElementById('res-staff')?.closest('.res-group');
-  if (staffGroup) staffGroup.dataset.tip = `Agents deployed / total available. Returned after operation concludes.`;
+  const xpGroup = document.getElementById('res-xp')?.closest('.res-group');
+  if (xpGroup) xpGroup.dataset.tip = 'Experience points earned from completed operations. Spend at the monthly review or via the UPGRD button to expand department capacities and budget.';
 
   const advBtn = document.getElementById('btn-advance');
   if (advBtn) advBtn.dataset.tip = 'Advance time by one day. Keyboard: → or N';
@@ -873,12 +1085,12 @@ function renderInbox() {
     const phaseTag    = m.isMultiPhase
       ? ` <span style="font-size:9px;color:var(--teal);font-family:var(--font-mono)">[${m.currentPhaseIndex + 1}/${m.phases.length}]</span>`
       : '';
-    const statusChip = {
-      INCOMING:      '<span class="mc-status status-incoming">INCOMING</span>',
-      INVESTIGATING: '<span class="mc-status status-investigating">INVESTIGATING</span>',
-      READY:         `<span class="mc-status ${m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'}">${m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY'}</span>`,
-      PHASE_COMPLETE:'<span class="mc-status status-phase-complete">PHASE DONE</span>',
-      EXPIRED:       '<span class="mc-status status-expired">EXPIRED</span>',
+    const chip = {
+      INCOMING:       '<span class="mc-status status-incoming">INCOMING</span>',
+      INVESTIGATING:  '<span class="mc-status status-investigating">INVESTIGATING</span>',
+      READY:          `<span class="mc-status ${m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'}">${m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY'}</span>`,
+      PHASE_COMPLETE: '<span class="mc-status status-phase-complete">PHASE DONE</span>',
+      EXPIRED:        '<span class="mc-status status-expired">EXPIRED</span>',
     }[m.status] || '';
 
     return `<div class="mission-card threat-${m.threat} ${isSelected ? 'selected' : ''}"
@@ -886,27 +1098,21 @@ function renderInbox() {
       <div class="mc-type">${m.category}</div>
       <div class="mc-codename">OP ${m.codename}${phaseTag}</div>
       <div class="mc-meta">
-        ${statusChip}
+        ${chip}
         <span class="mc-deadline ${deadlineCls}">${daysLeft}d LEFT</span>
       </div>
     </div>`;
   }).join('');
 }
 
-// Phase roadmap HTML for multi-phase missions
 function renderPhaseRoadmap(m) {
   if (!m.isMultiPhase) return '';
   const nodes = m.phases.map((ph, i) => {
     const cp = m.completedPhases.find(c => c.phaseIndex === i);
     let cls, icon;
-    if (cp) {
-      cls  = cp.result === 'SUCCESS' ? 'phase-node-done' : 'phase-node-fail';
-      icon = cp.result === 'SUCCESS' ? '✓' : '✕';
-    } else if (i === m.currentPhaseIndex) {
-      cls = 'phase-node-active'; icon = '→';
-    } else {
-      cls = 'phase-node-pending'; icon = String(i + 1);
-    }
+    if (cp)                          { cls = cp.result === 'SUCCESS' ? 'phase-node-done' : 'phase-node-fail'; icon = cp.result === 'SUCCESS' ? '✓' : '✕'; }
+    else if (i === m.currentPhaseIndex) { cls = 'phase-node-active'; icon = '→'; }
+    else                               { cls = 'phase-node-pending'; icon = String(i + 1); }
     return `<div class="phase-node ${cls}" data-tip="${ph.name}">
       <div class="phase-node-icon">${icon}</div>
       <div class="phase-node-label">${ph.shortName}</div>
@@ -935,16 +1141,15 @@ function renderDetail() {
   if (!m) { G.selected = null; renderDetail(); return; }
 
   titleEl.textContent = `OP ${m.codename}`;
-
   const chipMap = {
-    INCOMING:      ['INCOMING',      'status-incoming'],
-    INVESTIGATING: ['INVESTIGATING',  'status-investigating'],
-    READY:         [m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY', m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'],
-    PHASE_COMPLETE:['PHASE COMPLETE', 'status-phase-complete'],
-    EXECUTING:     ['EXECUTING',      'status-executing'],
-    SUCCESS:       ['SUCCESS',        'status-success'],
-    FAILURE:       ['FAILURE',        'status-failure'],
-    EXPIRED:       ['EXPIRED',        'status-expired'],
+    INCOMING:       ['INCOMING',       'status-incoming'],
+    INVESTIGATING:  ['INVESTIGATING',  'status-investigating'],
+    READY:          [m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY', m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'],
+    PHASE_COMPLETE: ['PHASE COMPLETE', 'status-phase-complete'],
+    EXECUTING:      ['EXECUTING',      'status-executing'],
+    SUCCESS:        ['SUCCESS',        'status-success'],
+    FAILURE:        ['FAILURE',        'status-failure'],
+    EXPIRED:        ['EXPIRED',        'status-expired'],
   };
   const [sl, sc] = chipMap[m.status] || ['—', ''];
   chipEl.textContent = sl; chipEl.className = `detail-status-chip mc-status ${sc}`;
@@ -979,17 +1184,19 @@ function renderDetail() {
       <div class="dc-section">
         <div class="dc-section-title">ASSIGN DEPARTMENT TO INVESTIGATE</div>
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
-          Assign a department to investigate. Est. ${m.invDays} day(s). Department will be occupied during investigation.
+          Assign a department to lead the investigation. Costs 1 unit for ${m.invDays} day(s). Other missions can simultaneously use the same department if capacity allows.
         </div>
         <div class="dc-dept-grid">
           ${m.invDepts.map(did => {
-            const dept = G.depts[did];
-            const avail = !dept.busy;
+            const dept  = G.depts[did];
+            const avail = deptAvail(did);
+            const total = dept.capacity;
             const cfg   = DEPT_CONFIG.find(d => d.id === did);
-            return `<button class="dc-dept-btn" ${avail ? '' : 'disabled'}
+            return `<button class="dc-dept-btn ${avail > 0 ? '' : 'unavail'}" ${avail > 0 ? '' : 'disabled'}
               onclick="assignInvestigation('${m.id}','${did}')"
-              data-tip="${cfg?.tip || ''}${avail ? '' : '\n\n[Currently occupied — unavailable]'}">
-              ${dept.short}${avail ? '' : ' [BUSY]'}
+              data-tip="${cfg?.tip || ''}${avail > 0 ? '' : '\n\nNo units available — all committed to other missions.'}">
+              ${dept.short}
+              <span class="dc-dept-avail">${avail}/${total}</span>
             </button>`;
           }).join('')}
         </div>
@@ -1004,6 +1211,7 @@ function renderDetail() {
 
   } else if (m.status === 'INVESTIGATING') {
     const progress   = Math.round(((m.invDays - m.invDaysLeft) / m.invDays) * 100);
+    const deptName   = G.depts[m.assignedInvDept]?.name || '—';
     const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name}` : '';
     content += `
       <div class="dc-section">
@@ -1013,7 +1221,7 @@ function renderDetail() {
       <div class="dc-section">
         <div class="dc-section-title">INVESTIGATION IN PROGRESS${phaseLabel}</div>
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
-          <strong>${G.depts[m.assignedInvDept]?.name || '—'}</strong> is working the case. ${m.invDaysLeft} day(s) remaining. Advance the day to progress.
+          <strong>${deptName}</strong> — 1 unit committed. ${m.invDaysLeft} day(s) remaining.
         </div>
         <div class="progress-wrap">
           <div class="progress-fill" style="width:${progress}%;background:var(--accent)"></div>
@@ -1029,11 +1237,11 @@ function renderDetail() {
           <div class="false-flag-text">${m.phaseFalseFlagText}</div>
           <div class="false-flag-actions">
             <button class="btn-danger" onclick="falseFlagProceed('${m.id}')"
-              data-tip="Accept the risk and proceed. Success probability will be reduced by 25%.">
+              data-tip="Accept the risk and proceed. Success probability reduced by 25%.">
               PROCEED ANYWAY (−25% PROB)
             </button>
             <button class="btn-neutral" onclick="falseFlagReinvestigate('${m.id}')"
-              data-tip="Order a reinvestigation. The mission returns to INCOMING — assign a new department.">
+              data-tip="Order a reinvestigation. Returns to INCOMING — assign a department again.">
               REINVESTIGATE
             </button>
           </div>
@@ -1048,11 +1256,11 @@ function renderDetail() {
         </div>
         <div class="dc-actions">
           <button class="btn-primary" onclick="openOperationModal('${m.id}')"
-            data-tip="Open the operation configuration screen. Set budget, staff, and departments, then execute.">
+            data-tip="Configure and execute the operation.">
             APPROVE OPERATION
           </button>
           <button class="btn-danger" onclick="dismissMission('${m.id}')"
-            data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission. No operation will be launched.'}">
+            data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive without action.'}">
             ARCHIVE — DO NOT ACT
           </button>
         </div>
@@ -1075,16 +1283,20 @@ function renderDetail() {
       </div>
       <div class="dc-actions" style="margin-top:12px">
         <button class="btn-primary" onclick="acknowledgePhaseProceeding('${m.id}')"
-          data-tip="Confirm phase completion and begin the next phase. You will need to assign a department to investigate.">
+          data-tip="Proceed to the next phase. You will need to assign a department to investigate.">
           PROCEED TO NEXT PHASE
         </button>
       </div>
     `;
 
   } else if (m.status === 'EXECUTING') {
-    const progress    = Math.round(((m.execDays - m.execDaysLeft) / m.execDays) * 100);
-    const deployed    = (m.assignedExecDepts || []).map(did => G.depts[did]?.short || did).join(', ') || 'None';
-    const phaseLabel  = m.isMultiPhase
+    const progress   = Math.round(((m.execDays - m.execDaysLeft) / m.execDays) * 100);
+    const deployed   = (m.assignedExecDepts || []).map(did => {
+      const d = G.depts[did];
+      const cfg = DEPT_CONFIG.find(c => c.id === did);
+      return `${d?.short || did} (1 ${cfg?.unitNameSingle || 'unit'})`;
+    }).join(', ') || 'None';
+    const phaseLabel = m.isMultiPhase
       ? `<div style="font-size:11px;color:var(--teal);margin-bottom:8px;font-family:var(--font-mono)">EXECUTING: ${m.phases[m.currentPhaseIndex].name.toUpperCase()}</div>`
       : '';
     content += `
@@ -1101,10 +1313,9 @@ function renderDetail() {
       <div class="dc-section">
         <div class="dc-section-title">OPERATION DETAILS</div>
         <div style="font-size:12px;line-height:1.7;color:var(--text-dim);font-style:italic">${m.opNarrative}</div>
-        <div style="margin-top:12px;font-size:11px;color:var(--text-dim);line-height:1.8">
+        <div style="margin-top:12px;font-size:11px;color:var(--text-dim);line-height:1.9">
           Budget committed: <strong style="color:var(--text)">${fmt(m.assignedBudget)}</strong><br>
-          Staff deployed: <strong style="color:var(--text)">${m.assignedStaff} agents</strong><br>
-          Departments: <strong style="color:var(--text)">${deployed}</strong><br>
+          Deployed: <strong style="color:var(--text)">${deployed}</strong><br>
           Estimated success: <strong style="color:${m.successProb >= 70 ? 'var(--green)' : m.successProb >= 45 ? 'var(--amber)' : 'var(--red)'}">${m.successProb}%</strong>
         </div>
       </div>
@@ -1156,36 +1367,35 @@ function renderDetail() {
 
 function renderDepts() {
   const el = document.getElementById('dept-panel');
-  el.innerHTML = DEPT_CONFIG.map(d => {
-    const dept       = G.depts[d.id];
-    const busy       = dept.busy;
-    const isDeployed = dept.busyType === 'DEPLOYED';
-    const busyM      = busy ? getMission(dept.busyMissionId) : null;
-    let statusLabel, statusCls, daysInfo = '';
+  el.innerHTML = DEPT_CONFIG.map(dcfg => {
+    const dept    = G.depts[dcfg.id];
+    const alloc   = deptAllocated(dcfg.id);
+    const avail   = dept.capacity - alloc;
+    const cap     = dept.capacity;
+    const pct     = cap > 0 ? Math.round((alloc / cap) * 100) : 0;
+    const barColor = avail === 0 ? 'var(--red)' : avail <= 1 ? 'var(--amber)' : 'var(--green)';
+    const assigns  = deptAssignments(dcfg.id);
 
-    if (!busy) {
-      statusLabel = 'AVAILABLE'; statusCls = 'dept-free';
-    } else if (isDeployed) {
-      statusLabel = 'DEPLOYED'; statusCls = 'dept-deployed';
-      daysInfo    = busyM ? `OP ${busyM.codename} · ${busyM.execDaysLeft}d` : '';
-    } else {
-      statusLabel = 'INVESTIGATING'; statusCls = 'dept-busy';
-      daysInfo    = busyM ? `OP ${busyM.codename} · ${busyM.invDaysLeft}d` : '';
-    }
+    const assignList = assigns.length > 0
+      ? assigns.map(a => {
+          const icon = a.phase === 'INV' ? '🔍' : '⚡';
+          return `<div class="dept-assign-entry" onclick="selectMission('${a.id}')"
+            style="cursor:pointer" data-tip="Click to view OP ${a.codename}">
+            ${icon} OP ${a.codename} <span style="color:var(--text-dim)">${a.phase} · ${a.daysLeft}d</span>
+          </div>`;
+        }).join('')
+      : '';
 
-    const statusTip = !busy
-      ? 'Available for assignment.'
-      : isDeployed
-        ? `Deployed on OP ${busyM?.codename || '?'}. Returns when the operation concludes.`
-        : `Investigating OP ${busyM?.codename || '?'}. ${busyM?.invDaysLeft || '?'} day(s) remaining.`;
-
-    return `<div class="dept-card" data-tip="${d.tip}">
-      <div class="dept-name">${d.name}</div>
-      <div class="dept-desc">${d.desc}</div>
-      <div class="dept-status-row">
-        <span class="dept-status ${statusCls}" data-tip="${statusTip}">${statusLabel}</span>
-        ${daysInfo ? `<span class="dept-assign-days">${daysInfo}</span>` : ''}
+    return `<div class="dept-card" data-tip="${dcfg.tip}">
+      <div class="dept-name">${dcfg.name}</div>
+      <div class="dept-desc">${dcfg.desc}</div>
+      <div class="dept-capacity-row">
+        <div class="dept-cap-bar-wrap">
+          <div class="dept-cap-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+        </div>
+        <span class="dept-cap-label" style="color:${barColor}">${avail}/${cap} ${dcfg.unitName}</span>
       </div>
+      ${assignList ? `<div class="dept-assign-list">${assignList}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -1199,14 +1409,15 @@ function renderActiveOps() {
     return;
   }
   el.innerHTML = ops.map(m => {
-    const progress  = Math.round(((m.execDays - m.execDaysLeft) / m.execDays) * 100);
-    const phaseTag  = m.isMultiPhase
+    const progress = Math.round(((m.execDays - m.execDaysLeft) / m.execDays) * 100);
+    const phaseTag = m.isMultiPhase
       ? ` <span style="font-size:9px;color:var(--teal)">· ${m.phases[m.currentPhaseIndex].shortName}</span>`
       : '';
+    const deptTags = (m.assignedExecDepts || []).map(did => G.depts[did]?.short || did).join(' · ');
     return `<div class="active-op-card" onclick="selectMission('${m.id}')" style="cursor:pointer"
-      data-tip="Click to view. ${m.execDaysLeft}d remaining. ${m.successProb}% est. success.${m.isMultiPhase ? ` Phase ${m.currentPhaseIndex + 1}/${m.phases.length}.` : ''}">
+      data-tip="${m.execDaysLeft}d remaining · ${m.successProb}% success est.${m.isMultiPhase ? ` · Phase ${m.currentPhaseIndex + 1}/${m.phases.length}` : ''}">
       <div class="aoc-name">OP ${m.codename}${phaseTag}</div>
-      <div class="aoc-days">${m.execDaysLeft}d remaining · ${m.successProb}% est.</div>
+      <div class="aoc-days">${m.execDaysLeft}d · ${m.successProb}% est.<span style="font-size:9px;color:var(--text-dim);margin-left:6px">${deptTags}</span></div>
       <div class="progress-wrap" style="margin-top:4px">
         <div class="progress-fill" style="width:${progress}%;background:var(--purple)"></div>
       </div>
@@ -1227,7 +1438,6 @@ function initTooltips() {
   const tip = document.createElement('div');
   tip.id = 'game-tooltip'; tip.className = 'game-tooltip';
   document.body.appendChild(tip);
-
   document.addEventListener('mousemove', e => {
     const el = e.target.closest('[data-tip]');
     if (el && el.dataset.tip) {
@@ -1257,54 +1467,46 @@ function showHelp() {
     <div class="help-content">
       <div class="help-section">
         <div class="help-section-title">OVERVIEW</div>
-        <p>You are the Director of a covert intelligence agency answering directly to your head of state. Missions arrive as raw, unverified intelligence reports. Your job: investigate them, decide what to do, and execute operations before the window closes.</p>
-        <p style="margin-top:8px">Your tenure depends on keeping <strong>Confidence</strong> above zero. Successes earn it. Failures and expired missions cost it. Resources are finite. The threats are not.</p>
+        <p>You are the Director of a covert intelligence agency. Missions arrive as raw intelligence reports. Investigate them, decide what to act on, and execute operations before the window closes. Keep Confidence above zero to stay in command.</p>
       </div>
       <div class="help-section">
-        <div class="help-section-title">MISSION FLOW</div>
-        <div class="help-flow">
-          <div class="help-flow-step"><span class="help-step-num">1</span><div><strong>INCOMING</strong> — A vague initial report lands on your desk. Assign a department to investigate and unlock the full intelligence brief.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">2</span><div><strong>INVESTIGATING</strong> — The assigned department works the case. Advance days to let it complete.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">3</span><div><strong>BRIEF READY</strong> — Full classified intelligence is unlocked. Review and decide: approve or archive.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">4</span><div><strong>CONFIGURE</strong> — Set budget and staff. Each recommended department adds +8% success probability.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">5</span><div><strong>EXECUTING</strong> — The operation runs. Departments are DEPLOYED and unavailable.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">6</span><div><strong>RESULT</strong> — Success earns confidence and a small budget recovery. Failure costs confidence.</div></div>
-        </div>
-      </div>
-      <div class="help-section">
-        <div class="help-section-title">MULTI-PHASE OPERATIONS</div>
-        <p>Some operations require multiple sequential phases — surveillance, evidence collection, and a final action. Each phase must be investigated and executed in turn. A phase roadmap is displayed in the briefing panel.</p>
-        <p style="margin-top:8px"><strong>⚠ Investigation Anomalies</strong> — A false flag may be detected during evidence-gathering phases. You can proceed with a −25% probability penalty, or reinvestigate at the cost of time.</p>
-        <p style="margin-top:8px"><strong>Follow-up Missions</strong> — Some phases (e.g. interrogation) generate new missions based on intelligence extracted during the operation.</p>
-      </div>
-      <div class="help-section">
-        <div class="help-section-title">DEPARTMENTS</div>
+        <div class="help-section-title">DEPARTMENT RESOURCES</div>
+        <p>Each department has a limited pool of units — analysts, field teams, strike units, etc. Assigning a department to investigate or execute a mission commits one unit from that pool for the duration. Multiple missions can draw from the same department simultaneously, as long as capacity allows.</p>
+        <p style="margin-top:8px">Monitor capacity in the Departments panel. A full department (0 available) cannot accept new assignments until an active mission concludes.</p>
         ${DEPT_CONFIG.map(d => `<div class="help-dept-row">
-          <div class="help-dept-name">${d.name}</div>
+          <div class="help-dept-name">${d.name} <span style="color:var(--text-dim);font-weight:400">(${d.unitName})</span></div>
           <div class="help-dept-tip">${d.tip}</div>
         </div>`).join('')}
       </div>
       <div class="help-section">
-        <div class="help-section-title">RESOURCES</div>
-        <div class="help-resource-row"><strong>CONFIDENCE</strong> — Your standing with your head of state. Declines 2% per week. Plummets after failures. Reaches 0% and you are dismissed.</div>
-        <div class="help-resource-row" style="margin-top:8px"><strong>BUDGET</strong> — Operational funds. Spent when launching operations. Regenerates partially each week. Running dry ends the agency.</div>
-        <div class="help-resource-row" style="margin-top:8px"><strong>STAFF</strong> — Available agents. Committed to active operations and returned when they conclude.</div>
-      </div>
-      <div class="help-section">
-        <div class="help-section-title">MISSION TYPES</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          ${Object.values(MISSION_TYPES).map(t => `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:8px 10px">
-            <div style="font-family:var(--font-disp);font-weight:700;font-size:11px;color:var(--text-hi);margin-bottom:2px">${t.label}</div>
-            <div style="font-size:10px;color:var(--text-dim)">${t.location === 'FOREIGN' ? '🌍 Foreign' : '🏠 Domestic'} · ${t.isMultiPhase ? `Multi-phase (${t.phases.length} phases)` : `Threat ${t.threatRange[0]}–${t.threatRange[1]}`}</div>
-          </div>`).join('')}
+        <div class="help-section-title">MISSION FLOW</div>
+        <div class="help-flow">
+          <div class="help-flow-step"><span class="help-step-num">1</span><div><strong>INCOMING</strong> — Assign a department to investigate. Costs 1 unit for the investigation period.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">2</span><div><strong>INVESTIGATING</strong> — Department works the case. Other missions can use the same dept if capacity allows.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">3</span><div><strong>BRIEF READY</strong> — Full intel unlocked. Approve or archive.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">4</span><div><strong>CONFIGURE</strong> — Set budget. Select departments (each recommended dept +12%, optional +5%). No staff slider — resource cost is one unit per assigned department.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">5</span><div><strong>EXECUTING</strong> — Operation runs. Each assigned department has one unit committed until resolution.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">6</span><div><strong>RESULT</strong> — Earn confidence and XP. Archive to clear.</div></div>
         </div>
       </div>
       <div class="help-section">
+        <div class="help-section-title">XP & CAPABILITIES</div>
+        <p>You earn XP for each completed mission — more for higher-threat successes. Every 30 days a <strong>Monthly Review</strong> fires automatically, letting you spend XP to expand department capacity or increase budget. You can also open the upgrade shop anytime via the <strong>UPGRD</strong> button.</p>
+        <p style="margin-top:8px">Unspent XP carries over. Prioritize scarce departments (Special Ops, Field Ops) early.</p>
+      </div>
+      <div class="help-section">
+        <div class="help-section-title">MULTI-PHASE OPERATIONS</div>
+        <p>Some operations span multiple phases — surveillance, evidence collection, and a final action. Each phase requires its own investigation and execution. ⚠ False flag anomalies can occur mid-investigation: proceed with a probability penalty or reinvestigate.</p>
+      </div>
+      <div class="help-section">
+        <div class="help-section-title">RESOURCES</div>
+        <div class="help-resource-row"><strong>CONFIDENCE</strong> — Drops 2% weekly, falls on failures, rises on successes. Hits 0% and you're out.</div>
+        <div class="help-resource-row" style="margin-top:8px"><strong>BUDGET</strong> — Spent on operations. Regenerates weekly. Running dry defunds the agency.</div>
+        <div class="help-resource-row" style="margin-top:8px"><strong>XP</strong> — Earned from operations. Spend at monthly reviews to grow your capabilities.</div>
+      </div>
+      <div class="help-section">
         <div class="help-section-title">CONTROLS</div>
-        <div class="help-resource-row"><strong>ADVANCE DAY</strong> — Keyboard: <strong>→</strong> or <strong>N</strong></div>
-        <div class="help-resource-row" style="margin-top:4px"><strong>ESC</strong> — Close any open modal.</div>
-        <div class="help-resource-row" style="margin-top:4px"><strong>?</strong> — Open this handbook at any time.</div>
-        <div class="help-resource-row" style="margin-top:4px">Hover over most interface elements for contextual help.</div>
+        <div class="help-resource-row"><strong>→ / N</strong> — Advance day. <strong>ESC</strong> — Close modal. <strong>?</strong> — This handbook. <strong>U</strong> — Open upgrade shop.</div>
       </div>
     </div>
   `;
@@ -1312,16 +1514,12 @@ function showHelp() {
 }
 
 // =============================================================================
-// MODAL SYSTEM
+// MODAL / SCREEN SYSTEM
 // =============================================================================
 
-function showModal()    { document.getElementById('modal-overlay').classList.remove('hidden'); }
-function hideModal()    { document.getElementById('modal-overlay').classList.add('hidden'); }
-function closeModalBg(e){ if (e.target === document.getElementById('modal-overlay')) hideModal(); }
-
-// =============================================================================
-// SCREEN MANAGEMENT
-// =============================================================================
+function showModal()     { document.getElementById('modal-overlay').classList.remove('hidden'); }
+function hideModal()     { document.getElementById('modal-overlay').classList.add('hidden'); }
+function closeModalBg(e) { if (e.target === document.getElementById('modal-overlay')) hideModal(); }
 
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1335,7 +1533,12 @@ function showScreen(name) {
 
 function renderCountrySelect() {
   const grid = document.getElementById('country-grid');
-  grid.innerHTML = Object.entries(COUNTRIES).map(([code, cfg]) => `
+  grid.innerHTML = Object.entries(COUNTRIES).map(([code, cfg]) => {
+    const caps = cfg.deptCapacities;
+    const capRows = DEPT_CONFIG.map(d =>
+      `<div class="c-cap-row"><span>${d.short}</span><span>${caps[d.id]} ${d.unitName}</span></div>`
+    ).join('');
+    return `
     <div class="country-card">
       <div class="country-flag">${cfg.flag}</div>
       <div class="country-name">${cfg.name}</div>
@@ -1343,13 +1546,14 @@ function renderCountrySelect() {
       <div class="country-reports">${cfg.reportsTo}</div>
       <div class="country-stats">
         <div class="c-stat"><span class="c-stat-lbl">BUDGET</span><span class="c-stat-val">${cfg.budgetLabel}</span></div>
-        <div class="c-stat"><span class="c-stat-lbl">STAFF</span><span class="c-stat-val">${cfg.staffLabel}</span></div>
         <div class="c-stat"><span class="c-stat-lbl">CONFIDENCE</span><span class="c-stat-val">${cfg.confLabel}</span></div>
+        <div class="c-stat"><span class="c-stat-lbl">REGEN</span><span class="c-stat-val">${cfg.currencySymbol}${cfg.weeklyBudgetRegen}M/wk</span></div>
       </div>
+      <div class="c-capacities">${capRows}</div>
       <div class="country-desc">${cfg.desc}</div>
       <button class="btn-assume" onclick="startGame('${code}')">ASSUME COMMAND</button>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 // =============================================================================
@@ -1359,14 +1563,14 @@ function renderCountrySelect() {
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight' || e.key === 'n') {
     if (document.getElementById('screen-game')?.classList.contains('active') &&
-        !document.getElementById('modal-overlay')?.classList.contains('hidden') === false) {
+        !document.getElementById('modal-overlay')?.classList.contains('hidden') === false)
       advanceDay();
-    }
   }
   if (e.key === 'Escape') hideModal();
-  if (e.key === '?') {
+  if (e.key === '?')
     if (document.getElementById('screen-game')?.classList.contains('active')) showHelp();
-  }
+  if (e.key === 'u' || e.key === 'U')
+    if (document.getElementById('screen-game')?.classList.contains('active')) showCapabilitiesMenu(false);
 });
 
 // =============================================================================
@@ -1378,5 +1582,6 @@ document.addEventListener('DOMContentLoaded', () => {
   showScreen('select');
   document.getElementById('btn-advance').addEventListener('click', advanceDay);
   document.getElementById('btn-help').addEventListener('click', showHelp);
+  document.getElementById('btn-capabilities')?.addEventListener('click', () => showCapabilitiesMenu(false));
   initTooltips();
 });
