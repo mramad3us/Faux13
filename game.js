@@ -26,19 +26,22 @@ const COUNTRIES = {
     },
     domesticCities: ['New York', 'Chicago', 'Los Angeles', 'Washington D.C.', 'Miami', 'Houston', 'Seattle', 'Boston', 'Atlanta', 'Denver'],
     partnerAgencies: {
-      BUREAU:   { name: 'The Bureau',    shortName: 'BUREAU',  type: 'domestic', startingRelation: 60,
+      BUREAU:   { name: 'The Bureau (FBI)', shortName: 'BUREAU',  type: 'domestic', startingRelation: 60,
+        desc: 'The Federal Bureau of Investigation — primary domestic counter-intelligence and counter-terrorism authority. Operates under DOJ jurisdiction exclusively within U.S. borders.',
         support: [
           { id: 'FBI_HRT',   label: 'FBI HRT',              desc: 'Hostage Rescue Team on standby.',    cost: 12, bonusType: 'execProb',  bonusValue: 15 },
           { id: 'FBI_SURV',  label: 'FBI Surveillance',     desc: 'Extended surveillance package.',     cost:  8, bonusType: 'execProb',  bonusValue: 10 },
           { id: 'FBI_INTEL', label: 'Bureau Intel Package', desc: 'Behavioral analysis + file access.', cost:  7, bonusType: 'intelField',bonusValue: 1  },
         ]},
-      AGENCY:   { name: 'The Agency',    shortName: 'AGENCY',  type: 'foreign',  startingRelation: 55,
+      AGENCY:   { name: 'The Agency (CIA)', shortName: 'AGENCY',  type: 'foreign',  startingRelation: 55,
+        desc: 'The Central Intelligence Agency — principal foreign intelligence service. Collects and acts on human intelligence abroad; directs covert action programs and maintains overseas station networks.',
         support: [
           { id: 'CIA_STATION', label: 'CIA Station Access',   desc: 'Station chief intelligence.',       cost: 12, bonusType: 'intelField',bonusValue: 1  },
           { id: 'CIA_PARA',    label: 'Agency Ground Branch', desc: 'Paramilitary element attached.',    cost: 15, bonusType: 'execProb',  bonusValue: 15 },
           { id: 'CIA_SIGNAL',  label: 'Agency SIGINT Link',   desc: 'NSA/CIA intercept package.',        cost:  9, bonusType: 'execProb',  bonusValue: 12 },
         ]},
-      MILITARY: { name: 'Defense Intelligence Agency', shortName: 'DIA', type: 'foreign', startingRelation: 50,
+      MILITARY: { name: 'Defense Intelligence Agency', shortName: 'DIA', type: 'military', startingRelation: 50,
+        desc: 'The Defense Intelligence Agency — military intelligence arm of the DoD. Provides combat-relevant intelligence to warfighters and policymakers; oversees attaché networks worldwide.',
         support: [
           { id: 'DEVGRU',     label: 'DEVGRU Element',      desc: 'SEAL Team Six direct-action unit.',  cost: 20, bonusType: 'execProb',  bonusValue: 20 },
           { id: 'MARINE_QRF', label: 'Marine QRF',          desc: 'Quick Reaction Force (Marines).',    cost: 15, bonusType: 'execProb',  bonusValue: 15 },
@@ -62,19 +65,22 @@ const COUNTRIES = {
     },
     domesticCities: ['London', 'Manchester', 'Birmingham', 'Glasgow', 'Leeds', 'Bristol', 'Edinburgh', 'Cardiff', 'Liverpool', 'Sheffield'],
     partnerAgencies: {
-      BUREAU:   { name: 'MI5',  shortName: 'MI5',  type: 'domestic', startingRelation: 62,
+      BUREAU:   { name: 'MI5 (Security Service)', shortName: 'MI5',  type: 'domestic', startingRelation: 62,
+        desc: 'MI5 — the domestic counter-intelligence and security agency. Responsible for protecting the UK against espionage, terrorism and subversion on home soil. Has no powers of arrest; works closely with police.',
         support: [
           { id: 'MI5_SURV', label: 'MI5 Surveillance',    desc: 'A4 surveillance section.',        cost:  8, bonusType: 'execProb',  bonusValue: 10 },
           { id: 'MI5_CT',   label: 'Counter-Terror Team', desc: 'SO15 tactical attachment.',       cost: 12, bonusType: 'execProb',  bonusValue: 14 },
           { id: 'MI5_ANAL', label: 'MI5 Analyst Embed',   desc: 'Technical analysis support.',     cost:  7, bonusType: 'intelField',bonusValue: 1  },
         ]},
-      AGENCY:   { name: 'MI6 (SIS)', shortName: 'SIX',  type: 'foreign',  startingRelation: 58,
+      AGENCY:   { name: 'MI6 / SIS', shortName: 'SIX',  type: 'foreign',  startingRelation: 58,
+        desc: 'MI6 (Secret Intelligence Service) — the foreign intelligence service. Collects human intelligence overseas, runs agent networks, and conducts covert operations in support of UK national interests.',
         support: [
           { id: 'SIS_STATION', label: 'SIS Station Brief',  desc: 'Local station intelligence.',   cost: 10, bonusType: 'intelField',bonusValue: 1  },
           { id: 'SIS_PARA',    label: 'SIS Action Section', desc: 'Special Support Section team.', cost: 14, bonusType: 'execProb',  bonusValue: 14 },
           { id: 'SIS_SIGINT',  label: 'GCHQ Intercept',     desc: 'GCHQ signals package.',         cost:  9, bonusType: 'execProb',  bonusValue: 11 },
         ]},
-      MILITARY: { name: 'Defence Intelligence', shortName: 'DI', type: 'foreign', startingRelation: 52,
+      MILITARY: { name: 'Defence Intelligence (DI)', shortName: 'DI', type: 'military', startingRelation: 52,
+        desc: 'Defence Intelligence — intelligence directorate of the UK Ministry of Defence. Provides all-source military intelligence assessments and supports joint operations and deployed forces globally.',
         support: [
           { id: 'SAS_ELEMENT',  label: 'SAS Troop',                desc: '22 SAS direct action element.', cost: 20, bonusType: 'execProb',  bonusValue: 20 },
           { id: 'SBS_MARITIME', label: 'SBS Maritime Element',     desc: 'Special Boat Service unit.',    cost: 15, bonusType: 'execProb',  bonusValue: 15 },
@@ -99,18 +105,21 @@ const COUNTRIES = {
     domesticCities: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Bordeaux', 'Lille', 'Nice', 'Nantes', 'Strasbourg', 'Rennes'],
     partnerAgencies: {
       BUREAU:   { name: 'DGSI', shortName: 'DGSI', type: 'domestic', startingRelation: 58,
+        desc: 'Direction Générale de la Sécurité Intérieure — France\'s domestic counter-intelligence and counter-terrorism service. Successor to the DST; operates under the Interior Ministry to protect French territory.',
         support: [
           { id: 'SDAT_SUPPORT', label: 'SDAT Anti-Terror',  desc: 'Police CT unit attached.',        cost: 10, bonusType: 'execProb',  bonusValue: 13 },
           { id: 'DGSI_CYBER',   label: 'DGSI Cyber Unit',   desc: 'Digital intercept capability.',   cost:  8, bonusType: 'execProb',  bonusValue: 11 },
           { id: 'DGSI_INTEL',   label: 'DGSI Source Pkg',   desc: 'Domestic asset network.',         cost:  7, bonusType: 'intelField',bonusValue: 1  },
         ]},
       AGENCY:   { name: 'DGSE', shortName: 'DGSE', type: 'foreign',  startingRelation: 55,
+        desc: 'Direction Générale de la Sécurité Extérieure — France\'s foreign intelligence service. Conducts espionage, runs overseas agent networks, and executes covert operations via its elite Service Action.',
         support: [
           { id: 'DGSE_ACTION',  label: 'Service Action',    desc: 'DGSE direct action element.',     cost: 14, bonusType: 'execProb',  bonusValue: 15 },
           { id: 'DGSE_RESEAU',  label: 'Réseau Station',    desc: 'Foreign station network.',        cost: 10, bonusType: 'intelField',bonusValue: 1  },
           { id: 'DGSE_TECH',    label: 'DGSE Tech Bureau',  desc: 'SIGINT + ELINT package.',         cost:  9, bonusType: 'execProb',  bonusValue: 11 },
         ]},
-      MILITARY: { name: 'DRM', shortName: 'DRM', type: 'foreign', startingRelation: 48,
+      MILITARY: { name: 'DRM', shortName: 'DRM', type: 'military', startingRelation: 48,
+        desc: 'Direction du Renseignement Militaire — military intelligence directorate of the French Armed Forces. Provides strategic and tactical intelligence assessments in support of defence operations abroad.',
         support: [
           { id: 'GIGN_ASSAULT', label: 'GIGN Assault Team', desc: 'Elite gendarmerie unit.',         cost: 18, bonusType: 'execProb',  bonusValue: 19 },
           { id: 'COS_SPECIAL',  label: 'COS Commando',      desc: 'Commandement des Opérations Spéciales element.', cost: 15, bonusType: 'execProb', bonusValue: 16 },
@@ -1117,7 +1126,10 @@ function openOperationModal(missionId) {
     ${G.cfg?.partnerAgencies ? `<div class="modal-section">
       <div class="modal-section-title">AGENCY SUPPORT <span style="font-size:9px;color:var(--text-dim)">(costs relation points)</span></div>
       <div class="modal-dept-grid">${
-        Object.entries(G.cfg.partnerAgencies).flatMap(([agencyId, agCfg]) =>
+        Object.entries(G.cfg.partnerAgencies).filter(([, agCfg]) => {
+          if (m.location === 'DOMESTIC') return agCfg.type === 'domestic';
+          return agCfg.type === 'foreign' || agCfg.type === 'military';
+        }).flatMap(([agencyId, agCfg]) =>
           (agCfg.support || []).map(s => {
             const rel = G.relations?.[agencyId]?.relation ?? 0;
             const can = rel >= s.cost;
@@ -1741,7 +1753,11 @@ function renderAgencyBar() {
   el.innerHTML = Object.entries(G.cfg.partnerAgencies).map(([id, agCfg]) => {
     const rel = G.relations?.[id]?.relation ?? 0;
     const barCls = rel >= 70 ? 'rel-high' : rel >= 40 ? 'rel-med' : 'rel-low';
-    return `<div class="agency-rel-chip" data-tip="${agCfg.name} — Relation: ${rel}/100">
+    const typeLabel = agCfg.type === 'domestic' ? 'DOMESTIC COUNTER-INTELLIGENCE'
+      : agCfg.type === 'military' ? 'MILITARY INTELLIGENCE'
+      : 'FOREIGN INTELLIGENCE';
+    const tooltip = `${agCfg.name} · ${typeLabel}&#10;Relation: ${rel}/100&#10;&#10;${agCfg.desc || ''}`;
+    return `<div class="agency-rel-chip" data-tip="${tooltip}">
       <span class="agency-rel-name">${agCfg.shortName}</span>
       <div class="agency-rel-bar-wrap"><div class="agency-rel-bar-fill ${barCls}" style="width:${rel}%"></div></div>
       <span class="agency-rel-pct ${barCls}">${rel}</span>

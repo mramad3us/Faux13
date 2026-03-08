@@ -293,7 +293,7 @@ html, body {
   transition: width 0.5s ease, background 0.5s;
 }
 
-.hdr-right { min-width: 160px; display: flex; justify-content: flex-end; }
+.hdr-right { min-width: 160px; display: flex; justify-content: flex-end; gap: 6px; }
 
 .btn-advance {
   background: var(--accent2);
