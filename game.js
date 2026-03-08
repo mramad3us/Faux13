@@ -608,7 +608,7 @@ function spawnMission(forcedType) {
 
   G.missions.unshift(mission);
   fire('mission:spawned', { mission });
-  addLog(`New mission received: OP ${codename} [${tmpl.label}]`);
+  addLog(`New mission received: OP ${codename} [${mission.label}]`);
   G.nextSpawnDay = G.day + randInt(3, 8);
 }
 
@@ -671,8 +671,9 @@ function advanceDay() {
         const chosen = weightedPick(candidates);
         const typeId = pick(AGENCY_FAVOR_TYPES[chosen.id] || []);
         if (typeId) {
+          const prevLen = G.missions.length;
           spawnMission(typeId);
-          const nm = G.missions.find(m => m.typeId === typeId && !m.favorOf);
+          const nm = G.missions.length > prevLen ? G.missions[0] : null;
           if (nm) {
             nm.favorOf = chosen.id;
             nm.favorAgencyName = chosen.ag.name;
@@ -1929,7 +1930,7 @@ function renderDetail() {
   const locCls      = m.location === 'FOREIGN' ? 'location-foreign' : 'location-domestic';
 
   const favorBannerHtml = m.favorOf
-    ? `<div class="favor-banner"><span class="favor-lbl">AGENCY FAVOR</span> <span class="favor-agency">${m.favorAgencyName || m.favorOf}</span> — Complete to improve inter-agency relations.</div>`
+    ? `<div class="favor-banner"><span class="favor-lbl">FAVOR</span> <span class="favor-agency">${m.favorAgencyName || m.favorOf}</span> — Complete to improve inter-agency relations.</div>`
     : '';
 
   let content = `
@@ -2454,6 +2455,7 @@ function renderThreats() {
     </div>`;
   };
 
+  const active      = G.hvts.filter(h => h.status === 'ACTIVE');
   const detained    = G.hvts.filter(h => h.status === 'DETAINED');
   const neutralized = G.hvts.filter(h => h.status === 'NEUTRALIZED');
   const eliminated  = G.hvts.filter(h => h.status === 'ELIMINATED' || h.status === 'HANDED_OVER');
@@ -2620,6 +2622,8 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('screen-game')?.classList.contains('active')) showHelp();
   if (e.key === 'u' || e.key === 'U')
     if (document.getElementById('screen-game')?.classList.contains('active')) showCapabilitiesMenu(false);
+  if ((e.key === 's' || e.key === 'S') && document.activeElement?.tagName !== 'INPUT')
+    if (document.getElementById('screen-game')?.classList.contains('active') && typeof showSaveMenu === 'function') showSaveMenu();
 });
 
 // =============================================================================
@@ -2633,5 +2637,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-help').addEventListener('click', showHelp);
   document.getElementById('btn-capabilities')?.addEventListener('click', () => showCapabilitiesMenu(false));
   document.getElementById('btn-abort-game')?.addEventListener('click', confirmAbortGame);
+  document.getElementById('btn-save')?.addEventListener('click', () => { if (typeof showSaveMenu === 'function') showSaveMenu(); });
   initTooltips();
 });

@@ -2022,12 +2022,15 @@ html, body {
 .agency-rel-pct {
   font-family: var(--font-mono);
   font-size: 10px;
+  font-weight: 700;
   min-width: 22px;
-  text-align: right;
+  text-align: center;
+  padding: 1px 3px;
+  border-radius: 2px;
 }
-.rel-high { background: var(--green); color: var(--green); }
-.rel-med  { background: var(--amber); color: var(--amber); }
-.rel-low  { background: var(--red-dim); color: #c0392b; }
+.rel-high { background: var(--green); color: #0a1a0e; }
+.rel-med  { background: var(--amber); color: #1a1200; }
+.rel-low  { background: var(--red-dim); color: #fff; }
 .agency-rel-bar-fill.rel-high { background: var(--green); }
 .agency-rel-bar-fill.rel-med  { background: var(--amber); }
 .agency-rel-bar-fill.rel-low  { background: #c0392b; }
@@ -2368,3 +2371,151 @@ html, body {
 }
 
 /* --- Scanline overlay (disabled — too distracting when applied globally) --- */
+
+/* =========================================================================
+   SAVE SYSTEM
+   ========================================================================= */
+
+.btn-save {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-save:hover { color: var(--text-hi); border-color: var(--text-dim); }
+
+.save-slots-list {
+  max-height: 340px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.save-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.save-slot:last-child { border-bottom: none; }
+
+.save-slot-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.save-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  display: inline-block;
+  width: fit-content;
+}
+.save-tag-auto {
+  background: rgba(52, 152, 219, 0.15);
+  color: rgba(52, 152, 219, 0.9);
+  border: 1px solid rgba(52, 152, 219, 0.25);
+}
+.save-tag-manual {
+  background: rgba(46, 204, 113, 0.15);
+  color: rgba(46, 204, 113, 0.9);
+  border: 1px solid rgba(46, 204, 113, 0.25);
+}
+
+.save-agency {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-hi);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.save-detail {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+}
+
+.save-date {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.save-slot-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.save-btn {
+  font-size: 9px !important;
+  padding: 4px 8px !important;
+  letter-spacing: 0.8px;
+}
+.save-btn-del {
+  background: transparent !important;
+  color: var(--red-dim) !important;
+  border: 1px solid var(--red-dim) !important;
+}
+.save-btn-del:hover {
+  background: var(--red-dim) !important;
+  color: #fff !important;
+}
+
+.save-name-input {
+  flex: 1;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text-hi);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  outline: none;
+}
+.save-name-input:focus {
+  border-color: var(--accent);
+}
+.save-name-input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+/* Resume bar on select screen */
+.resume-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 10px 16px;
+  background: rgba(52, 152, 219, 0.08);
+  border: 1px solid rgba(52, 152, 219, 0.2);
+  border-radius: var(--radius);
+}
+.resume-msg {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+.resume-btn {
+  font-size: 10px !important;
+  padding: 5px 12px !important;
+}
