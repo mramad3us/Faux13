@@ -527,9 +527,13 @@ function spawnMission(forcedType) {
     const loc = pick(FOREIGN_CITIES); cityName = loc.city; countryName = loc.country;
   }
 
+  const pa = G.cfg.partnerAgencies || {};
   const fillVars = resolveVars(tmpl.vars || {}, {
     city: cityName, country: countryName, codename, urgency_days: String(urgency),
     agency: G.cfg.acronym, leaderTitle: G.cfg.leaderTitle,
+    bureau_name: pa.BUREAU?.shortName || 'BUREAU',
+    agency_name: pa.AGENCY?.shortName || 'AGENCY',
+    military_name: pa.MILITARY?.shortName || 'MILITARY',
   });
 
   const mission = {
@@ -669,7 +673,13 @@ function advanceDay() {
         if (typeId) {
           spawnMission(typeId);
           const nm = G.missions.find(m => m.typeId === typeId && !m.favorOf);
-          if (nm) { nm.favorOf = chosen.id; nm.favorAgencyName = chosen.ag.name; }
+          if (nm) {
+            nm.favorOf = chosen.id;
+            nm.favorAgencyName = chosen.ag.name;
+            const sn = chosen.ag.shortName || chosen.id;
+            nm.label = nm.label.replace(/^(BUREAU|AGENCY|MILITARY) FAVOR/, sn + ' FAVOR');
+            nm.category = nm.category.replace(/^(BUREAU|AGENCY|MILITARY) FAVOR/, sn + ' FAVOR');
+          }
         }
       }
     }
@@ -2339,8 +2349,8 @@ function renderThreats() {
   const panelEl = document.getElementById('threats-panel');
   if (!countEl || !panelEl) return;
 
-  const active      = G.hvts.filter(h => h.status === 'ACTIVE');
-  countEl.textContent = active.length;
+  const tracked     = G.hvts.filter(h => h.status === 'ACTIVE' || h.status === 'DETAINED');
+  countEl.textContent = tracked.length;
 
   if (G.hvts.length === 0) {
     panelEl.innerHTML = '<div class="no-ops-msg">No tracked threats.</div>';
