@@ -25,6 +25,26 @@ const COUNTRIES = {
       FIELD_OPS: 4, SPECIAL_OPS: 2, FOREIGN_OPS: 4, COUNTER_INTEL: 5,
     },
     domesticCities: ['New York', 'Chicago', 'Los Angeles', 'Washington D.C.', 'Miami', 'Houston', 'Seattle', 'Boston', 'Atlanta', 'Denver'],
+    partnerAgencies: {
+      BUREAU:   { name: 'The Bureau',    shortName: 'BUREAU',  type: 'domestic', startingRelation: 60,
+        support: [
+          { id: 'FBI_HRT',   label: 'FBI HRT',              desc: 'Hostage Rescue Team on standby.',    cost: 12, bonusType: 'execProb',  bonusValue: 15 },
+          { id: 'FBI_SURV',  label: 'FBI Surveillance',     desc: 'Extended surveillance package.',     cost:  8, bonusType: 'execProb',  bonusValue: 10 },
+          { id: 'FBI_INTEL', label: 'Bureau Intel Package', desc: 'Behavioral analysis + file access.', cost:  7, bonusType: 'intelField',bonusValue: 1  },
+        ]},
+      AGENCY:   { name: 'The Agency',    shortName: 'AGENCY',  type: 'foreign',  startingRelation: 55,
+        support: [
+          { id: 'CIA_STATION', label: 'CIA Station Access',   desc: 'Station chief intelligence.',       cost: 12, bonusType: 'intelField',bonusValue: 1  },
+          { id: 'CIA_PARA',    label: 'Agency Ground Branch', desc: 'Paramilitary element attached.',    cost: 15, bonusType: 'execProb',  bonusValue: 15 },
+          { id: 'CIA_SIGNAL',  label: 'Agency SIGINT Link',   desc: 'NSA/CIA intercept package.',        cost:  9, bonusType: 'execProb',  bonusValue: 12 },
+        ]},
+      MILITARY: { name: 'Defense Intelligence Agency', shortName: 'DIA', type: 'foreign', startingRelation: 50,
+        support: [
+          { id: 'DEVGRU',     label: 'DEVGRU Element',      desc: 'SEAL Team Six direct-action unit.',  cost: 20, bonusType: 'execProb',  bonusValue: 20 },
+          { id: 'MARINE_QRF', label: 'Marine QRF',          desc: 'Quick Reaction Force (Marines).',    cost: 15, bonusType: 'execProb',  bonusValue: 15 },
+          { id: 'DIA_HUMINT', label: 'DIA HUMINT Package',  desc: 'Defense attaché intel network.',     cost: 10, bonusType: 'intelField',bonusValue: 1  },
+        ]},
+    },
   },
   UK: {
     name: 'United Kingdom', agency: 'Joint Covert Operations Bureau',
@@ -41,6 +61,26 @@ const COUNTRIES = {
       FIELD_OPS: 3, SPECIAL_OPS: 2, FOREIGN_OPS: 3, COUNTER_INTEL: 4,
     },
     domesticCities: ['London', 'Manchester', 'Birmingham', 'Glasgow', 'Leeds', 'Bristol', 'Edinburgh', 'Cardiff', 'Liverpool', 'Sheffield'],
+    partnerAgencies: {
+      BUREAU:   { name: 'MI5',  shortName: 'MI5',  type: 'domestic', startingRelation: 62,
+        support: [
+          { id: 'MI5_SURV', label: 'MI5 Surveillance',    desc: 'A4 surveillance section.',        cost:  8, bonusType: 'execProb',  bonusValue: 10 },
+          { id: 'MI5_CT',   label: 'Counter-Terror Team', desc: 'SO15 tactical attachment.',       cost: 12, bonusType: 'execProb',  bonusValue: 14 },
+          { id: 'MI5_ANAL', label: 'MI5 Analyst Embed',   desc: 'Technical analysis support.',     cost:  7, bonusType: 'intelField',bonusValue: 1  },
+        ]},
+      AGENCY:   { name: 'MI6 (SIS)', shortName: 'SIX',  type: 'foreign',  startingRelation: 58,
+        support: [
+          { id: 'SIS_STATION', label: 'SIS Station Brief',  desc: 'Local station intelligence.',   cost: 10, bonusType: 'intelField',bonusValue: 1  },
+          { id: 'SIS_PARA',    label: 'SIS Action Section', desc: 'Special Support Section team.', cost: 14, bonusType: 'execProb',  bonusValue: 14 },
+          { id: 'SIS_SIGINT',  label: 'GCHQ Intercept',     desc: 'GCHQ signals package.',         cost:  9, bonusType: 'execProb',  bonusValue: 11 },
+        ]},
+      MILITARY: { name: 'Defence Intelligence', shortName: 'DI', type: 'foreign', startingRelation: 52,
+        support: [
+          { id: 'SAS_ELEMENT',  label: 'SAS Troop',                desc: '22 SAS direct action element.', cost: 20, bonusType: 'execProb',  bonusValue: 20 },
+          { id: 'SBS_MARITIME', label: 'SBS Maritime Element',     desc: 'Special Boat Service unit.',    cost: 15, bonusType: 'execProb',  bonusValue: 15 },
+          { id: 'DI_HUMINT',    label: 'DI Intelligence Brief',    desc: 'Defence attaché network.',      cost:  9, bonusType: 'intelField',bonusValue: 1  },
+        ]},
+    },
   },
   FRANCE: {
     name: 'France', agency: 'Direction Spéciale des Opérations',
@@ -57,6 +97,26 @@ const COUNTRIES = {
       FIELD_OPS: 3, SPECIAL_OPS: 1, FOREIGN_OPS: 3, COUNTER_INTEL: 4,
     },
     domesticCities: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Bordeaux', 'Lille', 'Nice', 'Nantes', 'Strasbourg', 'Rennes'],
+    partnerAgencies: {
+      BUREAU:   { name: 'DGSI', shortName: 'DGSI', type: 'domestic', startingRelation: 58,
+        support: [
+          { id: 'SDAT_SUPPORT', label: 'SDAT Anti-Terror',  desc: 'Police CT unit attached.',        cost: 10, bonusType: 'execProb',  bonusValue: 13 },
+          { id: 'DGSI_CYBER',   label: 'DGSI Cyber Unit',   desc: 'Digital intercept capability.',   cost:  8, bonusType: 'execProb',  bonusValue: 11 },
+          { id: 'DGSI_INTEL',   label: 'DGSI Source Pkg',   desc: 'Domestic asset network.',         cost:  7, bonusType: 'intelField',bonusValue: 1  },
+        ]},
+      AGENCY:   { name: 'DGSE', shortName: 'DGSE', type: 'foreign',  startingRelation: 55,
+        support: [
+          { id: 'DGSE_ACTION',  label: 'Service Action',    desc: 'DGSE direct action element.',     cost: 14, bonusType: 'execProb',  bonusValue: 15 },
+          { id: 'DGSE_RESEAU',  label: 'Réseau Station',    desc: 'Foreign station network.',        cost: 10, bonusType: 'intelField',bonusValue: 1  },
+          { id: 'DGSE_TECH',    label: 'DGSE Tech Bureau',  desc: 'SIGINT + ELINT package.',         cost:  9, bonusType: 'execProb',  bonusValue: 11 },
+        ]},
+      MILITARY: { name: 'DRM', shortName: 'DRM', type: 'foreign', startingRelation: 48,
+        support: [
+          { id: 'GIGN_ASSAULT', label: 'GIGN Assault Team', desc: 'Elite gendarmerie unit.',         cost: 18, bonusType: 'execProb',  bonusValue: 19 },
+          { id: 'COS_SPECIAL',  label: 'COS Commando',      desc: 'Commandement des Opérations Spéciales element.', cost: 15, bonusType: 'execProb', bonusValue: 16 },
+          { id: 'DRM_HUMINT',   label: 'DRM Intelligence',  desc: 'Military attaché network.',       cost:  9, bonusType: 'intelField',bonusValue: 1  },
+        ]},
+    },
   }
 };
 
@@ -283,6 +343,13 @@ function deptAssignments(deptId) {
 // GAME INITIALIZATION
 // =============================================================================
 
+function initRelations(cfg) {
+  const r = {};
+  for (const [id, ag] of Object.entries(cfg.partnerAgencies || {}))
+    r[id] = { relation: ag.startingRelation, favorsCompleted: 0, favorsFailed: 0 };
+  return r;
+}
+
 function initDepts(cfg) {
   const caps  = cfg.deptCapacities;
   const depts = {};
@@ -315,6 +382,7 @@ function startGame(countryCode) {
     missionIdCounter: 0, usedCodenames: new Set(), nextSpawnDay: 1,
     upgrades: initUpgrades(),
     hvts: [], hvtIdCounter: 0,
+    relations: initRelations(cfg),
   };
   showScreen('game');
   spawnMission();
@@ -569,6 +637,25 @@ function advanceDay() {
     G.nextSpawnDay = G.day + randInt(3, 7);
   }
 
+  // Favor missions every ~4 days, relation-weighted
+  if (G.day % 4 === 0 && G.cfg?.partnerAgencies) {
+    const inbox = G.missions.filter(m => !['EXECUTING', 'SUCCESS', 'FAILURE', 'ARCHIVED', 'EXPIRED'].includes(m.status));
+    if (inbox.length < 6) {
+      const candidates = Object.entries(G.cfg.partnerAgencies)
+        .filter(([id]) => (G.relations?.[id]?.relation ?? 0) >= 25)
+        .map(([id, ag]) => ({ id, ag, weight: G.relations[id].relation }));
+      if (candidates.length && Math.random() < 0.65) {
+        const chosen = weightedPick(candidates);
+        const typeId = pick(AGENCY_FAVOR_TYPES[chosen.id] || []);
+        if (typeId) {
+          spawnMission(typeId);
+          const nm = G.missions.find(m => m.typeId === typeId && !m.favorOf);
+          if (nm) { nm.favorOf = chosen.id; nm.favorAgencyName = chosen.ag.name; }
+        }
+      }
+    }
+  }
+
   checkGameOver();
   render();
   if (G.selected && !getMission(G.selected)) G.selected = null;
@@ -681,6 +768,14 @@ function resolveOperation(m) {
       gainXP(1, `OP ${m.codename} (failed)`);
       registerOrUpdateHvtFailed(m);
       addLog(`FAILURE: OP ${m.codename}. ${confLoss}% confidence.`, 'log-fail');
+    }
+    // Agency favor relation delta
+    if (m.favorOf && G.relations?.[m.favorOf]) {
+      const rel   = G.relations[m.favorOf];
+      const delta = success ? randInt(6, 12) : -randInt(8, 14);
+      rel.relation = clamp(rel.relation + delta, 0, 100);
+      if (success) rel.favorsCompleted++; else rel.favorsFailed++;
+      addLog(`${success ? 'Favor complete' : 'Favor failed'}: ${m.favorAgencyName || m.favorOf} relation ${delta > 0 ? '+' : ''}${delta}.`, success ? 'log-info' : 'log-warn');
     }
   }
 }
@@ -915,7 +1010,7 @@ window.reassignSuspect = function(missionId) {
 // OPERATION MODAL
 // =============================================================================
 
-function calcOpProb(m, budget, depts) {
+function calcOpProb(m, budget, depts, selectedSupport) {
   const minBudget        = Math.max(1, Math.floor(m.baseBudget * 0.5));
   const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
   const total            = m.intelFields?.length || 0;
@@ -923,7 +1018,10 @@ function calcOpProb(m, budget, depts) {
   const intelPenalty     = total > 0 ? Math.round((1 - revealed / total) * 30) : 0;
   const intelBonusAmt    = m.intelBonus ? 10 : 0;
   const blownPenalty     = m.blown ? 25 : 0;
-  let p = 35 - falseFlagPenalty - intelPenalty - blownPenalty + intelBonusAmt;
+  const agencyBonus      = (selectedSupport || [])
+    .filter(s => s.bonusType === 'execProb')
+    .reduce((sum, s) => sum + s.bonusValue, 0);
+  let p = 35 - falseFlagPenalty - intelPenalty - blownPenalty + intelBonusAmt + agencyBonus;
   p += Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
   p += depts.filter(d =>  m.execDepts.includes(d)).length * 12; // recommended
   p += depts.filter(d => !m.execDepts.includes(d)).length *  5; // optional
@@ -962,7 +1060,8 @@ function openOperationModal(missionId) {
   const blownNote = m.blown
     ? `<div class="op-penalty-note op-penalty-blown">⚠ TARGET ALERTED: −25% success probability. ${m.blownDaysLeft} day(s) until exfiltration.</div>`
     : '';
-  const initProb = calcOpProb(m, defBudget, selectedDepts);
+  window._currentOpSelectedSupport = [];
+  const initProb = calcOpProb(m, defBudget, selectedDepts, []);
 
   // Build department rows: recommended first, then others
   const buildDeptRow = (did, isRec) => {
@@ -1015,6 +1114,26 @@ function openOperationModal(missionId) {
       <div class="modal-section-title">OPTIONAL SUPPORT <span style="font-size:9px;color:var(--text-dim)">(each +5% success)</span></div>
       <div class="modal-dept-grid">${otherRows}</div>
     </div>
+    ${G.cfg?.partnerAgencies ? `<div class="modal-section">
+      <div class="modal-section-title">AGENCY SUPPORT <span style="font-size:9px;color:var(--text-dim)">(costs relation points)</span></div>
+      <div class="modal-dept-grid">${
+        Object.entries(G.cfg.partnerAgencies).flatMap(([agencyId, agCfg]) =>
+          (agCfg.support || []).map(s => {
+            const rel = G.relations?.[agencyId]?.relation ?? 0;
+            const can = rel >= s.cost;
+            return `<div class="agency-support-check ${can ? '' : 'unavail'}"
+              data-agency="${agencyId}" data-support="${s.id}"
+              onclick="toggleAgencySupport('${agencyId}','${s.id}','${missionId}')"
+              data-tip="${s.desc}${can ? '' : '&#10;&#10;Insufficient relation points.'}">
+              <span class="as-agency-tag">${agCfg.shortName}</span>
+              <span class="as-label">${s.label}</span>
+              <span class="support-cost-badge ${can ? '' : 'unavail-cost'}">−${s.cost} REL</span>
+              <span class="support-bonus-badge">${s.bonusType === 'execProb' ? `+${s.bonusValue}%` : `+${s.bonusValue} INTEL`}</span>
+            </div>`;
+          })
+        ).join('')
+      }</div>
+    </div>` : ''}
     <div class="modal-section">
       <div class="prob-display" data-tip="Estimated success probability. Budget and recommended departments are the main drivers.${m.phaseFalseFlagPenalty ? ' Reduced 25% due to anomaly.' : ''}">
         <div class="prob-label">ESTIMATED SUCCESS PROBABILITY</div>
@@ -1049,6 +1168,29 @@ window.toggleExecDept = function(deptId, missionId) {
   window.updateModalProb(missionId);
 };
 
+window.toggleAgencySupport = function(agencyId, supportId, missionId) {
+  const m = getMission(missionId);
+  if (!m) return;
+  const agCfg   = G.cfg?.partnerAgencies?.[agencyId];
+  const support = agCfg?.support?.find(s => s.id === supportId);
+  if (!support) return;
+  const rel = G.relations?.[agencyId]?.relation ?? 0;
+  if (rel < support.cost) return; // insufficient relation
+  const arr = window._currentOpSelectedSupport;
+  const idx = arr.findIndex(x => x.supportId === supportId);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+  } else {
+    arr.push({ agencyId, supportId, label: support.label, bonusType: support.bonusType, bonusValue: support.bonusValue, cost: support.cost });
+  }
+  const selected = idx < 0; // true if we just added it
+  document.querySelectorAll('.agency-support-check').forEach(el => {
+    if (el.dataset.agency === agencyId && el.dataset.support === supportId)
+      el.classList.toggle('selected', selected);
+  });
+  window.updateModalProb(missionId);
+};
+
 window.updateModalProb = function(missionId) {
   const m = getMission(missionId);
   if (!m) return;
@@ -1057,7 +1199,7 @@ window.updateModalProb = function(missionId) {
   const b  = parseInt(bi.value);
   const bv = document.getElementById('op-budget-val');
   if (bv) bv.textContent = fmt(b);
-  const p       = calcOpProb(m, b, window._currentOpSelectedDepts || []);
+  const p       = calcOpProb(m, b, window._currentOpSelectedDepts || [], window._currentOpSelectedSupport || []);
   const probEl  = document.getElementById('op-prob');
   const probWrap = document.getElementById('op-prob-wrap');
   if (probEl)   probEl.textContent = `${p}%`;
@@ -1070,6 +1212,7 @@ window.executeOperation = function(missionId) {
   const bi     = document.getElementById('op-budget');
   const budget = bi ? parseInt(bi.value) : m.baseBudget;
   const depts  = window._currentOpSelectedDepts || [];
+  const agSupport = window._currentOpSelectedSupport || [];
 
   if (G.budget < budget) { addLog('Insufficient budget.', 'log-warn'); hideModal(); render(); return; }
 
@@ -1084,16 +1227,29 @@ window.executeOperation = function(missionId) {
 
   G.budget -= budget;
 
-  m.successProb       = calcOpProb(m, budget, depts);
+  // Apply agency support: deduct relation costs + reveal intel fields for intelField bonuses
+  m.agencySupport = [];
+  for (const s of agSupport) {
+    if (G.relations?.[s.agencyId]) {
+      G.relations[s.agencyId].relation = clamp(G.relations[s.agencyId].relation - s.cost, 0, 100);
+    }
+    if (s.bonusType === 'intelField') {
+      const hidden = m.intelFields?.filter(f => !f.revealed) || [];
+      for (let i = 0; i < s.bonusValue && i < hidden.length; i++) hidden[i].revealed = true;
+    }
+    m.agencySupport.push(s);
+  }
+
+  m.successProb       = calcOpProb(m, budget, depts, agSupport);
   m.status            = 'EXECUTING';
   m.execDaysLeft      = m.execDays;
   m.assignedBudget    = budget;
   m.assignedExecDepts = depts;
   // Note: deptAllocated automatically increases because status=EXECUTING and depts are listed
 
-  const deptSummary  = depts.map(d => G.depts[d]?.short || d).join(', ') || 'no depts';
   const phaseLabel   = m.isMultiPhase ? ` [${m.phases[m.currentPhaseIndex].shortName}]` : '';
-  addLog(`OP ${m.codename}${phaseLabel} launched. ${fmt(budget)} · ${depts.length} dept(s) · ETA ${m.execDays}d.`, 'log-info');
+  const supportNote  = agSupport.length ? ` · ${agSupport.length} agency support` : '';
+  addLog(`OP ${m.codename}${phaseLabel} launched. ${fmt(budget)} · ${depts.length} dept(s)${supportNote} · ETA ${m.execDays}d.`, 'log-info');
   hideModal();
   G.selected = m.id;
   render();
@@ -1302,7 +1458,34 @@ window.switchRightTab = function(tab) {
   document.getElementById(`right-tab-${tab}`)?.classList.add('active');
 };
 
-const HVT_REGISTER_TYPES = new Set(['FOREIGN_HVT', 'DOMESTIC_HVT', 'RENDITION', 'SURVEILLANCE_TAKEDOWN', 'LONG_HUNT_HVT', 'MOLE_HUNT']);
+const BLACK_SITE_NAMES = [
+  'Black Site ECHO-7', 'Black Site FOXTROT', 'Safe House BRAVO-4',
+  'Forward Site DELTA', 'Auxiliary Site KILO', 'Station WHISKEY-3',
+  'Camp NIGHTFALL', 'Annex SIGMA', 'Facility REDLINE', 'Site COBALT',
+  'Black Site ALPHA-2', 'Forward Base TITAN', 'Extraction Point ZULU',
+];
+
+const SURVEILLANCE_TYPES = new Set(['HVT_SURVEILLANCE_DOM', 'HVT_SURVEILLANCE_FOR']);
+const ABDUCTION_TYPES    = new Set(['HVT_ABDUCTION_DOM', 'HVT_ABDUCTION_FOR']);
+
+const AGENCY_FAVOR_TYPES = {
+  BUREAU:   ['FAVOR_BUREAU_SURVEILLANCE', 'FAVOR_BUREAU_DISRUPTION', 'FAVOR_BUREAU_DETENTION'],
+  AGENCY:   ['FAVOR_AGENCY_RENDITION', 'FAVOR_AGENCY_EXTRACTION', 'FAVOR_AGENCY_COVER'],
+  MILITARY: ['FAVOR_MIL_RESCUE', 'FAVOR_MIL_SIGINT', 'FAVOR_MIL_STRIKE'],
+};
+
+function weightedPick(arr) {
+  const total = arr.reduce((s, x) => s + x.weight, 0);
+  let r = Math.random() * total;
+  for (const x of arr) { r -= x.weight; if (r <= 0) return x; }
+  return arr[arr.length - 1];
+}
+
+const HVT_REGISTER_TYPES = new Set([
+  'FOREIGN_HVT', 'DOMESTIC_HVT', 'RENDITION', 'SURVEILLANCE_TAKEDOWN', 'LONG_HUNT_HVT', 'MOLE_HUNT',
+  'HVT_SURVEILLANCE_DOM', 'HVT_SURVEILLANCE_FOR', 'HVT_ABDUCTION_DOM', 'HVT_ABDUCTION_FOR',
+  'FAVOR_BUREAU_DETENTION', 'FAVOR_AGENCY_RENDITION',
+]);
 const HVT_FAIL_TYPES      = new Set(['FOREIGN_HVT', 'DOMESTIC_HVT', 'LONG_HUNT_HVT']);
 
 function hvtAliasFromMission(m) {
@@ -1318,26 +1501,69 @@ function hvtRoleFromMission(m) {
 
 function registerOrUpdateHvt(m) {
   if (!HVT_REGISTER_TYPES.has(m.typeId)) return;
+
+  // Surveillance missions: mark surveillanceEstablished on linked HVT
+  if (SURVEILLANCE_TYPES.has(m.typeId)) {
+    const linkedHvtId = m.linkedHvtId;
+    if (linkedHvtId) {
+      const h = G.hvts.find(x => x.id === linkedHvtId);
+      if (h) { h.surveillanceEstablished = true; addLog(`Surveillance established on ${h.alias}.`, 'log-info'); }
+    }
+    return;
+  }
+
+  // Abduction missions: detain linked HVT
+  if (ABDUCTION_TYPES.has(m.typeId)) {
+    const linkedHvtId = m.linkedHvtId;
+    if (linkedHvtId) {
+      const h = G.hvts.find(x => x.id === linkedHvtId);
+      if (h && h.status === 'ACTIVE') {
+        h.status      = 'DETAINED';
+        h.detainedAt  = pick(BLACK_SITE_NAMES);
+        h.detainedDay = G.day;
+        addLog(`${h.alias} abducted and detained at ${h.detainedAt}.`, 'log-success');
+      }
+    }
+    return;
+  }
+
   const idx = G.hvts.findIndex(h => h.linkedMissionIds.includes(m.id));
   if (idx >= 0) {
     const h = G.hvts[idx];
-    h.status = 'NEUTRALIZED';
-    h.gaps   = [];
+    if (m.typeId === 'RENDITION' || ABDUCTION_TYPES.has(m.typeId) || m.typeId === 'FAVOR_BUREAU_DETENTION' || m.typeId === 'FAVOR_AGENCY_RENDITION') {
+      h.status      = 'DETAINED';
+      h.detainedAt  = pick(BLACK_SITE_NAMES);
+      h.detainedDay = G.day;
+    } else {
+      h.status = 'NEUTRALIZED';
+    }
+    h.gaps = [];
     return;
   }
-  G.hvts.push({
+
+  // New HVT entry
+  const isDetained = (m.typeId === 'RENDITION' || m.typeId === 'FAVOR_BUREAU_DETENTION' || m.typeId === 'FAVOR_AGENCY_RENDITION');
+  const newStatus  = isDetained ? 'DETAINED' : 'NEUTRALIZED';
+  const entry = {
     id: `H${++G.hvtIdCounter}`,
-    type: (m.typeId.includes('HVT') || m.typeId === 'RENDITION') ? 'HVT' : 'ORG',
+    type: (m.typeId.includes('HVT') || m.typeId === 'RENDITION' || isDetained) ? 'HVT' : 'ORG',
     alias: hvtAliasFromMission(m),
     role:  hvtRoleFromMission(m),
     org:   m.category,
     threat: m.threat,
-    status: 'NEUTRALIZED',
+    location: m.location || 'FOREIGN',
+    status: newStatus,
     knownFields: { city: m.city, country: m.country || null },
     gaps: [],
     linkedMissionIds: [m.id],
     addedDay: G.day,
-  });
+    detainedAt:   isDetained ? pick(BLACK_SITE_NAMES) : null,
+    detainedDay:  isDetained ? G.day : null,
+    interrogationCount: 0,
+    surveillanceEstablished: false,
+    handedTo: null,
+  };
+  G.hvts.push(entry);
 }
 
 function registerOrUpdateHvtFailed(m) {
@@ -1355,11 +1581,17 @@ function registerOrUpdateHvtFailed(m) {
     role:  hvtRoleFromMission(m),
     org:   m.category,
     threat: m.threat,
+    location: m.location || 'FOREIGN',
     status: 'ACTIVE',
     knownFields: { city: m.city, country: m.country || null },
     gaps: ['Identity requires verification', 'Current location unconfirmed', 'Security detail size unknown'],
     linkedMissionIds: [m.id],
     addedDay: G.day,
+    detainedAt:   null,
+    detainedDay:  null,
+    interrogationCount: 0,
+    surveillanceEstablished: false,
+    handedTo: null,
   });
 }
 
@@ -1373,6 +1605,14 @@ window.openHvtMissionModal = function(hvtId) {
     ? ['FOREIGN_HVT', 'LONG_HUNT_HVT', 'RENDITION']
     : ['DOMESTIC_HVT', 'SURVEILLANCE_TAKEDOWN'];
   if (h.knownFields.address) availableTypeIds.push('SEARCH_PREMISES');
+
+  // Add surveillance/abduction options based on surveillance status
+  if (!h.surveillanceEstablished) {
+    availableTypeIds.push(isForeign ? 'HVT_SURVEILLANCE_FOR' : 'HVT_SURVEILLANCE_DOM');
+  } else {
+    availableTypeIds.push(isForeign ? 'HVT_ABDUCTION_FOR' : 'HVT_ABDUCTION_DOM');
+  }
+
   availableTypeIds = availableTypeIds.filter(t => MISSION_TYPES[t]);
 
   if (availableTypeIds.length === 0) {
@@ -1420,6 +1660,66 @@ window.spawnHvtMission = function(hvtId, typeId) {
   render();
 };
 
+// ---- HVT detention action functions ----
+
+window.executeTarget = function(hvtId) {
+  const h = G.hvts.find(x => x.id === hvtId);
+  if (!h || h.status !== 'DETAINED') return;
+  h.status = 'ELIMINATED';
+  const gain = randInt(3, 7);
+  G.confidence = clamp(G.confidence + gain, 0, 100);
+  addLog(`${h.alias} executed. +${gain}% confidence.`, 'log-success');
+  render();
+};
+
+window.handoverTarget = function(hvtId, agencyId) {
+  const h = G.hvts.find(x => x.id === hvtId);
+  if (!h || h.status !== 'DETAINED') return;
+  if (!G.cfg?.partnerAgencies?.[agencyId]) return;
+  const agCfg = G.cfg.partnerAgencies[agencyId];
+  // Type restriction: domestic agency handles domestic HVTs, foreign/military handles foreign
+  if (agCfg.type === 'domestic' && h.location === 'FOREIGN') {
+    addLog(`${agCfg.name} handles domestic cases only. Cannot accept a foreign HVT.`, 'log-warn');
+    return;
+  }
+  if (agCfg.type !== 'domestic' && h.location === 'DOMESTIC') {
+    addLog(`${agCfg.name} operates on foreign targets only. Cannot accept a domestic HVT.`, 'log-warn');
+    return;
+  }
+  h.status  = 'HANDED_OVER';
+  h.handedTo = agencyId;
+  const relGain = randInt(10, 15);
+  const confGain = randInt(3, 6);
+  if (G.relations[agencyId]) G.relations[agencyId].relation = clamp(G.relations[agencyId].relation + relGain, 0, 100);
+  G.confidence = clamp(G.confidence + confGain, 0, 100);
+  addLog(`${h.alias} handed over to ${agCfg.name}. +${relGain} relation, +${confGain}% confidence.`, 'log-success');
+  render();
+};
+
+window.interrogateTarget = function(hvtId) {
+  const h = G.hvts.find(x => x.id === hvtId);
+  if (!h || h.status !== 'DETAINED') return;
+  if (h.interrogationCount >= 3) {
+    addLog(`${h.alias}: maximum interrogation sessions reached.`, 'log-warn');
+    return;
+  }
+  h.interrogationCount++;
+  // Spawn a follow-up mission based on HVT location
+  const followTypeId = h.location === 'DOMESTIC' ? pick(['DOMESTIC_HVT', 'DOMESTIC_TERROR', 'COUNTER_INTEL'])
+                                                  : pick(['FOREIGN_HVT', 'ASSET_RESCUE', 'RENDITION']);
+  spawnMission(followTypeId);
+  const spawnedM = G.missions[0];
+  if (spawnedM) {
+    spawnedM.interrogationBonus = true;
+    spawnedM.intelBonus = true;
+    // Reveal all intel fields
+    if (spawnedM.intelFields) spawnedM.intelFields.forEach(f => { f.revealed = true; });
+    spawnedM.initialReport = `[INTERROGATION INTELLIGENCE — Session ${h.interrogationCount}/3 — ${h.alias}]\n\n` + spawnedM.initialReport;
+    addLog(`Interrogation session ${h.interrogationCount}/3: ${h.alias} yielded intelligence. New mission spawned: OP ${spawnedM.codename}.`, 'log-info');
+  }
+  render();
+};
+
 // =============================================================================
 // LOGGING
 // =============================================================================
@@ -1435,8 +1735,23 @@ function addLog(text, cls = '') {
 
 function getMission(id) { return G.missions.find(m => m.id === id) || null; }
 
+function renderAgencyBar() {
+  const el = document.getElementById('agency-bar');
+  if (!el || !G.cfg?.partnerAgencies) { if (el) el.innerHTML = ''; return; }
+  el.innerHTML = Object.entries(G.cfg.partnerAgencies).map(([id, agCfg]) => {
+    const rel = G.relations?.[id]?.relation ?? 0;
+    const barCls = rel >= 70 ? 'rel-high' : rel >= 40 ? 'rel-med' : 'rel-low';
+    return `<div class="agency-rel-chip" data-tip="${agCfg.name} — Relation: ${rel}/100">
+      <span class="agency-rel-name">${agCfg.shortName}</span>
+      <div class="agency-rel-bar-wrap"><div class="agency-rel-bar-fill ${barCls}" style="width:${rel}%"></div></div>
+      <span class="agency-rel-pct ${barCls}">${rel}</span>
+    </div>`;
+  }).join('');
+}
+
 function render() {
   renderHeader();
+  renderAgencyBar();
   renderInbox();
   renderDetail();
   renderDepts();
@@ -1501,6 +1816,9 @@ function renderInbox() {
       EXPIRED:        '<span class="mc-status status-expired">EXPIRED</span>',
     }[m.status] || '';
 
+    const favorChip = m.favorOf
+      ? `<span class="mc-favor-chip">FAVOR: ${m.favorAgencyName || m.favorOf}</span>`
+      : '';
     return `<div class="mission-card threat-${m.threat} ${isSelected ? 'selected' : ''}"
       onclick="selectMission('${m.id}')">
       <div class="mc-type">${m.category}</div>
@@ -1509,6 +1827,7 @@ function renderInbox() {
         ${chip}
         <span class="mc-deadline ${deadlineCls}">${daysLeft}d LEFT</span>
       </div>
+      ${favorChip}
     </div>`;
   }).join('');
 }
@@ -1568,7 +1887,12 @@ function renderDetail() {
   const threatCls   = m.threat >= 4 ? 'threat-high' : m.threat >= 3 ? 'threat-med' : 'threat-low';
   const locCls      = m.location === 'FOREIGN' ? 'location-foreign' : 'location-domestic';
 
+  const favorBannerHtml = m.favorOf
+    ? `<div class="favor-banner"><span class="favor-lbl">AGENCY FAVOR</span> <span class="favor-agency">${m.favorAgencyName || m.favorOf}</span> — Complete to improve inter-agency relations.</div>`
+    : '';
+
   let content = `
+    ${favorBannerHtml}
     <div class="dc-header">
       <div class="dc-codename">OP ${m.codename}</div>
       <div class="dc-meta-row">
@@ -1985,7 +2309,6 @@ function renderThreats() {
   if (!countEl || !panelEl) return;
 
   const active      = G.hvts.filter(h => h.status === 'ACTIVE');
-  const neutralized = G.hvts.filter(h => h.status === 'NEUTRALIZED');
   countEl.textContent = active.length;
 
   if (G.hvts.length === 0) {
@@ -1994,11 +2317,17 @@ function renderThreats() {
   }
 
   const buildCard = h => {
-    const isActive   = h.status === 'ACTIVE';
-    const typeBadge  = `<span class="threat-type-badge ${h.type === 'HVT' ? 'hvt-badge' : 'org-badge'}">${h.type}</span>`;
-    const statusChip = isActive
-      ? `<span class="threat-status-chip threat-status-active">ACTIVE</span>`
-      : `<span class="threat-status-chip threat-status-neutralized">NEUTRALIZED</span>`;
+    const typeBadge = `<span class="threat-type-badge ${h.type === 'HVT' ? 'hvt-badge' : 'org-badge'}">${h.type}</span>`;
+
+    // Status chip
+    const statusChipMap = {
+      ACTIVE:       `<span class="threat-status-chip threat-status-active">ACTIVE</span>`,
+      NEUTRALIZED:  `<span class="threat-status-chip threat-status-neutralized">NEUTRALIZED</span>`,
+      DETAINED:     `<span class="threat-status-chip threat-status-detained">DETAINED</span>`,
+      ELIMINATED:   `<span class="threat-status-chip threat-status-eliminated">ELIMINATED</span>`,
+      HANDED_OVER:  `<span class="threat-status-chip threat-status-handed-over">TRANSFERRED</span>`,
+    };
+    const statusChip = statusChipMap[h.status] || `<span class="threat-status-chip">${h.status}</span>`;
 
     const knownHtml = Object.entries(h.knownFields || {}).filter(([, v]) => v).map(([k, v]) =>
       `<div class="threat-field-row">
@@ -2018,11 +2347,58 @@ function renderThreats() {
       return m ? `<span class="threat-linked-badge" onclick="selectMission('${mid}')" style="cursor:pointer">OP ${m.codename}</span>` : '';
     }).filter(Boolean).join('');
 
-    const assignBtn = isActive
-      ? `<button class="btn-threat-assign" onclick="openHvtMissionModal('${h.id}')">ASSIGN MISSION</button>`
-      : '';
+    // Status-specific action sections
+    let actionSection = '';
 
-    return `<div class="threat-card ${isActive ? 'threat-card-active' : 'threat-card-neutralized'}">
+    if (h.status === 'ACTIVE') {
+      if (h.surveillanceEstablished) {
+        actionSection = `
+          <div class="surv-indicator">◉ SURVEILLANCE ESTABLISHED</div>
+          <div class="threat-handover-row">
+            <button class="btn-threat-assign" onclick="spawnHvtMission('${h.id}','${h.location === 'DOMESTIC' ? 'HVT_ABDUCTION_DOM' : 'HVT_ABDUCTION_FOR'}')">ABDUCT</button>
+            <button class="btn-threat-assign" onclick="spawnHvtMission('${h.id}','${h.location === 'DOMESTIC' ? 'DOMESTIC_HVT' : 'FOREIGN_HVT'}')">ELIMINATE</button>
+            <button class="btn-threat-action" onclick="dropSurveillance('${h.id}')" data-tip="Abandon surveillance. Must re-establish to abduct.">DROP SURV.</button>
+          </div>`;
+      } else {
+        actionSection = `<button class="btn-threat-assign" onclick="openHvtMissionModal('${h.id}')">ASSIGN MISSION</button>`;
+      }
+    } else if (h.status === 'DETAINED') {
+      const daysCustody = G.day - (h.detainedDay || G.day);
+      const interrogCount = h.interrogationCount || 0;
+      // Build handover buttons filtered by location compatibility
+      const handoverBtns = Object.entries(G.cfg?.partnerAgencies || {})
+        .filter(([, agCfg]) => {
+          if (agCfg.type === 'domestic' && h.location === 'FOREIGN') return false;
+          if (agCfg.type !== 'domestic' && h.location === 'DOMESTIC') return false;
+          return true;
+        })
+        .map(([agencyId, agCfg]) =>
+          `<button class="btn-threat-action handover-btn" onclick="handoverTarget('${h.id}','${agencyId}')" data-tip="Hand over to ${agCfg.name}. Relation +10-15.">→ ${agCfg.shortName}</button>`
+        ).join('');
+      actionSection = `
+        <div class="detention-info">HELD AT: ${h.detainedAt || '—'} · Day ${daysCustody} in custody</div>
+        <div class="threat-interrogate-count">${interrogCount}/3 SESSIONS</div>
+        <div class="threat-handover-row">
+          <button class="btn-threat-action ${interrogCount >= 3 ? 'unavail' : ''}" onclick="interrogateTarget('${h.id}')"
+            data-tip="Conduct interrogation session. Spawns follow-up mission with full intel. Max 3 sessions.">
+            INTERROGATE ${interrogCount}/3
+          </button>
+          <button class="btn-threat-action danger" onclick="executeTarget('${h.id}')"
+            data-tip="Execute the target. +3-7 confidence.">EXECUTE</button>
+        </div>
+        ${handoverBtns ? `<div class="threat-handover-row">${handoverBtns}</div>` : ''}`;
+    } else if (h.status === 'ELIMINATED') {
+      actionSection = `<div class="threat-fate-badge threat-status-eliminated" style="padding:3px 8px">ELIMINATED — D${h.addedDay}</div>`;
+    } else if (h.status === 'HANDED_OVER') {
+      const agName = G.cfg?.partnerAgencies?.[h.handedTo]?.name || h.handedTo || '—';
+      actionSection = `<div class="threat-fate-badge threat-status-handed-over" style="padding:3px 8px">Transferred to ${agName}</div>`;
+    }
+
+    const cardCls = h.status === 'ACTIVE' ? 'threat-card-active'
+      : h.status === 'DETAINED' ? 'threat-card-active'
+      : 'threat-card-neutralized';
+
+    return `<div class="threat-card ${cardCls}">
       <div class="threat-card-hdr">
         ${typeBadge}
         <span class="threat-alias">${h.alias}</span>
@@ -2033,19 +2409,29 @@ function renderThreats() {
       ${knownHtml ? `<div class="threat-known-fields">${knownHtml}</div>` : ''}
       ${gapsHtml}
       ${linkedBadges ? `<div class="threat-linked">${linkedBadges}</div>` : ''}
-      ${assignBtn}
+      ${actionSection}
     </div>`;
   };
 
+  const detained    = G.hvts.filter(h => h.status === 'DETAINED');
+  const neutralized = G.hvts.filter(h => h.status === 'NEUTRALIZED');
+  const eliminated  = G.hvts.filter(h => h.status === 'ELIMINATED' || h.status === 'HANDED_OVER');
+
   let html = '';
-  if (active.length > 0) {
-    html += `<div class="threat-section-title">ACTIVE THREATS</div>${active.map(buildCard).join('')}`;
-  }
-  if (neutralized.length > 0) {
-    html += `<div class="threat-section-title">NEUTRALIZED</div>${neutralized.map(buildCard).join('')}`;
-  }
+  if (active.length > 0)    html += `<div class="threat-section-title">ACTIVE THREATS</div>${active.map(buildCard).join('')}`;
+  if (detained.length > 0)  html += `<div class="threat-section-title">DETAINED</div>${detained.map(buildCard).join('')}`;
+  if (neutralized.length > 0) html += `<div class="threat-section-title">NEUTRALIZED</div>${neutralized.map(buildCard).join('')}`;
+  if (eliminated.length > 0) html += `<div class="threat-section-title">CLOSED</div>${eliminated.map(buildCard).join('')}`;
   panelEl.innerHTML = html;
 }
+
+window.dropSurveillance = function(hvtId) {
+  const h = G.hvts.find(x => x.id === hvtId);
+  if (!h || !h.surveillanceEstablished) return;
+  h.surveillanceEstablished = false;
+  addLog(`Surveillance on ${h.alias} terminated.`, 'log-warn');
+  render();
+};
 
 function renderLog() {
   const el = document.getElementById('event-log');
