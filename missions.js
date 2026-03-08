@@ -39,6 +39,11 @@ const MISSION_TYPES = {
       'Operation blown. Cell received advance warning and dispersed. {attack_type} against {target} proceeded — {casualties} casualties reported.\n\nThe source of the operational leak is under investigation. The cell leader "{alias}" remains at large. Expect further attempts.',
       'Insufficient intelligence led to premature deployment. Field teams arrived post-event. {casualties} casualties. Cell leader "{alias}" remains at large.\n\nPost-incident review indicates the investigation was closed too early.',
     ],
+    deepenDays: 1,
+    partialReports: [
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\n[UNCONFIRMED] Suspected {attack_type} threat in {city}. Source reliability: {reliability}. Cell size: unknown — estimated 2–5 individuals. Cell leader alias not confirmed.\n\nConclusion: credible but unverified. Full investigation recommended before action.',
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\nActivity consistent with {attack_type} preparation detected near {target}. Group affiliation unclear. Number of individuals: unknown. Location: approximate only.\n\nPartial confidence. Proceed with partial intel at −15% probability, or deepen investigation.',
+    ],
     confSuccess: [10, 18], confFail: [-18, -30],
     vars: {
       group: ['domestic extremists', 'a foreign-linked cell', 'an anarchist collective', 'radicalized nationals', 'a separatist faction'],
@@ -79,6 +84,11 @@ const MISSION_TYPES = {
     failureMsgs: [
       'Target "{alias}" escaped. Team extracted under fire. {complication}. International exposure risk elevated.\n\nThe target was apparently warned — a security review of the intelligence chain is under way.',
       'Operation compromised. Target alerted and relocated. Two assets burned. {complication}.\n\nThe mission window is now closed. Recovery of this opportunity is assessed as unlikely in the near term.',
+    ],
+    deepenDays: 2,
+    partialReports: [
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\n[UNCONFIRMED] HVT sighting reported — {city}, {country}. Possible role: {hvt_role}. Identity unconfirmed. Security detail: unknown — possibly light to moderate.\n\nSingle-source reporting. Full investigation required to confirm identity and window.',
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\nIntel suggests individual of interest in {city}, {country}. Role assessed as possibly {hvt_role} — alias unconfirmed. Location details: approximate.\n\nProceed with partial intel at reduced probability, or deepen investigation for full target package.',
     ],
     confSuccess: [12, 20], confFail: [-15, -25],
     vars: {
@@ -122,6 +132,11 @@ const MISSION_TYPES = {
       'Extraction failed. Asset "{alias}" transferred to a high-security facility. Recovery is now assessed as unlikely.\n\nThe asset has knowledge of ongoing operations. A review of all related mission files is recommended. Assume potential compromise.',
       'Team compromised. Asset extraction aborted. "{alias}" fate unknown. Two team members still evading pursuit.\n\nForeign Operations has activated emergency exfiltration protocols. Related operations are being suspended pending security review.',
     ],
+    deepenDays: 1,
+    partialReports: [
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\n[UNCONFIRMED] Asset "{alias}" has been out of contact for {days_dark} days in {city}, {country}. Status: unknown — possibly detained, possibly dark by choice.\n\nLocation and condition unconfirmed. Rapid investigation required before the window closes.',
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\nDistress signal received from {city} — source appears to be asset "{alias}". Signal fragmentary. Detaining authority: unknown. Condition: unknown.\n\nPartial intel only. Extraction timeline uncertain.',
+    ],
     confSuccess: [8, 15], confFail: [-12, -22],
     vars: {
       alias: ['COBALT', 'MERCURY', 'DELPHI', 'SUNDIAL', 'PARROT', 'ATLAS', 'HERMES', 'ORACLE'],
@@ -163,6 +178,11 @@ const MISSION_TYPES = {
     failureMsgs: [
       'Surveillance operation blown. Suspect alerted and fled the country. {foreign_service} network intact. Damage unknown.\n\nThe subject had a pre-arranged exfiltration plan. A full damage assessment has been ordered.',
       'Wrong suspect apprehended. Actual mole still active. {foreign_service} has now changed protocols.\n\nCounter-Intelligence is restarting the investigation. The mole knows we are looking.',
+    ],
+    deepenDays: 2,
+    partialReports: [
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\n[UNCONFIRMED] Possible insider threat detected. Access anomalies observed — source of compromise unclear. Suspect pool: unknown size. Foreign beneficiary: unconfirmed.\n\nInvestigation is essential before action. Partial intel insufficient for reliable identification.',
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\nData access patterns suggest a potential mole. No primary suspect confirmed. Several individuals with relevant access identified — exact number unclear.\n\nAction with partial intel carries significant risk of targeting the wrong individual.',
     ],
     confSuccess: [6, 12], confFail: [-10, -18],
     vars: {
@@ -206,6 +226,11 @@ const MISSION_TYPES = {
       'Rendition operation failed. Target fled. Team engaged by {security} — extracted with casualties.\n\nTarget was more security-conscious than assessed. Foreign Operations is reviewing the intelligence chain.',
       'Target "{alias}" proved to be a decoy. Real target alerted and went to ground. Allied service relationship strained.\n\nA review of the source chain has been initiated. We were played.',
     ],
+    deepenDays: 2,
+    partialReports: [
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\n[UNCONFIRMED] Target of interest believed to be in {city}, {country}. Role: possibly {rendition_role}. Alias unconfirmed. Security posture: unknown.\n\nSingle-source tip. Full investigation needed to confirm location and assess capture viability.',
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\nHUMINT report: individual connected to {rendition_link} may be accessible in {country}. Identity unconfirmed. Location: approximate. Legal cover status: unassessed.\n\nExecute with partial intel at reduced probability, or deepen investigation.',
+    ],
     confSuccess: [10, 18], confFail: [-12, -22],
     vars: {
       alias: ['SCORPION', 'TALON', 'BASILISK', 'COBRA', 'MANTIS', 'HORNET'],
@@ -247,6 +272,11 @@ const MISSION_TYPES = {
     failureMsgs: [
       'Assault location incorrect. Hostages had been moved before the raid. {group} has begun executing threats — {casualty_note}.\n\nIntelligence failure. The SIGINT fix was outdated. A full timeline review has been ordered.',
       'Rescue attempt failed. Alarm raised early. {hostages} status unknown. Team taking fire — exfiltration in progress.\n\n{casualty_note}.',
+    ],
+    deepenDays: 1,
+    partialReports: [
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\n[UNCONFIRMED] {hostages} believed taken by {group} in {country}. Hold site: unconfirmed — general area known only. Guard count: unknown.\n\nRapid investigation needed. Clock is running.',
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\nFLASH REPORT — {group} may be holding {hostages} in the {city} region. Details sparse. Exact location and hostage condition unknown.\n\nUrgent. Proceed with partial intel at reduced probability or deepen immediately.',
     ],
     confSuccess: [14, 22], confFail: [-20, -35],
     vars: {
@@ -290,6 +320,11 @@ const MISSION_TYPES = {
       'Operation compromised. {country} government publicly blaming foreign interference. Diplomatic fallout imminent.\n\nExpect a difficult period with {country} for the foreseeable future.',
       'Assets burned. {country} security services rolled up our in-country network. Objectives not achieved.\n\nYears of patient asset development lost. The setback to our {country} program is severe.',
     ],
+    deepenDays: 2,
+    partialReports: [
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\n[UNCONFIRMED] Political opportunity assessed in {country}. Nature of opportunity: unclear. In-country assets: unverified availability. Attribution risk: unassessed.\n\nFull investigation required to determine viability and appropriate approach.',
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\nOpposition elements in {country} have signaled interest in contact. Legitimacy unverified. Asset network in-country: status unclear.\n\nProceed with partial intel at reduced probability, or deepen investigation for full assessment.',
+    ],
     confSuccess: [8, 16], confFail: [-12, -22],
     vars: {
       regime_objective: ['support a pro-Western political transition', 'destabilize a hostile government\'s economic programs', 'influence upcoming elections toward a friendly candidate', 'support a dissident movement'],
@@ -330,6 +365,11 @@ const MISSION_TYPES = {
       '"{alias}" evaded capture in {city}. Target believed to have exited the country via {exfil}. Objective not achieved.\n\nA request for allied border monitoring has been submitted.',
       'Operation blown. "{alias}" alerted by unknown leak. Target escaped. Diplomatic immunity invoked by {country}.\n\nDamage assessment is in progress.',
     ],
+    deepenDays: 1,
+    partialReports: [
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\n[UNCONFIRMED] Possible {hvt_role} reported in {city}. Identity unconfirmed. Current activity: unknown. Security posture: unassessed.\n\nSingle tip — not yet verified. Full investigation needed before action.',
+      'PRELIMINARY ASSESSMENT — OP {codename}\n\nBorder flag or HUMINT tip suggests {hvt_role} operating in {city}. Alias unconfirmed. Location: approximate. Objective: unclear.\n\nPartial confidence. Deepen investigation for full target dossier.',
+    ],
     confSuccess: [10, 16], confFail: [-12, -20],
     vars: {
       alias: ['TARANTULA', 'PRISM', 'LANTERN', 'FOXFIRE', 'SPECTER', 'CHIMERA', 'MIRAGE', 'ANVIL'],
@@ -359,6 +399,11 @@ const MISSION_TYPES = {
         id: 'INITIAL_SURVEILLANCE',
         name: 'Phase 1: Surveillance',
         shortName: 'SURVEILLANCE',
+        deepenDays: 1,
+        partialBriefs: [
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 1\n\n[UNCONFIRMED] Subject {suspect_name} flagged as {target_type}. Location: {city}. Current movements: unknown. Associates: not identified.\n\nSurveillance not yet established. Deeper investigation needed for reliable pattern-of-life data.',
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 1\n\nSubject {suspect_name} identified as possibly {target_type}. Contact individuals: unknown. Digital anomalies: unverified.\n\nProceed with partial intel at reduced probability, or deepen investigation.',
+        ],
         invDaysRange: [3, 5],
         invDepts: ['FIELD_OPS', 'SIGINT'],
         execDaysRange: [3, 5],
@@ -389,6 +434,11 @@ const MISSION_TYPES = {
         id: 'EVIDENCE_SEARCH',
         name: 'Phase 2: Evidence Collection',
         shortName: 'EVIDENCE',
+        deepenDays: 1,
+        partialBriefs: [
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 2\n\n[UNCONFIRMED] Premises of subject {suspect_name} identified. Covert entry plan: preliminary only. Entry risk: unassessed. Search priorities: unclear.\n\nFull investigation needed before committing to a covert entry.',
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 2\n\nSearch authorization pending full preparation. Subject {suspect_name}\'s premises cased — entry window estimated but not confirmed. Evidence targets: not finalized.\n\nDeepen investigation for confirmed entry plan, or proceed at reduced probability.',
+        ],
         invDaysRange: [2, 4],
         invDepts: ['FIELD_OPS', 'COUNTER_INTEL', 'ANALYSIS'],
         execDaysRange: [1, 2],
@@ -430,6 +480,11 @@ const MISSION_TYPES = {
         id: 'APPREHENSION',
         name: 'Phase 3: Apprehension',
         shortName: 'TAKEDOWN',
+        deepenDays: 1,
+        partialBriefs: [
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 3\n\n[UNCONFIRMED] Arrest package for {suspect_name}: not fully assembled. Legal framework: under review. Optimal apprehension window: unconfirmed.\n\nDeepen investigation to finalize charge package before proceeding.',
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 3\n\nApprehension authorization for {suspect_name} pending final review. Charges: preliminary only. Arrest window: estimated, not confirmed.\n\nProceed with partial intel at reduced probability, or deepen investigation.',
+        ],
         invDaysRange: [1, 2],
         invDepts: ['COUNTER_INTEL', 'FIELD_OPS', 'ANALYSIS'],
         execDaysRange: [1, 2],
@@ -485,6 +540,11 @@ const MISSION_TYPES = {
         id: 'LOCATE',
         name: 'Phase 1: Locate Target',
         shortName: 'LOCATE',
+        deepenDays: 2,
+        partialBriefs: [
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 1\n\n[UNCONFIRMED] Target "{target_alias}" ({target_role}) believed to be in {country} — location unconfirmed. Local indicators: unverified. Advance team: not deployed.\n\nDeepen investigation to confirm presence before committing assets.',
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 1\n\nAllied service lead on "{target_alias}" in {country}. Confidence: LOW. Ground confirmation not yet obtained. SIGINT triangulation: not completed.\n\nProceed with partial intel at reduced probability, or deepen investigation.',
+        ],
         invDaysRange: [3, 5],
         invDepts: ['ANALYSIS', 'SIGINT', 'FOREIGN_OPS'],
         execDaysRange: [2, 4],
@@ -515,6 +575,11 @@ const MISSION_TYPES = {
         id: 'PATTERN_OF_LIFE',
         name: 'Phase 2: Pattern of Life',
         shortName: 'TRACKING',
+        deepenDays: 2,
+        partialBriefs: [
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 2\n\n[UNCONFIRMED] Target "{target_alias}" under observation in {city}. Daily routine: not yet mapped. Security detail: uncharacterized. Strike window: not identified.\n\nDeepen investigation for full pattern-of-life before authorizing Phase 3.',
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 2\n\nTracking of "{target_alias}" in {city} underway — preliminary only. Movement data: fragmentary. Optimal window: unknown.\n\nProceed with partial intel at reduced probability, or deepen investigation.',
+        ],
         invDaysRange: [4, 6],
         invDepts: ['FOREIGN_OPS', 'HUMINT', 'SIGINT'],
         execDaysRange: [4, 6],
@@ -549,6 +614,11 @@ const MISSION_TYPES = {
         id: 'STRIKE',
         name: 'Phase 3: Strike',
         shortName: 'STRIKE',
+        deepenDays: 1,
+        partialBriefs: [
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 3\n\n[UNCONFIRMED] Strike package for "{target_alias}" in {city}: partially assembled. Confirmed window: unverified. Extraction route: not finalized.\n\nDeepen for full strike authorization, or proceed at reduced probability.',
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 3\n\nFinal strike authorization for "{target_alias}" pending review. Strike window: estimated. Security posture: partially characterized.\n\nProceed with partial intel at reduced probability, or deepen investigation.',
+        ],
         invDaysRange: [1, 2],
         invDepts: ['ANALYSIS', 'FOREIGN_OPS'],
         execDaysRange: [2, 3],
@@ -600,6 +670,11 @@ const MISSION_TYPES = {
         id: 'DATA_TRIAGE',
         name: 'Phase 1: Data Triage',
         shortName: 'TRIAGE',
+        deepenDays: 2,
+        partialBriefs: [
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 1\n\n[UNCONFIRMED] Possible insider compromise detected. Affected data streams: uncharacterized. Suspect pool size: unknown. Department of origin: unconfirmed.\n\nDeepen investigation for full data triage before proceeding.',
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 1\n\nAccess anomalies detected — source unclear. Forensic review: not yet complete. Timing pattern: unanalyzed.\n\nProceed with partial intel at reduced probability, or deepen investigation for a confirmed suspect pool.',
+        ],
         invDaysRange: [4, 6],
         invDepts: ['ANALYSIS', 'COUNTER_INTEL', 'SIGINT'],
         execDaysRange: [2, 3],
@@ -636,6 +711,11 @@ const MISSION_TYPES = {
         id: 'TARGETED_SURVEILLANCE',
         name: 'Phase 2: Target Surveillance',
         shortName: 'SURVEILLANCE',
+        deepenDays: 1,
+        partialBriefs: [
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 2\n\n[UNCONFIRMED] Primary suspect identified from triage — surveillance not yet established. Canary trap: not activated. Behavioral profile: incomplete.\n\nDeepen investigation before proceeding to confirm suspect guilt.',
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 2\n\nSurveillance package on suspect in {suspect_dept}: authorized but preliminary results only. Canary trap status: unclear. Indicators: unverified.\n\nProceed with partial intel at reduced probability, or deepen investigation.',
+        ],
         invDaysRange: [3, 5],
         invDepts: ['COUNTER_INTEL', 'SIGINT', 'FIELD_OPS'],
         execDaysRange: [3, 4],
@@ -676,6 +756,11 @@ const MISSION_TYPES = {
         id: 'CAPTURE',
         name: 'Phase 3: Arrest',
         shortName: 'ARREST',
+        deepenDays: 1,
+        partialBriefs: [
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 3\n\n[UNCONFIRMED] Arrest package: preliminary. Warrant: pending. Optimal arrest location: not confirmed. Handler notification cut-off: not prepared.\n\nDeepen investigation to complete charge package, or proceed at reduced probability.',
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 3\n\nArrest authorization for suspect: evidence threshold not fully met. Charge documentation: incomplete. Arrest window: estimated.\n\nProceed with partial intel at reduced probability, or deepen investigation.',
+        ],
         invDaysRange: [1, 2],
         invDepts: ['COUNTER_INTEL', 'FIELD_OPS'],
         execDaysRange: [1, 1],
@@ -711,6 +796,11 @@ const MISSION_TYPES = {
         id: 'INTERROGATION',
         name: 'Phase 4: Interrogation',
         shortName: 'INTERROGATION',
+        deepenDays: 1,
+        partialBriefs: [
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 4\n\n[UNCONFIRMED] Suspect in custody. Interrogation priorities: not yet defined. Team composition: pending. Handler identity: unknown.\n\nDeepen investigation to prepare a complete debrief strategy, or proceed at reduced probability.',
+          'PARTIAL ASSESSMENT — OP {codename} / Phase 4\n\nInterrogation authorized but debrief plan: preliminary only. Subject\'s likely approach: uncharacterized. Intelligence targets: partially defined.\n\nProceed with partial intel at reduced probability, or deepen investigation.',
+        ],
         invDaysRange: [1, 2],
         invDepts: ['COUNTER_INTEL', 'ANALYSIS'],
         execDaysRange: [3, 5],

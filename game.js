@@ -314,6 +314,11 @@ function initPhaseFields(m) {
   m.successMsgs   = ph.successOutcomes;
   m.failureMsgs   = ph.failureOutcomes;
 
+  m.partialReport = ph.partialBriefs ? fillTemplate(pick(ph.partialBriefs), m.currentPhaseFillVars) : null;
+  m.intelDepth    = 0;
+  m.deepenDays    = ph.deepenDays || 1;
+  m.deepening     = false;
+
   m.assignedInvDept    = null;
   m.invDaysLeft        = 0;
   m.assignedBudget     = 0;
@@ -385,6 +390,10 @@ function spawnMission(forcedType) {
       opNarrative:   tmpl.opNarrative || '',
       initialReport: fillTemplate(pick(tmpl.initialReports), fillVars),
       fullReport:    fillTemplate(pick(tmpl.fullReports),    fillVars),
+      partialReport: tmpl.partialReports ? fillTemplate(pick(tmpl.partialReports), fillVars) : null,
+      intelDepth:    0,
+      deepenDays:    tmpl.deepenDays || 1,
+      deepening:     false,
       successMsgs:   tmpl.successMsgs,
       failureMsgs:   tmpl.failureMsgs,
       confSuccess:   tmpl.confSuccess,
@@ -449,6 +458,15 @@ function advanceDay() {
 }
 
 function completeInvestigation(m) {
+  if (m.deepening) {
+    m.intelDepth      = 1;
+    m.deepening       = false;
+    m.assignedInvDept = null;
+    addLog(`Deep investigation complete: OP ${m.codename} — Full intel confirmed.`, 'log-info');
+    m.status = 'READY';
+    render(); return;
+  }
+
   m.assignedInvDept = null; // frees the dept unit automatically
 
   if (m.isMultiPhase) {
@@ -667,14 +685,34 @@ window.falseFlagReinvestigate = function(missionId) {
   render();
 };
 
+window.deepenInvestigation = function(missionId) {
+  const m = getMission(missionId);
+  if (!m || m.status !== 'READY') return;
+  let deepenDeptId = null;
+  for (const did of m.invDepts) {
+    if (deptAvail(did) > 0) { deepenDeptId = did; break; }
+  }
+  if (!deepenDeptId) {
+    addLog(`No departments available to deepen investigation for OP ${m.codename}.`, 'log-warn');
+    render(); return;
+  }
+  m.deepening       = true;
+  m.status          = 'INVESTIGATING';
+  m.assignedInvDept = deepenDeptId;
+  m.invDaysLeft     = m.deepenDays;
+  addLog(`Deep investigation initiated: OP ${m.codename}. ${G.depts[deepenDeptId].short} assigned for ${m.deepenDays} day(s).`, 'log-info');
+  render();
+};
+
 // =============================================================================
 // OPERATION MODAL
 // =============================================================================
 
 function calcOpProb(m, budget, depts) {
-  const minBudget = Math.max(1, Math.floor(m.baseBudget * 0.5));
-  const penalty   = m.phaseFalseFlagPenalty ? 25 : 0;
-  let p = 35 - penalty;
+  const minBudget    = Math.max(1, Math.floor(m.baseBudget * 0.5));
+  const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
+  const fuzzyPenalty = (m.intelDepth === 0 && m.partialReport) ? 15 : 0;
+  let p = 35 - falseFlagPenalty - fuzzyPenalty;
   p += Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
   p += depts.filter(d =>  m.execDepts.includes(d)).length * 12; // recommended
   p += depts.filter(d => !m.execDepts.includes(d)).length *  5; // optional
@@ -704,6 +742,9 @@ function openOperationModal(missionId) {
   const penaltyNote = m.phaseFalseFlagPenalty
     ? `<div class="op-penalty-note">⚠ ANOMALY PENALTY: −25% success probability due to inconclusive investigation.</div>`
     : '';
+  const fuzzyNote = (m.intelDepth === 0 && m.partialReport)
+    ? `<div class="op-penalty-note op-penalty-fuzzy">⚠ PARTIAL INTEL: −15% success probability. Deepen investigation for full intel.</div>`
+    : '';
   const initProb = calcOpProb(m, defBudget, selectedDepts);
 
   // Build department rows: recommended first, then others
@@ -731,7 +772,7 @@ function openOperationModal(missionId) {
 
   document.getElementById('modal-title').textContent = `OP ${m.codename}${phaseLabel} — CONFIGURE OPERATION`;
   document.getElementById('modal-body').innerHTML = `
-    ${penaltyNote}
+    ${penaltyNote}${fuzzyNote}
     <div class="modal-section">
       <div class="modal-section-title">OPERATION PLAN</div>
       <div class="op-narrative">${m.opNarrative}</div>
@@ -1231,7 +1272,11 @@ function renderDetail() {
     const progress   = Math.round(((m.invDays - m.invDaysLeft) / m.invDays) * 100);
     const deptName   = G.depts[m.assignedInvDept]?.name || '—';
     const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name}` : '';
+    const deepeningNote = m.deepening
+      ? `<div class="intel-deepening-note">DEEP INVESTIGATION IN PROGRESS — Full intel package being assembled.</div>`
+      : '';
     content += `
+      ${deepeningNote}
       <div class="dc-section">
         <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
         <div class="dc-report">${m.initialReport}</div>
@@ -1265,11 +1310,34 @@ function renderDetail() {
           </div>
         </div>
       `;
-    } else {
+    } else if (m.intelDepth === 0 && m.partialReport) {
       const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
       content += `
         <div class="dc-section">
-          <div class="dc-section-title">INTELLIGENCE BRIEF — CLASSIFIED${phaseLabel}</div>
+          <div class="dc-section-title">PRELIMINARY INTELLIGENCE BRIEF${phaseLabel} <span class="intel-depth-note">[PARTIAL — UNCONFIRMED]</span></div>
+          <div class="dc-report intel-partial">${m.partialReport}</div>
+        </div>
+        <div class="dc-actions">
+          <button class="btn-primary" onclick="openOperationModal('${m.id}')"
+            data-tip="Execute with partial intel. −15% success probability penalty.">
+            EXECUTE WITH PARTIAL INTEL
+          </button>
+          <button class="btn-neutral" onclick="deepenInvestigation('${m.id}')"
+            data-tip="Commit a department to deepen investigation for full intel. Costs ${m.deepenDays} additional day(s).">
+            DEEPEN INVESTIGATION
+          </button>
+          <button class="btn-danger" onclick="dismissMission('${m.id}')"
+            data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive without action.'}">
+            ARCHIVE — DO NOT ACT
+          </button>
+        </div>
+      `;
+    } else {
+      const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
+      const confirmedBadge = m.intelDepth === 1 ? `<span class="intel-confirmed-badge">FULL INTEL CONFIRMED</span>` : '';
+      content += `
+        <div class="dc-section">
+          <div class="dc-section-title">INTELLIGENCE BRIEF — CLASSIFIED${phaseLabel} ${confirmedBadge}</div>
           <div class="dc-report">${m.fullReport}</div>
         </div>
         <div class="dc-actions">

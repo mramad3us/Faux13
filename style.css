@@ -1526,3 +1526,50 @@ html, body {
   border-color: var(--red);
   background: rgba(231, 76, 60, 0.7);
 }
+
+/* ============================================================
+   V1.4 — FUZZY INTEL CLASSES
+   ============================================================ */
+.intel-partial {
+  border-left: 3px solid var(--amber);
+  padding-left: 10px;
+  color: var(--text);
+  opacity: 0.9;
+}
+.intel-depth-note {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--amber);
+  letter-spacing: 0.5px;
+  font-weight: normal;
+}
+.intel-confirmed-badge {
+  display: inline-block;
+  background: var(--green-dim);
+  color: var(--green);
+  font-size: 9px;
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  border: 1px solid var(--green);
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.intel-deepening-note {
+  background: rgba(61, 158, 255, 0.08);
+  border: 1px solid rgba(61, 158, 255, 0.25);
+  border-left: 3px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  border-radius: var(--radius);
+}
+.op-penalty-fuzzy {
+  background: rgba(243, 156, 18, 0.08);
+  border-color: rgba(243, 156, 18, 0.3);
+  color: var(--amber);
+}
