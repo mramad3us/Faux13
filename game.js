@@ -288,6 +288,13 @@ let G = {
 };
 
 // =============================================================================
+// HOOK SYSTEM — allows feature files to extend core without editing game.js
+// =============================================================================
+const _hooks = {};
+function hook(name, fn) { (_hooks[name] = _hooks[name] || []).push(fn); }
+function fire(name, data) { for (const fn of _hooks[name] || []) fn(data); }
+
+// =============================================================================
 // UTILITIES
 // =============================================================================
 
@@ -394,6 +401,7 @@ function startGame(countryCode) {
     relations: initRelations(cfg),
   };
   showScreen('game');
+  fire('game:start', G);
   spawnMission();
   if (Math.random() < 0.7) spawnMission();
   addLog(`Agency ${cfg.acronym} operational. Day 1.`, 'log-info');
@@ -595,6 +603,7 @@ function spawnMission(forcedType) {
   }
 
   G.missions.unshift(mission);
+  fire('mission:spawned', { mission });
   addLog(`New mission received: OP ${codename} [${tmpl.label}]`);
   G.nextSpawnDay = G.day + randInt(3, 8);
 }
@@ -605,6 +614,7 @@ function spawnMission(forcedType) {
 
 function advanceDay() {
   G.day++;
+  fire('day:pre', G);
 
   for (const m of G.missions) {
     if (['INCOMING', 'READY', 'PHASE_COMPLETE', 'DEAD_END'].includes(m.status)) {
@@ -665,6 +675,7 @@ function advanceDay() {
     }
   }
 
+  fire('day:post', G);
   checkGameOver();
   render();
   if (G.selected && !getMission(G.selected)) G.selected = null;
@@ -726,6 +737,7 @@ function completeInvestigation(m) {
   }
 
   m.status = 'READY';
+  fire('investigation:complete', { mission: m, outcome });
 }
 
 function expireMission(m) {
@@ -778,6 +790,7 @@ function resolveOperation(m) {
       registerOrUpdateHvtFailed(m);
       addLog(`FAILURE: OP ${m.codename}. ${confLoss}% confidence.`, 'log-fail');
     }
+    fire('operation:resolved', { mission: m, success });
     // Agency favor relation delta
     if (m.favorOf && G.relations?.[m.favorOf]) {
       const rel   = G.relations[m.favorOf];
@@ -1034,6 +1047,7 @@ function calcOpProb(m, budget, depts, selectedSupport) {
   p += Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
   p += depts.filter(d =>  m.execDepts.includes(d)).length * 12; // recommended
   p += depts.filter(d => !m.execDepts.includes(d)).length *  5; // optional
+  for (const fn of _hooks['calcProb:modify'] || []) p = fn({ mission: m, prob: p, budget, depts });
   return clamp(p, 10, 92);
 }
 
@@ -1774,6 +1788,7 @@ function render() {
   renderActiveOps();
   renderThreats();
   renderLog();
+  fire('render:after', G);
 }
 
 function renderHeader() {
