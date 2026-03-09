@@ -486,6 +486,12 @@ function buildIntelFields(src, fillVars) {
 function initPhaseFields(m) {
   const ph = m.phases[m.currentPhaseIndex];
   const phFillVars = resolveVars(ph.vars || {}, m.fillVars);
+
+  // Build intel fields first so their resolved values can be used in briefs
+  const intelFields = buildIntelFields(ph, phFillVars);
+  for (const f of intelFields) {
+    if (f.key && f.value && f.value !== '—') phFillVars[f.key] = f.value;
+  }
   m.currentPhaseFillVars = phFillVars;
 
   m.invDays      = randInt(...ph.invDaysRange);
@@ -501,7 +507,7 @@ function initPhaseFields(m) {
   m.successMsgs   = ph.successOutcomes;
   m.failureMsgs   = ph.failureOutcomes;
 
-  m.intelFields    = buildIntelFields(ph, phFillVars);
+  m.intelFields    = intelFields;
   m.intelBonus     = false;
   m.blown          = false;
   m.blownDaysLeft  = 0;
@@ -594,6 +600,11 @@ function spawnMission(forcedType) {
       ? fillTemplate(tmpl.agencyJustification, fillVars) : '';
     initPhaseFields(mission);
   } else {
+    // Build intel fields first so resolved values can be used in briefs
+    const missionIntelFields = buildIntelFields(tmpl, fillVars);
+    for (const f of missionIntelFields) {
+      if (f.key && f.value && f.value !== '—') fillVars[f.key] = f.value;
+    }
     Object.assign(mission, {
       invDays:    randInt(...tmpl.invDaysRange),
       execDays:   randInt(...tmpl.execDaysRange),
@@ -607,7 +618,7 @@ function spawnMission(forcedType) {
       failureMsgs:   tmpl.failureMsgs,
       confSuccess:   tmpl.confSuccess,
       confFail:      tmpl.confFail,
-      intelFields:   buildIntelFields(tmpl, fillVars),
+      intelFields:   missionIntelFields,
       intelBonus:    false,
       blown:         false,
       blownDaysLeft: 0,
@@ -1736,6 +1747,21 @@ function hvtBriefingPopup(type, h, extra) {
   });
 }
 
+var MAX_NEUTRALIZED_HVTS = 5;
+
+function pruneNeutralizedHvts() {
+  var neutralized = [];
+  for (var i = 0; i < G.hvts.length; i++) {
+    if (G.hvts[i].status === 'NEUTRALIZED') neutralized.push(i);
+  }
+  if (neutralized.length <= MAX_NEUTRALIZED_HVTS) return;
+  // Remove oldest (lowest index = earliest added) until at limit
+  var toRemove = neutralized.slice(0, neutralized.length - MAX_NEUTRALIZED_HVTS);
+  for (var j = toRemove.length - 1; j >= 0; j--) {
+    G.hvts.splice(toRemove[j], 1);
+  }
+}
+
 function registerOrUpdateHvt(m) {
   if (!HVT_REGISTER_TYPES.has(m.typeId)) return;
 
@@ -1746,6 +1772,7 @@ function registerOrUpdateHvt(m) {
       const h = G.hvts.find(x => x.id === linkedHvtId);
       if (h) {
         h.surveillanceEstablished = true;
+        h.gaps = [];
         if (h.status === 'ACTIVE') h.status = 'TRACKED';
         addLog(`Surveillance established on ${h.alias}.`, 'log-info');
         hvtBriefingPopup('tracked', h, { codename: m.codename });
@@ -1913,8 +1940,69 @@ window.spawnHvtMission = function(hvtId, typeId) {
   spawnMission(typeId);
   const newest = G.missions[0];
   if (newest) {
-    newest.codename = h.alias;
     newest.linkedHvtId = hvtId;
+    // Override location to match HVT's known location
+    const oldCity    = newest.city;
+    const oldCountry = newest.country;
+    if (h.knownFields?.city)    newest.city    = h.knownFields.city;
+    if (h.knownFields?.country) newest.country = h.knownFields.country;
+    // Override target identity in fillVars and re-stamp all baked text fields
+    if (newest.fillVars) {
+      if (h.knownFields?.city)    newest.fillVars.city    = h.knownFields.city;
+      if (h.knownFields?.country) newest.fillVars.country = h.knownFields.country;
+      const oldAlias = newest.fillVars.alias || newest.fillVars.target_alias || newest.fillVars.suspect_name;
+      const oldRole  = newest.fillVars.hvt_role || newest.fillVars.target_role || newest.fillVars.rendition_role;
+      newest.fillVars.alias = h.alias;
+      newest.fillVars.target_alias = h.alias;
+      newest.fillVars.suspect_name = h.alias;
+      if (h.role) {
+        newest.fillVars.hvt_role = h.role;
+        newest.fillVars.target_role = h.role;
+        newest.fillVars.rendition_role = h.role;
+      }
+      // Replace old alias/role/location in all pre-rendered text fields
+      const textFields = ['initialReport', 'fullReport', 'opNarrative', 'agencyJustification'];
+      for (const f of textFields) {
+        if (newest[f] && typeof newest[f] === 'string') {
+          if (oldAlias) newest[f] = newest[f].split(oldAlias).join(h.alias);
+          if (oldRole && h.role) newest[f] = newest[f].split(oldRole).join(h.role);
+          if (oldCity && newest.city && oldCity !== newest.city) newest[f] = newest[f].split(oldCity).join(newest.city);
+          if (oldCountry && newest.country && oldCountry !== newest.country) newest[f] = newest[f].split(oldCountry).join(newest.country);
+        }
+      }
+      // Also fix intel field values
+      if (newest.intelFields) {
+        for (const field of newest.intelFields) {
+          if (field.value && typeof field.value === 'string') {
+            if (oldAlias) field.value = field.value.split(oldAlias).join(h.alias);
+            if (oldRole && h.role) field.value = field.value.split(oldRole).join(h.role);
+            if (oldCity && newest.city && oldCity !== newest.city) field.value = field.value.split(oldCity).join(newest.city);
+            if (oldCountry && newest.country && oldCountry !== newest.country) field.value = field.value.split(oldCountry).join(newest.country);
+          }
+        }
+      }
+      // Fix success/failure message templates (arrays of strings, rendered later)
+      for (const arr of ['successMsgs', 'failureMsgs']) {
+        if (Array.isArray(newest[arr])) {
+          newest[arr] = newest[arr].map(s => {
+            if (oldAlias) s = s.split(oldAlias).join(h.alias);
+            if (oldRole && h.role) s = s.split(oldRole).join(h.role);
+            if (oldCity && newest.city && oldCity !== newest.city) s = s.split(oldCity).join(newest.city);
+            if (oldCountry && newest.country && oldCountry !== newest.country) s = s.split(oldCountry).join(newest.country);
+            return s;
+          });
+        }
+      }
+      // Fix suspects array so hvtAliasFromMission returns correctly
+      if (newest.suspects) {
+        for (const sus of newest.suspects) {
+          if (sus.isTarget) {
+            sus.alias = h.alias;
+            if (h.role) sus.role = h.role;
+          }
+        }
+      }
+    }
     if (!h.linkedMissionIds.includes(newest.id)) h.linkedMissionIds.push(newest.id);
     addLog(`New mission spawned for target ${h.alias}: OP ${newest.codename}.`, 'log-info');
   }
@@ -2576,6 +2664,7 @@ function renderThreats() {
   const countEl = document.getElementById('threat-count');
   const panelEl = document.getElementById('threats-panel');
   if (!countEl || !panelEl) return;
+  pruneNeutralizedHvts();
 
   const tracked     = G.hvts.filter(h => h.status === 'ACTIVE' || h.status === 'DETAINED' || h.status === 'TRACKED');
   countEl.textContent = tracked.length;
@@ -2605,7 +2694,7 @@ function renderThreats() {
         <span class="threat-field-val">${v}</span>
       </div>`).join('');
 
-    const gapsHtml = h.gaps && h.gaps.length > 0
+    const gapsHtml = h.gaps && h.gaps.length > 0 && h.status === 'ACTIVE'
       ? `<div class="threat-gaps">
           <div class="threat-gaps-title">INTEL GAPS</div>
           ${h.gaps.map(g => `<div class="threat-gap-item">• ${g}</div>`).join('')}
@@ -2617,11 +2706,27 @@ function renderThreats() {
       return m ? `<span class="threat-linked-badge" onclick="selectMission('${mid}')" style="cursor:pointer">OP ${m.codename}</span>` : '';
     }).filter(Boolean).join('');
 
+    // Check if there's already an active player-initiated mission for this threat
+    const activeMissionStatuses = new Set(['INCOMING', 'INVESTIGATING', 'READY', 'BRIEF_READY', 'EXECUTING', 'PHASE_COMPLETE']);
+    const hasActiveMission = G.missions.some(m =>
+      m.linkedHvtId === h.id && activeMissionStatuses.has(m.status)
+    );
+    const hasActiveOrgOp = h.linkedPlotId && G.missions.some(m =>
+      (m.isOrgInfiltration || m.isOrgTakedown) &&
+      m.plotId === h.linkedPlotId &&
+      activeMissionStatuses.has(m.status)
+    );
+    const opBusy = hasActiveMission || hasActiveOrgOp;
+    const busyTip = 'An operation targeting this threat is already in progress.';
+
     // Status-specific action sections
     let actionSection = '';
 
+    if (opBusy) {
+      actionSection = `<div class="surv-indicator" style="color:var(--accent)">◉ OPERATION IN PROGRESS</div>`;
+    }
     // ORG entries have their own action logic (infiltrate / takedown)
-    if (h.type === 'ORG' && h.linkedPlotId && h.status === 'ACTIVE') {
+    else if (h.type === 'ORG' && h.linkedPlotId && h.status === 'ACTIVE') {
       const plot = G.plots?.find(p => p.id === h.linkedPlotId);
       if (plot) {
         const intel = plot.knownIntel || {};

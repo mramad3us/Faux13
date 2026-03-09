@@ -116,6 +116,13 @@
     // Migrate old saves: re-fill mission text fields that may contain raw placeholders
     migrateMissionText();
 
+    // Clear intel gaps on tracked/detained/neutralized HVTs from old saves
+    if (G.hvts) {
+      for (var i = 0; i < G.hvts.length; i++) {
+        if (G.hvts[i].status !== 'ACTIVE') G.hvts[i].gaps = [];
+      }
+    }
+
     showScreen('game');
     render();
     addLog('Game loaded.', 'log-info');
@@ -143,9 +150,21 @@
     const textFields = ['opNarrative', 'initialReport', 'fullReport', 'agencyJustification', 'resultMsg'];
     for (const m of G.missions) {
       const vars = Object.assign({}, baseVars, m.fillVars || {});
+      // Merge resolved intel field values into vars so bracket placeholders can be fixed
+      if (m.intelFields) {
+        for (const f of m.intelFields) {
+          if (f.key && f.value && f.value !== '—') vars[f.key] = f.value;
+        }
+      }
       for (const field of textFields) {
-        if (m[field] && typeof m[field] === 'string' && m[field].includes('{')) {
-          m[field] = fillTemplate(m[field], vars);
+        if (m[field] && typeof m[field] === 'string') {
+          if (m[field].includes('{')) m[field] = fillTemplate(m[field], vars);
+          // Fix bracket-format [key] from earlier failed second-pass resolution
+          if (m[field].includes('[')) {
+            m[field] = m[field].replace(/\[(\w+)\]/g, function (match, key) {
+              return vars[key] !== undefined ? vars[key] : match;
+            });
+          }
         }
       }
       // Also fix intel field values with unresolved placeholders
