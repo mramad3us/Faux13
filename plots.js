@@ -252,6 +252,72 @@ function createPlot() {
 }
 
 // =============================================================================
+// GEO-EVENT INTEGRATION — create theater-specific plots
+// =============================================================================
+
+hook('geo:spawnOrg', function (data) {
+  if (!G.plots || G.plots.length >= 6) return;
+
+  var theater = data.theater;
+  if (!theater) return;
+
+  // Pick org type matching theater profile
+  var matchingTypes = PLOT_ORG_TYPES.filter(function (ot) {
+    return data.orgTypes.indexOf(ot.type) >= 0;
+  });
+  if (matchingTypes.length === 0) matchingTypes = PLOT_ORG_TYPES;
+  var orgType = pick(matchingTypes);
+
+  var totalSteps = randInt(4, 7);
+  var flagThreshold = randInt(2, 3);
+
+  // Use theater location
+  var loc = pick(theater.cities);
+  var city = loc.city;
+  var country = loc.country;
+
+  var leaderAlias = pick(LEADER_ALIASES);
+  var lieutenants = [];
+  var ltCount = randInt(2, 4);
+  for (var i = 0; i < ltCount; i++) {
+    lieutenants.push({ role: pick(LIEUTENANT_ROLES), known: false, neutralized: false });
+  }
+
+  var plot = {
+    id: 'P' + (++G.plotIdCounter),
+    fileName: generateFileName(),
+    orgName: generateOrgName(),
+    orgType: orgType.type,
+    orgLabel: orgType.label,
+    orgDesc: pick(orgType.descs),
+    objective: pick(orgType.objectives),
+    missionPool: orgType.missionPool,
+    threat: randInt(orgType.threatBase[0], orgType.threatBase[1]),
+    region: 'FOREIGN',
+    baseCity: city,
+    baseCountry: country,
+    leaderAlias: leaderAlias,
+    lieutenants: lieutenants,
+    totalSteps: totalSteps,
+    currentStep: 0,
+    missions: [],
+    flagged: false,
+    flaggedDay: null,
+    flagStepThreshold: flagThreshold,
+    status: 'ACTIVE',
+    infiltrated: false,
+    createdDay: G.day,
+    nextMissionDay: G.day + randInt(1, 3),
+    missionInterval: [4, 8], // slightly faster than normal — crisis-born
+    knownIntel: { type: false, leader: false, objective: false, strength: false, baseLocation: false },
+    geoTheaterId: data.theaterId,
+  };
+
+  G.plots.push(plot);
+  addLog('GEO: New organization identified in ' + theater.name + ' — crisis-linked activity detected in ' + city + ', ' + country + '.', 'log-warn');
+});
+
+// =============================================================================
 // MISSION SPAWNING FOR PLOTS
 // =============================================================================
 
@@ -274,6 +340,17 @@ function spawnPlotMission(plot) {
   m.plotStep = step;
   m.plotFileName = plot.flagged ? plot.fileName : null;
   m.plotOrgName = plot.flagged ? plot.orgName : null;
+
+  // Override location for geo-linked orgs to stay in theater
+  if (plot.geoTheaterId && typeof THEATERS !== 'undefined' && THEATERS[plot.geoTheaterId]) {
+    var tCities = THEATERS[plot.geoTheaterId].cities;
+    if (tCities && tCities.length > 0) {
+      var tLoc = pick(tCities);
+      m.city = tLoc.city;
+      m.country = tLoc.country;
+      if (m.fillVars) { m.fillVars.city = tLoc.city; m.fillVars.country = tLoc.country; }
+    }
+  }
 
   // Escalate threat based on arc progress
   var progress = step / Math.max(1, plot.totalSteps - 1);
