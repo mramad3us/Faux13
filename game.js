@@ -2905,6 +2905,15 @@ function renderReadingPane() {
     ? `<div class="favor-banner"><span class="favor-lbl">FAVOR</span> <span class="favor-agency">${m.favorAgencyName || m.favorOf}</span> — Complete to improve inter-agency relations.</div>`
     : '';
 
+  // Find linked threat/org for this mission
+  let linkedThreatBadge = '';
+  if (m.linkedHvtId) {
+    const lh = G.hvts.find(h => h.id === m.linkedHvtId);
+    if (lh) linkedThreatBadge = `<span class="dc-badge dc-badge-linked" data-tip="Linked ${lh.type}">${lh.type}: ${lh.alias || lh.name}</span>`;
+  } else if (m.plotFileName) {
+    linkedThreatBadge = `<span class="dc-badge dc-badge-linked" data-tip="Linked case file">FILE: ${m.plotFileName}</span>`;
+  }
+
   let bodyContent = `
     ${favorBannerHtml}
     <div class="dc-meta-row">
@@ -2912,6 +2921,7 @@ function renderReadingPane() {
       <span class="dc-badge ${threatCls}" data-tip="Threat ${m.threat}/5.">THREAT: ${threatLabel}</span>
       <span class="dc-badge ${locCls}">${m.location === 'FOREIGN' ? `${m.city}, ${m.country}` : `${m.city} [DOMESTIC]`}</span>
       <span class="dc-badge">DEADLINE: ${m.urgencyLeft}d</span>
+      ${linkedThreatBadge}
     </div>
     ${renderPhaseRoadmap(m)}
   `;
@@ -3419,7 +3429,7 @@ function renderThreats() {
 
     const linkedBadges = h.linkedMissionIds.map(mid => {
       const m = getMission(mid);
-      return m ? `<span class="threat-linked-badge" onclick="selectMission('${mid}')" style="cursor:pointer">OP ${m.codename}</span>` : '';
+      return m ? `<span class="threat-linked-badge" onclick="followMission('${mid}')" style="cursor:pointer">OP ${m.codename}</span>` : '';
     }).filter(Boolean).join('');
 
     // Check if there's already an active player-initiated mission for this threat
