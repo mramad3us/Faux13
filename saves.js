@@ -117,9 +117,19 @@
     migrateMissionText();
 
     // Clear intel gaps on tracked/detained/neutralized HVTs from old saves
+    // Also fix UNKNOWN aliases from favor missions in old saves
     if (G.hvts) {
       for (var i = 0; i < G.hvts.length; i++) {
         if (G.hvts[i].status !== 'ACTIVE') G.hvts[i].gaps = [];
+        if (G.hvts[i].alias === 'UNKNOWN' && G.hvts[i].linkedMissionIds) {
+          for (var j = 0; j < G.hvts[i].linkedMissionIds.length; j++) {
+            var lm = G.missions.find(function (m) { return m.id === G.hvts[i].linkedMissionIds[j]; });
+            if (lm) {
+              var recovered = hvtAliasFromMission(lm);
+              if (recovered && recovered !== 'UNKNOWN') { G.hvts[i].alias = recovered; break; }
+            }
+          }
+        }
       }
     }
 

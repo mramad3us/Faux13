@@ -1611,12 +1611,14 @@ const HVT_DETAINED_TYPES  = new Set(['RENDITION', 'SURVEILLANCE_TAKEDOWN', 'FAVO
 function hvtAliasFromMission(m) {
   if (m.selectedSuspectIdx !== null && m.suspects?.[m.selectedSuspectIdx])
     return m.suspects[m.selectedSuspectIdx].alias;
-  return m.fillVars?.alias || m.fillVars?.target_alias || m.fillVars?.suspect_name || 'UNKNOWN';
+  var v = m.fillVars || {};
+  return v.alias || v.target_alias || v.suspect_name || v.detention_subject || v.rendition_target || v.extraction_target || v.codename || 'UNKNOWN';
 }
 function hvtRoleFromMission(m) {
   if (m.selectedSuspectIdx !== null && m.suspects?.[m.selectedSuspectIdx])
     return m.suspects[m.selectedSuspectIdx].role;
-  return m.fillVars?.hvt_role || m.fillVars?.target_role || m.fillVars?.rendition_role || 'Unknown';
+  var v = m.fillVars || {};
+  return v.hvt_role || v.target_role || v.rendition_role || v.subject_profile || 'Unknown';
 }
 
 // =============================================================================
@@ -1703,6 +1705,18 @@ const HVT_POPUP_TEXT = {
     ],
     category: 'DETAINEE TRANSFERRED',
     accent: 'rgba(41, 128, 185, 0.9)',
+  },
+  lostSurveillance: {
+    intros: [
+      'The operation went wrong — and the target knows it. Within hours of the failed attempt, the subject abandoned all known patterns. Safehouses emptied, phones discarded, contacts scattered. Our surveillance network is blind.',
+      'They made us. The botched operation triggered an immediate security protocol — countersurveillance sweeps, route changes, new communication channels. Months of careful observation, gone in an instant.',
+      'The failed strike had consequences beyond the mission itself. The target has gone underground — vanished from every surveillance feed, every intercept, every pattern of life we painstakingly built. We\'re back to square one.',
+      'The watchers report the target\'s apartment is empty. Neighbors say a moving van came in the night. Phones are dead, email accounts deleted, known associates unreachable. The surveillance net has been shredded.',
+      'It was inevitable — a failed direct action always carries this risk. The target is in the wind now, likely under protective custody or operating through cutouts. Every asset we positioned has been burned.',
+      'The aftermath is worse than the failure itself. Not only did the operation fail, but the target has activated what appears to be a pre-planned escape protocol. They were ready for us. We were not ready for this.',
+    ],
+    category: 'SURVEILLANCE LOST',
+    accent: 'rgba(231, 76, 60, 0.85)',
   },
 };
 
@@ -1853,7 +1867,25 @@ function registerOrUpdateHvt(m) {
   }
 }
 
+const HVT_SURVLOSS_TYPES = new Set([
+  'HVT_ABDUCTION_DOM', 'HVT_ABDUCTION_FOR',
+  'DOMESTIC_HVT', 'FOREIGN_HVT', 'LONG_HUNT_HVT', 'RENDITION', 'SURVEILLANCE_TAKEDOWN',
+]);
+
 function registerOrUpdateHvtFailed(m) {
+  // Failed abduct/eliminate on a TRACKED HVT → lose surveillance
+  if (HVT_SURVLOSS_TYPES.has(m.typeId) && m.linkedHvtId) {
+    const h = G.hvts.find(x => x.id === m.linkedHvtId);
+    if (h && h.status === 'TRACKED') {
+      h.status = 'ACTIVE';
+      h.surveillanceEstablished = false;
+      h.gaps = ['Current location unconfirmed', 'Security detail size unknown', 'Subject adopted new patterns'];
+      addLog(`SURVEILLANCE LOST: ${h.alias} has gone underground after failed operation.`, 'log-fail');
+      hvtBriefingPopup('lostSurveillance', h, { codename: m.codename });
+      return;
+    }
+  }
+
   if (!HVT_FAIL_TYPES.has(m.typeId)) return;
   const idx = G.hvts.findIndex(h => h.linkedMissionIds.includes(m.id));
   if (idx >= 0) {
@@ -2688,11 +2720,23 @@ function renderThreats() {
     };
     const statusChip = statusChipMap[h.status] || `<span class="threat-status-chip">${h.status}</span>`;
 
-    const knownHtml = Object.entries(h.knownFields || {}).filter(([, v]) => v).map(([k, v]) =>
-      `<div class="threat-field-row">
+    const knownHtml = Object.entries(h.knownFields || {}).filter(([, v]) => v).map(([k, v]) => {
+      const val = String(v);
+      // Multi-value fields (comma-separated) get bullet points — except location fields
+      const locationKeys = new Set(['city', 'country', 'baselocation', 'base', 'location', 'address']);
+      const parts = val.includes(',') && !locationKeys.has(k.toLowerCase()) ? val.split(',').map(s => s.trim()).filter(Boolean) : null;
+      const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+      if (parts && parts.length > 1) {
+        return `<div class="threat-field-row threat-field-block">
+          <span class="threat-field-key">${k.toUpperCase()}</span>
+          <div class="threat-field-list">${parts.map(p => `<div class="threat-field-list-item">▸ ${capitalize(p)}</div>`).join('')}</div>
+        </div>`;
+      }
+      return `<div class="threat-field-row">
         <span class="threat-field-key">${k.toUpperCase()}</span>
-        <span class="threat-field-val">${v}</span>
-      </div>`).join('');
+        <span class="threat-field-val">${capitalize(val)}</span>
+      </div>`;
+    }).join('');
 
     const gapsHtml = h.gaps && h.gaps.length > 0 && h.status === 'ACTIVE'
       ? `<div class="threat-gaps">

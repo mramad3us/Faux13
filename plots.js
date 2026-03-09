@@ -661,6 +661,34 @@ hook('operation:resolved', function (data) {
         plot.orgName + ' survives. Inside asset compromised. Expect retaliation.',
         'log-fail'
       );
+      // Briefing popup — infiltration compromised
+      var takedownFailIntros = [
+        'The takedown operation against ' + plot.orgName + ' has failed catastrophically. Worse — the organization has identified our inside asset. The infiltration is burned. Months of patient work, undone in a single botched assault.',
+        'It went wrong from the start. The assault teams met prepared resistance — someone tipped them off, or our operational security was compromised. Either way, our infiltration of ' + plot.orgName + ' is over. The inside asset has gone silent.',
+        'The operation collapsed under its own weight. ' + plot.orgName + '\'s leadership escaped the net, and in the aftermath, our inside asset was exposed. They are presumed compromised — possibly dead. The organization will go to ground and restructure.',
+        'Total failure. Not only did ' + plot.orgName + ' survive the takedown attempt, they now know we were inside. Counter-intelligence sweeps have already begun within the organization. Our infiltration capability is destroyed.',
+        'The assault teams breached, but the leadership wasn\'t where we expected. A decoy operation — they were ready for us. In the chaos that followed, our inside asset\'s cover was blown. ' + plot.orgName + ' will purge its ranks and emerge harder to penetrate than before.',
+        'The takedown was repelled. ' + plot.orgName + '\'s security protocols held, and our operational footprint gave away the infiltration. The inside asset has been burned. Any future attempt to penetrate this organization will start from zero.',
+      ];
+      var takedownFailClosers = [
+        'Re-infiltration will be necessary before any further action against this organization. They will be on high alert — this will not be easy.',
+        'The organization will restructure, change communication protocols, and purge suspected informants. A new infiltration operation must be mounted from scratch.',
+        'All intelligence gained through the infiltration remains valid, but our access is gone. Rebuilding will require a fresh approach and considerable patience.',
+        'The path forward is clear but painful: rebuild the infiltration from nothing. The organization knows we are watching. They will not make it easy.',
+      ];
+      queueBriefingPopup({
+        title: 'TAKEDOWN FAILED — INFILTRATION BURNED',
+        category: 'OPERATIONAL FAILURE',
+        subtitle: 'FILE ' + plot.fileName + ' — ' + plot.orgName,
+        accent: 'rgba(231, 76, 60, 0.9)',
+        body: pick(takedownFailIntros) + '<br><br>' + pick(takedownFailClosers) +
+          '<div style="margin-top:12px;padding:8px 10px;border:1px solid rgba(231,76,60,0.3);border-left:3px solid rgba(231,76,60,0.6);border-radius:4px;background:rgba(231,76,60,0.05)">' +
+            '<div style="font-size:11px;font-weight:700;letter-spacing:0.5px;color:rgba(231,76,60,0.95)">' + plot.orgName + '</div>' +
+            '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">FILE: ' + plot.fileName + ' · STATUS: DORMANT · INFILTRATION: COMPROMISED</div>' +
+            '<div style="font-size:9px;margin-top:3px;letter-spacing:0.8px;color:rgba(243,156,18,0.9)">ACTION REQUIRED: RE-INFILTRATION</div>' +
+          '</div>',
+        buttonLabel: 'ACKNOWLEDGED',
+      });
     }
     return;
   }

@@ -1770,10 +1770,13 @@ html, body {
 .threat-status-neutralized{ background: rgba(45,204,112,0.10); color: var(--green); border: 1px solid var(--green-dim); }
 .threat-role { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
 .threat-org  { font-size: 9px;  color: var(--text-dim); opacity: 0.7; margin-bottom: 6px; font-family: var(--font-mono); letter-spacing: 0.5px; }
-.threat-known-fields { margin: 6px 0; }
-.threat-field-row { display: flex; justify-content: space-between; font-size: 9px; padding: 1px 0; }
-.threat-field-key { color: var(--text-dim); font-family: var(--font-mono); letter-spacing: 0.5px; }
-.threat-field-val { color: var(--text); }
+.threat-known-fields { margin: 8px 0; display: flex; flex-direction: column; gap: 3px; }
+.threat-field-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 9px; padding: 2px 0; }
+.threat-field-row.threat-field-block { flex-direction: column; gap: 2px; }
+.threat-field-key { color: var(--text-dim); font-family: var(--font-mono); letter-spacing: 0.5px; flex-shrink: 0; }
+.threat-field-val { color: var(--text); text-align: right; }
+.threat-field-list { padding-left: 8px; }
+.threat-field-list-item { font-size: 9px; color: var(--text); line-height: 1.6; }
 .threat-gaps { margin: 6px 0; }
 .threat-gaps-title { font-size: 9px; font-family: var(--font-mono); color: var(--amber); letter-spacing: 0.8px; margin-bottom: 3px; }
 .threat-gap-item { font-size: 9px; color: var(--text-dim); line-height: 1.6; }
