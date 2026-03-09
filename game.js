@@ -410,8 +410,9 @@ function startGame(countryCode) {
     upgrades: initUpgrades(),
     hvts: [], hvtIdCounter: 0,
     relations: initRelations(cfg),
+    currentFolder: 'inbox',
   };
-  showScreen('game');
+  showScreen('client');
   fire('game:start', G);
   spawnMission();
   if (Math.random() < 0.7) spawnMission();
@@ -420,7 +421,7 @@ function startGame(countryCode) {
   render();
 }
 
-function restartGame() { G.country = null; showScreen('select'); }
+function restartGame() { G.country = null; showScreen('login'); bootTerminal(); }
 
 function confirmAbortGame() {
   document.getElementById('modal-title').textContent = 'ABORT OPERATION';
@@ -717,6 +718,98 @@ function advanceDay() {
   if (G.day - G.lastRecapDay >= 30) {
     G.lastRecapDay = G.day;
     showCapabilitiesMenu(true);
+  }
+}
+
+// =============================================================================
+// TIME ADVANCEMENT — "CHECK MAIL" (inspired by Floor 13)
+// Wraps advanceDay() to skip ahead until something significant happens.
+// =============================================================================
+
+function advanceToNextEvent() {
+  let daysAdvanced = 0;
+  const maxDays = 7;
+  let eventOccurred = false;
+
+  while (daysAdvanced < maxDays && !eventOccurred) {
+    const prevMissionCount = G.missions.length;
+    const prevStatuses = {};
+    for (const m of G.missions) prevStatuses[m.id] = m.status;
+    const prevConf = G.confidence;
+
+    advanceDay();
+    daysAdvanced++;
+
+    // Check if something significant happened
+    if (G.missions.length !== prevMissionCount) eventOccurred = true;
+    for (const m of G.missions) {
+      if (prevStatuses[m.id] && prevStatuses[m.id] !== m.status) eventOccurred = true;
+    }
+    if (G.day % 7 === 0) eventOccurred = true; // weekly briefing
+    if (Math.abs(G.confidence - prevConf) >= 5) eventOccurred = true; // big confidence shift
+    if (G.confidence <= 0 || G.budget <= 0) { eventOccurred = true; break; }
+  }
+
+  // Show time skip interstitial
+  if (daysAdvanced > 1) {
+    const newMsgs = G.missions.filter(m =>
+      !['EXECUTING', 'ARCHIVED'].includes(m.status)
+    ).length;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'time-skip-overlay';
+    overlay.innerHTML = `
+      <div class="time-skip-box">
+        <div class="time-skip-days">${daysAdvanced} DAYS</div>
+        <div class="time-skip-msg">TIME ADVANCED</div>
+        <div class="time-skip-new">${newMsgs} message${newMsgs !== 1 ? 's' : ''} in inbox</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:4px">${formatGameDate(G.day)}</div>
+      </div>
+    `;
+    overlay.addEventListener('click', () => overlay.remove());
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.remove(), 2500);
+  }
+}
+
+// =============================================================================
+// FOLDER NAVIGATION
+// =============================================================================
+
+function switchFolder(folderId) {
+  G.currentFolder = folderId;
+  G.selected = null;
+  render();
+}
+
+function getFolderMissions(folderId) {
+  switch (folderId) {
+    case 'inbox':
+      return G.missions.filter(m =>
+        ['INCOMING', 'READY', 'BLOWN', 'PHASE_COMPLETE', 'DEAD_END', 'EXPIRED'].includes(m.status));
+    case 'pending':
+      return G.missions.filter(m => m.status === 'INVESTIGATING');
+    case 'active':
+      return G.missions.filter(m => m.status === 'EXECUTING');
+    case 'results':
+      return G.missions.filter(m => ['SUCCESS', 'FAILURE'].includes(m.status));
+    case 'archive':
+      return []; // archived missions are removed from array, nothing to show
+    default:
+      return [];
+  }
+}
+
+function getFolderCount(folderId) {
+  switch (folderId) {
+    case 'inbox':    return G.missions.filter(m => ['INCOMING', 'READY', 'BLOWN', 'PHASE_COMPLETE', 'DEAD_END', 'EXPIRED'].includes(m.status)).length;
+    case 'pending':  return G.missions.filter(m => m.status === 'INVESTIGATING').length;
+    case 'active':   return G.missions.filter(m => m.status === 'EXECUTING').length;
+    case 'results':  return G.missions.filter(m => ['SUCCESS', 'FAILURE'].includes(m.status)).length;
+    case 'threats':  return G.hvts.filter(h => ['ACTIVE', 'TRACKED', 'DETAINED'].includes(h.status)).length;
+    case 'agencies': return Object.keys(G.cfg?.partnerAgencies || {}).length;
+    case 'geo':      return G.geo?.activeEvents ? G.geo.activeEvents.filter(e => !e.resolved).length : 0;
+    default: return 0;
   }
 }
 
@@ -1761,16 +1854,16 @@ function hvtBriefingPopup(type, h, extra) {
   });
 }
 
-var MAX_NEUTRALIZED_HVTS = 5;
+var MAX_CLOSED_HVTS = 5;
+var CLOSED_STATUSES = new Set(['NEUTRALIZED', 'ELIMINATED', 'HANDED_OVER']);
 
-function pruneNeutralizedHvts() {
-  var neutralized = [];
+function pruneClosedHvts() {
+  var closed = [];
   for (var i = 0; i < G.hvts.length; i++) {
-    if (G.hvts[i].status === 'NEUTRALIZED') neutralized.push(i);
+    if (CLOSED_STATUSES.has(G.hvts[i].status)) closed.push(i);
   }
-  if (neutralized.length <= MAX_NEUTRALIZED_HVTS) return;
-  // Remove oldest (lowest index = earliest added) until at limit
-  var toRemove = neutralized.slice(0, neutralized.length - MAX_NEUTRALIZED_HVTS);
+  if (closed.length <= MAX_CLOSED_HVTS) return;
+  var toRemove = closed.slice(0, closed.length - MAX_CLOSED_HVTS);
   for (var j = toRemove.length - 1; j >= 0; j--) {
     G.hvts.splice(toRemove[j], 1);
   }
@@ -1976,12 +2069,19 @@ window.spawnHvtMission = function(hvtId, typeId) {
     // Override location to match HVT's known location
     const oldCity    = newest.city;
     const oldCountry = newest.country;
-    if (h.knownFields?.city)    newest.city    = h.knownFields.city;
-    if (h.knownFields?.country) newest.country = h.knownFields.country;
+    // Derive country from city if missing (lookup in FOREIGN_CITIES)
+    var hvtCity = h.knownFields?.city || null;
+    var hvtCountry = h.knownFields?.country || null;
+    if (hvtCity && !hvtCountry) {
+      var match = FOREIGN_CITIES.find(function (fc) { return fc.city === hvtCity; });
+      if (match) hvtCountry = match.country;
+    }
+    if (hvtCity)    newest.city    = hvtCity;
+    if (hvtCountry) newest.country = hvtCountry;
     // Override target identity in fillVars and re-stamp all baked text fields
     if (newest.fillVars) {
-      if (h.knownFields?.city)    newest.fillVars.city    = h.knownFields.city;
-      if (h.knownFields?.country) newest.fillVars.country = h.knownFields.country;
+      if (hvtCity)    newest.fillVars.city    = hvtCity;
+      if (hvtCountry) newest.fillVars.country = hvtCountry;
       const oldAlias = newest.fillVars.alias || newest.fillVars.target_alias || newest.fillVars.suspect_name;
       const oldRole  = newest.fillVars.hvt_role || newest.fillVars.target_role || newest.fillVars.rendition_role;
       newest.fillVars.alias = h.alias;
@@ -2023,6 +2123,18 @@ window.spawnHvtMission = function(hvtId, typeId) {
             if (oldCountry && newest.country && oldCountry !== newest.country) s = s.split(oldCountry).join(newest.country);
             return s;
           });
+        }
+      }
+      // Final pass: re-apply fillTemplate to catch any remaining {placeholders}
+      const allTextFields = ['initialReport', 'fullReport', 'opNarrative', 'agencyJustification'];
+      for (const f of allTextFields) {
+        if (newest[f] && typeof newest[f] === 'string' && newest[f].includes('{')) {
+          newest[f] = fillTemplate(newest[f], newest.fillVars);
+        }
+      }
+      for (const arr of ['successMsgs', 'failureMsgs']) {
+        if (Array.isArray(newest[arr])) {
+          newest[arr] = newest[arr].map(s => s.includes('{') ? fillTemplate(s, newest.fillVars) : s);
         }
       }
       // Fix suspects array so hvtAliasFromMission returns correctly
@@ -2125,9 +2237,8 @@ function renderAgencyBar() {
   el.innerHTML = Object.entries(G.cfg.partnerAgencies).map(([id, agCfg]) => {
     const rel = G.relations?.[id]?.relation ?? 0;
     const barCls = rel >= 70 ? 'rel-high' : rel >= 40 ? 'rel-med' : 'rel-low';
-    const typeLabel = agCfg.type === 'domestic' ? 'DOMESTIC COUNTER-INTELLIGENCE'
-      : agCfg.type === 'military' ? 'MILITARY INTELLIGENCE'
-      : 'FOREIGN INTELLIGENCE';
+    const typeLabel = agCfg.type === 'domestic' ? 'DOMESTIC'
+      : agCfg.type === 'military' ? 'MILITARY' : 'FOREIGN';
     const tooltip = `${agCfg.name} · ${typeLabel}&#10;Relation: ${rel}/100&#10;&#10;${agCfg.desc || ''}`;
     return `<div class="agency-rel-chip" data-tip="${tooltip}">
       <span class="agency-rel-name">${agCfg.shortName}</span>
@@ -2140,18 +2251,39 @@ function renderAgencyBar() {
 function render() {
   renderHeader();
   renderAgencyBar();
-  renderInbox();
-  renderDetail();
+  renderFolderSidebar();
+  renderMessageList();
+  renderReadingPane();
+  // Update hidden compatibility elements for other modules
   renderDepts();
   renderActiveOps();
   renderThreats();
   renderLog();
+  renderStatusBar();
   fire('render:after', G);
 }
 
+function renderStatusBar() {
+  const logEl = document.getElementById('footer-log');
+  if (logEl && G.log.length > 0) {
+    logEl.innerHTML = G.log.slice(0, 3).map(e =>
+      `<span class="log-entry ${e.cls}">${e.text}</span>`
+    ).join('');
+  }
+  const rightEl = document.getElementById('footer-right');
+  if (rightEl) {
+    const activeOps = G.missions.filter(m => m.status === 'EXECUTING').length;
+    const pendingOps = G.missions.filter(m => m.status === 'INVESTIGATING').length;
+    rightEl.textContent = `${activeOps} active · ${pendingOps} pending · Day ${G.day}`;
+  }
+}
+
 function renderHeader() {
-  document.getElementById('hdr-agency').textContent = G.cfg ? `${G.cfg.acronym} — ${G.cfg.agency}` : '—';
-  document.getElementById('hdr-date').textContent   = `DAY ${G.day} · WEEK ${week()} · ${G.cfg ? G.cfg.leaderTitle.toUpperCase() : ''}`;
+  const agencyEl = document.getElementById('hdr-agency');
+  if (agencyEl) agencyEl.textContent = G.cfg ? `SECURE MAIL — ${G.cfg.acronym} DIRECTOR'S TERMINAL` : 'SHADOWNET';
+
+  const dateEl = document.getElementById('hdr-date');
+  if (dateEl) dateEl.textContent = typeof formatGameDate === 'function' ? formatGameDate(G.day) : `DAY ${G.day}`;
 
   const confPct = G.confidence;
   const bar     = document.getElementById('conf-bar');
@@ -2159,64 +2291,121 @@ function renderHeader() {
     bar.style.width      = `${confPct}%`;
     bar.style.background = confPct >= 60 ? 'var(--green)' : confPct >= 35 ? 'var(--amber)' : 'var(--red)';
   }
-  document.getElementById('res-conf').textContent   = `${confPct}%`;
-  document.getElementById('res-budget').textContent = fmt(G.budget);
+  // Update both new and old stat elements
+  const statConf = document.getElementById('stat-conf');
+  if (statConf) statConf.textContent = `${confPct}%`;
+  const statBudget = document.getElementById('stat-budget');
+  if (statBudget) statBudget.textContent = fmt(G.budget);
+  const statXp = document.getElementById('stat-xp');
+  if (statXp) statXp.textContent = `${G.xp}`;
+  // Hidden compat elements
+  const confEl = document.getElementById('res-conf');
+  if (confEl) confEl.textContent = `${confPct}%`;
+  const budgetEl = document.getElementById('res-budget');
+  if (budgetEl) budgetEl.textContent = fmt(G.budget);
   const xpEl = document.getElementById('res-xp');
-  if (xpEl) xpEl.textContent = `${G.xp} XP`;
-
-  const confGroup = document.getElementById('res-conf')?.closest('.res-group');
-  if (confGroup) confGroup.dataset.tip = `Your standing with ${G.cfg?.leaderTitle}. Falls 2% each week. Hit 0% and you are dismissed.`;
-
-  const budgetGroup = document.getElementById('res-budget')?.closest('.res-group');
-  if (budgetGroup) budgetGroup.dataset.tip = `Available operational budget. Regenerates ${fmt(G.cfg?.weeklyBudgetRegen || 0)}/week. Running dry ends the agency.`;
-
-  const xpGroup = document.getElementById('res-xp')?.closest('.res-group');
-  if (xpGroup) xpGroup.dataset.tip = 'Experience points earned from completed operations. Spend at the monthly review or via the UPGRD button to expand department capacities and budget.';
-
-  const advBtn = document.getElementById('btn-advance');
-  if (advBtn) advBtn.dataset.tip = 'Advance time by one day. Keyboard: → or N';
+  if (xpEl) xpEl.textContent = `${G.xp}`;
 }
 
-function renderInbox() {
-  const inbox = G.missions.filter(m =>
-    !['EXECUTING', 'SUCCESS', 'FAILURE', 'ARCHIVED'].includes(m.status));
-  document.getElementById('inbox-count').textContent = inbox.length;
-  const el = document.getElementById('mission-inbox');
+function renderFolderSidebar() {
+  const el = document.getElementById('sidebar');
+  if (!el) return;
 
-  if (inbox.length === 0) {
-    el.innerHTML = '<div style="text-align:center;padding:24px;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);opacity:0.5">NO PENDING MISSIONS</div>';
+  const folders = typeof MAIL_FOLDERS !== 'undefined' ? MAIL_FOLDERS : [
+    { id: 'inbox', label: 'Inbox', icon: '▸' },
+    { id: 'pending', label: 'Pending', icon: '◌' },
+    { id: 'active', label: 'Active Ops', icon: '◉' },
+    { id: 'results', label: 'Results', icon: '◆' },
+    { id: 'threats', label: 'Threat Files', icon: '▲' },
+    { id: 'agencies', label: 'Agencies', icon: '◇' },
+    { id: 'geo', label: 'World Intel', icon: '⊕' },
+    { id: 'archive', label: 'Archive', icon: '□' },
+  ];
+
+  el.innerHTML = folders.map(f => {
+    const count = getFolderCount(f.id);
+    const isActive = G.currentFolder === f.id;
+    const hasUrgent = f.id === 'inbox' && G.missions.some(m => m.status === 'BLOWN' || (m.threat >= 5 && m.status === 'INCOMING'));
+    const badgeHtml = count > 0
+      ? `<span class="folder-badge ${hasUrgent ? 'folder-badge-urgent' : ''}">${count}</span>`
+      : '';
+    return `<div class="folder-item ${isActive ? 'active' : ''}" onclick="switchFolder('${f.id}')">
+      <span class="folder-icon">${f.icon}</span>
+      <span class="folder-label">${f.label}</span>
+      ${badgeHtml}
+    </div>`;
+  }).join('') + '<div class="folder-divider"></div>' +
+  `<div class="folder-item ${G.currentFolder === 'depts' ? 'active' : ''}" onclick="switchFolder('depts')">
+    <span class="folder-icon">■</span><span class="folder-label">Departments</span>
+  </div>` +
+  `<div class="folder-item ${G.currentFolder === 'roster' ? 'active' : ''}" onclick="switchFolder('roster')">
+    <span class="folder-icon">★</span><span class="folder-label">Elite Roster</span>
+    ${(G.eliteUnits?.filter(u => u.alive).length || 0) > 0 ? `<span class="folder-badge">${G.eliteUnits.filter(u => u.alive).length}</span>` : ''}
+  </div>`;
+}
+
+function renderMessageList() {
+  const listEl = document.getElementById('mlp-list');
+  const titleEl = document.getElementById('mlp-title');
+  const countEl = document.getElementById('mlp-count');
+  if (!listEl) return;
+
+  const folder = G.currentFolder;
+
+  // For non-mission folders, render special content in reading pane instead
+  if (['threats', 'agencies', 'geo', 'depts', 'roster'].includes(folder)) {
+    const folderNames = { threats: 'THREAT FILES', agencies: 'AGENCY RELATIONS', geo: 'GEOPOLITICS', depts: 'DEPARTMENTS', roster: 'ELITE ROSTER' };
+    if (titleEl) titleEl.textContent = folderNames[folder] || folder.toUpperCase();
+    if (countEl) countEl.textContent = '';
+    listEl.innerHTML = '<div class="msg-list-empty">View details in reading pane →</div>';
     return;
   }
 
-  el.innerHTML = inbox.map(m => {
-    const isSelected  = G.selected === m.id;
-    const daysLeft    = m.status === 'BLOWN' ? m.blownDaysLeft : m.urgencyLeft;
+  const missions = getFolderMissions(folder);
+  const folderLabels = { inbox: 'INBOX', pending: 'PENDING', active: 'ACTIVE OPS', results: 'RESULTS', archive: 'ARCHIVE' };
+  if (titleEl) titleEl.textContent = folderLabels[folder] || folder.toUpperCase();
+  if (countEl) countEl.textContent = `${missions.length}`;
+
+  // Also update hidden inbox-count for compatibility
+  const inboxCountEl = document.getElementById('inbox-count');
+  if (inboxCountEl) inboxCountEl.textContent = getFolderCount('inbox');
+
+  if (missions.length === 0) {
+    listEl.innerHTML = '<div class="msg-list-empty">No messages.</div>';
+    return;
+  }
+
+  listEl.innerHTML = missions.map(m => {
+    const isSelected = G.selected === m.id;
+    const sender = typeof getEmailSender === 'function' ? getEmailSender(m, m.status) : { name: 'Operations', desk: '' };
+    const subject = typeof getEmailSubject === 'function' ? getEmailSubject(m, m.status) : `OP ${m.codename}`;
+    const priority = typeof getEmailPriority === 'function' ? getEmailPriority(m) : 'normal';
+    const daysLeft = m.status === 'BLOWN' ? m.blownDaysLeft : (m.urgencyLeft ?? '');
     const deadlineCls = daysLeft <= 2 ? 'urgent' : daysLeft <= 5 ? 'warn' : '';
-    const phaseTag    = m.isMultiPhase
-      ? ` <span style="font-size:9px;color:var(--teal);font-family:var(--font-mono)">[${m.currentPhaseIndex + 1}/${m.phases.length}]</span>`
-      : '';
-    const chip = {
-      INCOMING:       '<span class="mc-status status-incoming">INCOMING</span>',
-      INVESTIGATING:  '<span class="mc-status status-investigating">INVESTIGATING</span>',
-      READY:          `<span class="mc-status ${m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'}">${m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY'}</span>`,
-      BLOWN:          '<span class="mc-status status-blown">BLOWN</span>',
-      PHASE_COMPLETE: '<span class="mc-status status-phase-complete">PHASE DONE</span>',
-      DEAD_END:       '<span class="mc-status status-dead-end">DEAD END</span>',
-      EXPIRED:        '<span class="mc-status status-expired">EXPIRED</span>',
+
+    const statusChip = {
+      INCOMING:       '<span class="msg-status status-incoming">NEW</span>',
+      INVESTIGATING:  '<span class="msg-status status-investigating">PENDING</span>',
+      READY:          `<span class="msg-status ${m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'}">${m.phaseFalseFlag ? 'ANOMALY' : 'READY'}</span>`,
+      BLOWN:          '<span class="msg-status status-blown">URGENT</span>',
+      PHASE_COMPLETE: '<span class="msg-status status-phase-complete">PHASE</span>',
+      DEAD_END:       '<span class="msg-status status-dead-end">DEAD END</span>',
+      EXPIRED:        '<span class="msg-status status-expired">EXPIRED</span>',
+      EXECUTING:      '<span class="msg-status status-executing">ACTIVE</span>',
+      SUCCESS:        '<span class="msg-status status-success">SUCCESS</span>',
+      FAILURE:        '<span class="msg-status status-failure">FAILED</span>',
     }[m.status] || '';
 
-    const favorChip = m.favorOf
-      ? `<span class="mc-favor-chip">FAVOR: ${m.favorAgencyName || m.favorOf}</span>`
-      : '';
-    return `<div class="mission-card threat-${m.threat} ${isSelected ? 'selected' : ''}"
-      onclick="selectMission('${m.id}')">
-      <div class="mc-type">${m.category}</div>
-      <div class="mc-codename">OP ${m.codename}${phaseTag}</div>
-      <div class="mc-meta">
-        ${chip}
-        <span class="mc-deadline ${deadlineCls}">${daysLeft}d LEFT</span>
-      </div>
-      ${favorChip}
+    const prioIcon = priority === 'FLASH' ? '!!' : priority === 'IMMEDIATE' ? '!' : priority === 'PRIORITY' ? '▸' : '·';
+    const prioCls = priority === 'FLASH' ? 'msg-priority-critical' : priority === 'IMMEDIATE' ? 'msg-priority-high' : 'msg-priority-normal';
+    const favorTag = m.favorOf ? `<span class="msg-favor-chip">FAVOR</span>` : '';
+
+    return `<div class="msg-row ${isSelected ? 'msg-selected' : ''}" onclick="selectMission('${m.id}')">
+      <span class="msg-priority ${prioCls}">${prioIcon}</span>
+      <span class="msg-from">${sender.name || 'Operations'}</span>
+      <span class="msg-subject">${subject}${favorTag ? ' ' + favorTag : ''}</span>
+      ${statusChip}
+      ${daysLeft !== '' ? `<span class="msg-deadline ${deadlineCls}">${daysLeft}d</span>` : ''}
     </div>`;
   }).join('');
 }
@@ -2237,41 +2426,56 @@ function renderPhaseRoadmap(m) {
   return `<div class="phase-roadmap">${nodes}</div>`;
 }
 
-function renderDetail() {
-  const detailEl = document.getElementById('mission-detail');
-  const titleEl  = document.getElementById('detail-panel-title');
-  const chipEl   = document.getElementById('detail-status-chip');
+function renderReadingPane() {
+  const paneEl = document.getElementById('reading-pane');
+  if (!paneEl) return;
 
+  const folder = G.currentFolder;
+
+  // Non-mission folders render their own content
+  if (folder === 'threats') {
+    renderThreatsInPane(paneEl);
+    return;
+  }
+  if (folder === 'agencies') {
+    renderAgenciesInPane(paneEl);
+    return;
+  }
+  if (folder === 'geo') {
+    renderGeoInPane(paneEl);
+    return;
+  }
+  if (folder === 'depts') {
+    renderDeptsInPane(paneEl);
+    return;
+  }
+  if (folder === 'roster') {
+    renderRosterInPane(paneEl);
+    return;
+  }
+
+  // Mission-based folders: show selected mission as email
   if (!G.selected) {
-    titleEl.textContent = 'BRIEFING ROOM';
-    chipEl.textContent = ''; chipEl.className = 'detail-status-chip';
-    detailEl.innerHTML = `<div class="detail-empty">
-      <div class="empty-icon">◈</div>
-      <div class="empty-title">AWAITING SELECTION</div>
-      <div class="empty-sub">Select a mission from the inbox to review its intelligence brief.</div>
+    paneEl.innerHTML = `<div class="rp-empty">
+      <div class="rp-empty-icon">◆</div>
+      <div class="rp-empty-title">SHADOWNET SECURE MAIL</div>
+      <div class="rp-empty-sub">Select a message to decrypt and read.</div>
     </div>`;
     return;
   }
 
   const m = getMission(G.selected);
-  if (!m) { G.selected = null; renderDetail(); return; }
+  if (!m) { G.selected = null; renderReadingPane(); return; }
 
-  titleEl.textContent = `OP ${m.codename}`;
-  const chipMap = {
-    INCOMING:       ['INCOMING',       'status-incoming'],
-    INVESTIGATING:  ['INVESTIGATING',  'status-investigating'],
-    READY:          [m.phaseFalseFlag ? '⚠ ANOMALY' : 'BRIEF READY', m.phaseFalseFlag ? 'status-anomaly' : 'status-ready'],
-    BLOWN:          ['BLOWN',          'status-blown'],
-    PHASE_COMPLETE: ['PHASE COMPLETE', 'status-phase-complete'],
-    DEAD_END:       ['DEAD END',       'status-dead-end'],
-    EXECUTING:      ['EXECUTING',      'status-executing'],
-    SUCCESS:        ['SUCCESS',        'status-success'],
-    FAILURE:        ['FAILURE',        'status-failure'],
-    EXPIRED:        ['EXPIRED',        'status-expired'],
-  };
-  const [sl, sc] = chipMap[m.status] || ['—', ''];
-  chipEl.textContent = sl; chipEl.className = `detail-status-chip mc-status ${sc}`;
+  // Build email header
+  const sender = typeof getEmailSender === 'function' ? getEmailSender(m, m.status) : { name: 'Operations', desk: 'Joint Operations Center' };
+  const subject = typeof getEmailSubject === 'function' ? getEmailSubject(m, m.status) : `OP ${m.codename}`;
+  const priority = typeof getEmailPriority === 'function' ? getEmailPriority(m) : 'normal';
+  const emailHeader = typeof buildEmailHeader === 'function'
+    ? buildEmailHeader(sender, subject, { priority })
+    : '';
 
+  // Build mission detail content (same as before, but wrapped in email format)
   const threatLabel = m.threat >= 5 ? 'CRITICAL' : m.threat >= 4 ? 'HIGH' : m.threat >= 3 ? 'MODERATE' : 'LOW';
   const threatCls   = m.threat >= 4 ? 'threat-high' : m.threat >= 3 ? 'threat-med' : 'threat-low';
   const locCls      = m.location === 'FOREIGN' ? 'location-foreign' : 'location-domestic';
@@ -2280,19 +2484,18 @@ function renderDetail() {
     ? `<div class="favor-banner"><span class="favor-lbl">FAVOR</span> <span class="favor-agency">${m.favorAgencyName || m.favorOf}</span> — Complete to improve inter-agency relations.</div>`
     : '';
 
-  let content = `
+  let bodyContent = `
     ${favorBannerHtml}
-    <div class="dc-header">
-      <div class="dc-codename">OP ${m.codename}</div>
-      <div class="dc-meta-row">
-        <span class="dc-badge">${m.category}</span>
-        <span class="dc-badge ${threatCls}" data-tip="Threat ${m.threat}/5. ${m.threat >= 4 ? 'Failure seriously damages confidence.' : 'Moderate consequences.'}">THREAT: ${threatLabel}</span>
-        <span class="dc-badge ${locCls}">${m.location === 'FOREIGN' ? `${m.city}, ${m.country}` : `${m.city} [DOMESTIC]`}</span>
-        <span class="dc-badge">DEADLINE: ${m.urgencyLeft}d</span>
-      </div>
+    <div class="dc-meta-row">
+      <span class="dc-badge">${m.category}</span>
+      <span class="dc-badge ${threatCls}" data-tip="Threat ${m.threat}/5.">THREAT: ${threatLabel}</span>
+      <span class="dc-badge ${locCls}">${m.location === 'FOREIGN' ? `${m.city}, ${m.country}` : `${m.city} [DOMESTIC]`}</span>
+      <span class="dc-badge">DEADLINE: ${m.urgencyLeft}d</span>
     </div>
     ${renderPhaseRoadmap(m)}
   `;
+
+  let replyHtml = '';
 
   if (m.status === 'INCOMING') {
     const phaseHdr = m.isMultiPhase
@@ -2300,97 +2503,74 @@ function renderDetail() {
       : '';
     const hasUnselectedSuspects = m.suspects && m.suspects.length > 1 && m.selectedSuspectIdx === null;
 
+    bodyContent += `
+      <div class="dc-section">
+        ${phaseHdr}
+        <div class="dc-section-title">INTELLIGENCE REPORT</div>
+        <div class="dc-report">${m.initialReport}</div>
+      </div>
+    `;
+
     if (hasUnselectedSuspects) {
-      // Suspect selection gate: show report + suspect grid, no dept assignment yet
-      content += `
-        <div class="dc-section">
-          ${phaseHdr}
-          <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
-          <div class="dc-report">${m.initialReport}</div>
-        </div>
+      bodyContent += `
         <div class="dc-section">
           <div class="dc-section-title">SUSPECT IDENTIFICATION</div>
-          <div class="suspect-instructions">Multiple subjects flagged. Select the primary target before assigning an investigation department.</div>
+          <div class="suspect-instructions">Director — multiple subjects flagged. Please select the primary target before I can assign an investigation team.</div>
           ${buildSuspectPanel(m, true)}
         </div>
-        <div class="dc-actions">
-          <button class="btn-danger" onclick="dismissMission('${m.id}')"
-            data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission without taking action.'}">
-            DISMISS / ARCHIVE
-          </button>
-        </div>
       `;
+      replyHtml = buildReplySection([
+        { label: 'DECLINE — Archive without action', cls: 'reply-danger', onclick: `dismissMission('${m.id}')`,
+          tip: m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission.' }
+      ]);
     } else {
-      // Suspect already selected (or no suspects): show report + read-only suspect panel + dept assignment
       const suspectSection = m.suspects && m.suspects.length > 0
-        ? `<div class="dc-section">
-            <div class="dc-section-title">IDENTIFIED SUSPECT</div>
-            ${buildSuspectPanel(m, false)}
-          </div>`
-        : '';
+        ? `<div class="dc-section"><div class="dc-section-title">IDENTIFIED SUSPECT</div>${buildSuspectPanel(m, false)}</div>` : '';
+      const agencyJustHtml = m.agencyJustification
+        ? `<div class="agency-justification"><span class="agency-just-lbl">OPERATIONAL AUTHORITY</span><div class="agency-just-text">${m.agencyJustification}</div></div>` : '';
+      bodyContent += `${agencyJustHtml}${suspectSection}`;
+
+      // Department assignment as reply options
       const _tmpl = MISSION_TYPES[m.typeId];
       const _phObj = m.isMultiPhase ? m.phases[m.currentPhaseIndex] : null;
       const _effMap = _phObj?.invDeptEfficiency ?? _tmpl?.invDeptEfficiency ?? {};
       const effClass = e => e >= 75 ? 'eff-high' : e >= 50 ? 'eff-med' : 'eff-low';
-      const deptGrid = `<div class="dc-dept-grid">
-          ${m.invDepts.map(did => {
-            const dept  = G.depts[did];
-            const avail = deptAvail(did);
-            const total = dept.capacity;
-            const cfg   = DEPT_CONFIG.find(d => d.id === did);
-            const eff   = _effMap[did] ?? 50;
-            return `<button class="dc-dept-btn ${avail > 0 ? '' : 'unavail'}" ${avail > 0 ? '' : 'disabled'}
-              onclick="assignInvestigation('${m.id}','${did}')"
-              data-tip="${cfg?.tip || ''}${avail > 0 ? '' : '\n\nNo units available — all committed to other missions.'}">
-              ${dept.short}
-              <span class="dc-dept-avail">${avail}/${total}</span>
-              <span class="dept-eff-badge ${effClass(eff)}">${eff}%</span>
-            </button>`;
-          }).join('')}
-        </div>`;
-      const agencyJustHtml = m.agencyJustification
-        ? `<div class="agency-justification">
-            <span class="agency-just-lbl">OPERATIONAL AUTHORITY</span>
-            <div class="agency-just-text">${m.agencyJustification}</div>
-          </div>`
-        : '';
-      content += `
-        ${agencyJustHtml}
-        <div class="dc-section">
-          ${phaseHdr}
-          <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
-          <div class="dc-report">${m.initialReport}</div>
-        </div>
-        ${suspectSection}
-        <div class="dc-section">
-          <div class="dc-section-title">ASSIGN DEPARTMENT TO INVESTIGATE</div>
-          <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
-            Assign a department to lead the investigation. Costs 1 unit for ${m.invDays} day(s). Other missions can simultaneously use the same department if capacity allows.
-          </div>
-          ${deptGrid}
-        </div>
-        <div class="dc-actions">
-          <button class="btn-danger" onclick="dismissMission('${m.id}')"
-            data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission without taking action.'}">
-            DISMISS / ARCHIVE
-          </button>
-        </div>
-      `;
+
+      const deptButtons = m.invDepts.map(did => {
+        const dept = G.depts[did];
+        const avail = deptAvail(did);
+        const total = dept.capacity;
+        const eff = _effMap[did] ?? 50;
+        return {
+          label: `Assign ${dept.name} to investigate (${avail}/${total} avail, ${eff}% efficiency, ${m.invDays}d)`,
+          cls: avail > 0 ? '' : '',
+          onclick: `assignInvestigation('${m.id}','${did}')`,
+          disabled: avail <= 0,
+          tip: avail > 0 ? '' : 'No units available.'
+        };
+      });
+      deptButtons.push({
+        label: 'DECLINE — Archive without action',
+        cls: 'reply-danger',
+        onclick: `dismissMission('${m.id}')`,
+        tip: m.threat >= 4 ? 'WARNING: confidence penalty.' : ''
+      });
+      replyHtml = buildReplySection(deptButtons);
     }
 
   } else if (m.status === 'INVESTIGATING') {
-    const progress   = Math.round(((m.invDays - m.invDaysLeft) / m.invDays) * 100);
-    const deptName   = G.depts[m.assignedInvDept]?.name || '—';
+    const progress = Math.round(((m.invDays - m.invDaysLeft) / m.invDays) * 100);
+    const deptName = G.depts[m.assignedInvDept]?.name || '—';
     const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name}` : '';
-    content += `
+    bodyContent += `
       <div class="dc-section">
-        <div class="dc-section-title">INITIAL INTELLIGENCE REPORT</div>
+        <div class="dc-section-title">INTELLIGENCE REPORT</div>
         <div class="dc-report">${m.initialReport}</div>
       </div>
       <div class="dc-section">
-        <div class="dc-section-title">INVESTIGATION IN PROGRESS${phaseLabel}</div>
+        <div class="dc-section-title">INVESTIGATION STATUS${phaseLabel}</div>
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
-          <strong>${deptName}</strong> — 1 unit committed. ${m.invDaysLeft} day(s) remaining.
+          Director — <strong>${deptName}</strong> has 1 unit committed. ${m.invDaysLeft} day(s) remaining. Results will be forwarded upon completion.
         </div>
         <div class="progress-wrap">
           <div class="progress-fill" style="width:${progress}%;background:var(--accent)"></div>
@@ -2400,122 +2580,94 @@ function renderDetail() {
 
   } else if (m.status === 'READY') {
     if (m.phaseFalseFlag) {
-      content += `
+      bodyContent += `
         <div class="false-flag-box">
-          <div class="false-flag-title">⚠ INVESTIGATION ANOMALY DETECTED</div>
+          <div class="false-flag-title">INVESTIGATION ANOMALY DETECTED</div>
           <div class="false-flag-text">${m.phaseFalseFlagText}</div>
-          <div class="false-flag-actions">
-            <button class="btn-danger" onclick="falseFlagProceed('${m.id}')"
-              data-tip="Accept the risk and proceed. Success probability reduced by 25%.">
-              PROCEED ANYWAY (−25% PROB)
-            </button>
-            <button class="btn-neutral" onclick="falseFlagReinvestigate('${m.id}')"
-              data-tip="Order a reinvestigation. Returns to INCOMING — assign a department again.">
-              REINVESTIGATE
-            </button>
-          </div>
         </div>
       `;
+      replyHtml = buildReplySection([
+        { label: 'Proceed despite anomaly (-25% success probability)', cls: 'reply-danger', onclick: `falseFlagProceed('${m.id}')` },
+        { label: 'Order reinvestigation', cls: '', onclick: `falseFlagReinvestigate('${m.id}')` }
+      ]);
     } else {
-      const phaseLabel   = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
-      const intelFields  = m.intelFields || [];
-      const totalFields  = intelFields.length;
-      const revealedCnt  = intelFields.filter(f => f.revealed).length;
-      const allRevealed  = totalFields === 0 || revealedCnt === totalFields;
+      const phaseLabel = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
+      const intelFields = m.intelFields || [];
+      const totalFields = intelFields.length;
+      const revealedCnt = intelFields.filter(f => f.revealed).length;
+      const allRevealed = totalFields === 0 || revealedCnt === totalFields;
       const outcomeBadge = m.lastInvOutcome
-        ? `<span class="intel-outcome-banner outcome-${m.lastInvOutcome.toLowerCase()}">${m.lastInvOutcome.replace('_', ' ')}</span>`
-        : '';
-      const intelTable   = totalFields > 0 ? `
+        ? `<span class="intel-outcome-banner outcome-${m.lastInvOutcome.toLowerCase()}">${m.lastInvOutcome.replace('_', ' ')}</span>` : '';
+      const intelTable = totalFields > 0 ? `
         <div class="intel-fields-table">
           ${intelFields.map(f => f.revealed
-            ? `<div class="intel-field-row intel-field-revealed">
-                <span class="intel-field-label">${f.label}</span>
-                <span class="intel-field-value">${f.value}</span>
-               </div>`
-            : `<div class="intel-field-row intel-field-hidden">
-                <span class="intel-field-label">${f.label}</span>
-                <span class="intel-field-value">UNKNOWN</span>
-               </div>`
+            ? `<div class="intel-field-row intel-field-revealed"><span class="intel-field-label">${f.label}</span><span class="intel-field-value">${f.value}</span></div>`
+            : `<div class="intel-field-row intel-field-hidden"><span class="intel-field-label">${f.label}</span><span class="intel-field-value">UNKNOWN</span></div>`
           ).join('')}
         </div>
         <div class="intel-coverage-note">${revealedCnt}/${totalFields} intel fields confirmed ${outcomeBadge}</div>
       ` : '';
 
-      // Build continue-investigation dept sub-grid
-      const _tmpl2  = MISSION_TYPES[m.typeId];
-      const _phObj2 = m.isMultiPhase ? m.phases[m.currentPhaseIndex] : null;
-      const _eff2   = _phObj2?.invDeptEfficiency ?? _tmpl2?.invDeptEfficiency ?? {};
-      const effCls2 = e => e >= 75 ? 'eff-high' : e >= 50 ? 'eff-med' : 'eff-low';
-      const contInvGrid = m.invDepts.map(did => {
-        const dept  = G.depts[did];
-        const avail = deptAvail(did);
-        const total = dept.capacity;
-        const cfg   = DEPT_CONFIG.find(d => d.id === did);
-        const eff   = _eff2[did] ?? 50;
-        return `<button class="dc-dept-btn ${avail > 0 ? '' : 'unavail'}" ${avail > 0 ? '' : 'disabled'}
-          onclick="assignInvestigation('${m.id}','${did}')"
-          data-tip="${cfg?.tip || ''}${avail > 0 ? '' : '\n\nNo units available.'}">
-          ${dept.short}
-          <span class="dc-dept-avail">${avail}/${total}</span>
-          <span class="dept-eff-badge ${effCls2(eff)}">${eff}%</span>
-        </button>`;
-      }).join('');
-
-      const continueInvSection = !allRevealed ? `
-        <div class="continue-inv-section">
-          <div class="dc-section-title">CONTINUE INVESTIGATION</div>
-          <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Assign a department to reveal more intel fields. Mission re-enters INVESTIGATING.</div>
-          <div class="dc-dept-grid">${contInvGrid}</div>
-        </div>
-      ` : '';
-
       const bonusBadge = m.intelBonus
-        ? `<span style="color:var(--green);font-size:10px;font-family:var(--font-mono);margin-left:8px">★ +10% BONUS</span>` : '';
+        ? `<span style="color:var(--green);font-size:10px;font-family:var(--font-mono);margin-left:8px">CRITICAL INTEL BONUS +10%</span>` : '';
 
-      content += `
+      bodyContent += `
         <div class="dc-section">
-          <div class="dc-section-title">INTELLIGENCE BRIEF — CLASSIFIED${phaseLabel}${bonusBadge}</div>
+          <div class="dc-section-title">CLASSIFIED INTELLIGENCE BRIEF${phaseLabel}${bonusBadge}</div>
           ${intelTable}
           <div class="dc-report" style="margin-top:10px">${m.fullReport}</div>
         </div>
-        ${continueInvSection}
-        <div class="dc-actions">
-          <button class="btn-primary" onclick="openOperationModal('${m.id}')"
-            data-tip="Configure and execute the operation.">
-            APPROVE OPERATION
-          </button>
-          <button class="btn-danger" onclick="dismissMission('${m.id}')"
-            data-tip="${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive without action.'}">
-            ARCHIVE — DO NOT ACT
-          </button>
-        </div>
       `;
+
+      // Continue investigation option
+      if (!allRevealed) {
+        const _tmpl2 = MISSION_TYPES[m.typeId];
+        const _phObj2 = m.isMultiPhase ? m.phases[m.currentPhaseIndex] : null;
+        const _eff2 = _phObj2?.invDeptEfficiency ?? _tmpl2?.invDeptEfficiency ?? {};
+        const effCls2 = e => e >= 75 ? 'eff-high' : e >= 50 ? 'eff-med' : 'eff-low';
+        bodyContent += `
+          <div class="continue-inv-section">
+            <div class="dc-section-title">CONTINUE INVESTIGATION</div>
+            <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Assign a department to reveal more intel fields.</div>
+            <div class="dc-dept-grid">${m.invDepts.map(did => {
+              const dept = G.depts[did];
+              const avail = deptAvail(did);
+              const total = dept.capacity;
+              const eff = _eff2[did] ?? 50;
+              return `<button class="dc-dept-btn ${avail > 0 ? '' : 'unavail'}" ${avail > 0 ? '' : 'disabled'}
+                onclick="assignInvestigation('${m.id}','${did}')">
+                ${dept.short} <span class="dc-dept-avail">${avail}/${total}</span>
+                <span class="dept-eff-badge ${effCls2(eff)}">${eff}%</span>
+              </button>`;
+            }).join('')}</div>
+          </div>
+        `;
+      }
+
+      replyHtml = buildReplySection([
+        { label: 'APPROVE OPERATION — Configure and execute', cls: 'reply-primary', onclick: `openOperationModal('${m.id}')` },
+        { label: 'ARCHIVE — Do not act', cls: 'reply-danger', onclick: `dismissMission('${m.id}')`,
+          tip: m.threat >= 4 ? 'WARNING: confidence penalty.' : '' }
+      ]);
     }
 
   } else if (m.status === 'BLOWN') {
-    content += `
+    bodyContent += `
       <div class="blown-warning">
-        <div class="blown-title">⚠ OPERATION COMPROMISED — TARGET ALERTED</div>
-        <div class="blown-msg">Investigation was exposed. Target is mobilizing — ${m.blownDaysLeft} day(s) before exfiltration window closes.
-        Immediate execution carries a −25% probability penalty.</div>
-      </div>
-      <div class="dc-actions" style="margin-top:12px">
-        <button class="btn-danger" onclick="openOperationModal('${m.id}')"
-          data-tip="Execute now with −25% penalty. Target may flee within ${m.blownDaysLeft} day(s).">
-          EXECUTE NOW (−25%)
-        </button>
-        <button class="btn-neutral" onclick="dismissMission('${m.id}')"
-          data-tip="Abort this operation. Confidence penalty applies.">
-          ARCHIVE / ABORT
-        </button>
+        <div class="blown-title">OPERATION COMPROMISED — TARGET ALERTED</div>
+        <div class="blown-msg">Director — investigation was exposed. Target is mobilizing. ${m.blownDaysLeft} day(s) before exfiltration window closes. Immediate execution carries a -25% probability penalty.</div>
       </div>
     `;
+    replyHtml = buildReplySection([
+      { label: 'EXECUTE NOW (-25% penalty)', cls: 'reply-danger', onclick: `openOperationModal('${m.id}')` },
+      { label: 'ABORT — Archive', cls: '', onclick: `dismissMission('${m.id}')` }
+    ]);
 
   } else if (m.status === 'PHASE_COMPLETE') {
-    const nextPh   = m.phases[m.currentPhaseIndex];
+    const nextPh = m.phases[m.currentPhaseIndex];
     const confText = m.lastPhaseConfDelta > 0
       ? `<span class="delta-item delta-pos">CONFIDENCE +${m.lastPhaseConfDelta}%</span>` : '';
-    content += `
+    bodyContent += `
       <div class="result-box success">
         <div class="result-title">PHASE COMPLETE: ${m.lastPhaseName}</div>
         <div class="result-msg">${m.lastPhaseMsg}</div>
@@ -2525,34 +2677,27 @@ function renderDetail() {
         <div class="phase-next-title">NEXT: ${nextPh.name.toUpperCase()}</div>
         <div class="phase-next-desc">${fillTemplate(nextPh.opNarrative, m.currentPhaseFillVars)}</div>
       </div>
-      <div class="dc-actions" style="margin-top:12px">
-        <button class="btn-primary" onclick="acknowledgePhaseProceeding('${m.id}')"
-          data-tip="Proceed to the next phase. You will need to assign a department to investigate.">
-          PROCEED TO NEXT PHASE
-        </button>
-      </div>
     `;
+    replyHtml = buildReplySection([
+      { label: 'PROCEED TO NEXT PHASE', cls: 'reply-primary', onclick: `acknowledgePhaseProceeding('${m.id}')` }
+    ]);
 
   } else if (m.status === 'EXECUTING') {
-    const progress   = Math.round(((m.execDays - m.execDaysLeft) / m.execDays) * 100);
-    const deployed   = (m.assignedExecDepts || []).map(did => {
-      const d = G.depts[did];
-      const cfg = DEPT_CONFIG.find(c => c.id === did);
+    const progress = Math.round(((m.execDays - m.execDaysLeft) / m.execDays) * 100);
+    const deployed = (m.assignedExecDepts || []).map(did => {
+      const d = G.depts[did]; const cfg = DEPT_CONFIG.find(c => c.id === did);
       return `${d?.short || did} (1 ${cfg?.unitNameSingle || 'unit'})`;
     }).join(', ') || 'None';
     const phaseLabel = m.isMultiPhase
-      ? `<div style="font-size:11px;color:var(--teal);margin-bottom:8px;font-family:var(--font-mono)">EXECUTING: ${m.phases[m.currentPhaseIndex].name.toUpperCase()}</div>`
-      : '';
-    content += `
+      ? `<div style="font-size:11px;color:var(--teal);margin-bottom:8px;font-family:var(--font-mono)">EXECUTING: ${m.phases[m.currentPhaseIndex].name.toUpperCase()}</div>` : '';
+    bodyContent += `
       <div class="dc-section">
         ${phaseLabel}
         <div class="dc-section-title">OPERATION IN PROGRESS</div>
         <div style="font-size:13px;color:var(--purple);margin-bottom:6px;font-family:var(--font-disp);font-weight:600">
           ${m.execDaysLeft} day(s) until operation completion.
         </div>
-        <div class="progress-wrap">
-          <div class="progress-fill" style="width:${progress}%;background:var(--purple)"></div>
-        </div>
+        <div class="progress-wrap"><div class="progress-fill" style="width:${progress}%;background:var(--purple)"></div></div>
       </div>
       <div class="dc-section">
         <div class="dc-section-title">OPERATION DETAILS</div>
@@ -2566,22 +2711,22 @@ function renderDetail() {
     `;
 
   } else if (m.status === 'SUCCESS') {
-    content += `
+    bodyContent += `
       <div class="result-box success">
-        <div class="result-title">OPERATION SUCCESS</div>
+        <div class="result-title">OPERATION SUCCESSFUL</div>
         <div class="result-msg">${m.resultMsg}</div>
         <div class="result-deltas">
           <span class="delta-item delta-pos">CONFIDENCE +${m.confDelta}%</span>
           ${m.budgetDelta > 0 ? `<span class="delta-item delta-pos">BUDGET RECOVERY +${fmt(m.budgetDelta)}</span>` : ''}
         </div>
       </div>
-      <div class="dc-actions" style="margin-top:12px">
-        <button class="btn-neutral" onclick="archiveMission('${m.id}')">DEBRIEF COMPLETE — ARCHIVE</button>
-      </div>
     `;
+    replyHtml = buildReplySection([
+      { label: 'ACKNOWLEDGED — Archive this report', cls: '', onclick: `archiveMission('${m.id}')` }
+    ]);
 
   } else if (m.status === 'FAILURE') {
-    content += `
+    bodyContent += `
       <div class="result-box failure">
         <div class="result-title">OPERATION FAILED</div>
         <div class="result-msg">${m.resultMsg}</div>
@@ -2589,47 +2734,136 @@ function renderDetail() {
           <span class="delta-item delta-neg">CONFIDENCE ${m.confDelta}%</span>
         </div>
       </div>
-      <div class="dc-actions" style="margin-top:12px">
-        <button class="btn-neutral" onclick="archiveMission('${m.id}')">DEBRIEF COMPLETE — ARCHIVE</button>
-      </div>
     `;
+    replyHtml = buildReplySection([
+      { label: 'ACKNOWLEDGED — Archive this report', cls: '', onclick: `archiveMission('${m.id}')` }
+    ]);
 
   } else if (m.status === 'DEAD_END') {
     const suspectAlias = m.suspects?.[m.selectedSuspectIdx]?.alias || 'UNKNOWN';
-    content += `
+    bodyContent += `
       <div class="dead-end-box">
         <div class="dead-end-title">INVESTIGATION INCONCLUSIVE</div>
-        <div class="dead-end-msg">Subject "${suspectAlias}" is not linked to the identified threat. Surveillance target was incorrect — the real actor remains at large.</div>
+        <div class="dead-end-msg">Director — subject "${suspectAlias}" is not linked to the identified threat. The real actor remains at large.</div>
       </div>
       <div class="dc-section" style="margin-top:12px">
         <div class="dc-section-title">ASSESSED SUSPECT</div>
         ${buildSuspectPanel(m, false)}
       </div>
-      <div class="dc-actions" style="margin-top:12px">
-        <button class="btn-neutral" onclick="reassignSuspect('${m.id}')"
-          data-tip="Mark this suspect as eliminated and reassign surveillance to a remaining subject. Costs 1 urgency day.">
-          REASSIGN SURVEILLANCE (−1 URGENCY DAY)
-        </button>
-        <button class="btn-danger" onclick="dismissMission('${m.id}')"
-          data-tip="Dismiss this mission without further action.">
-          DISMISS
-        </button>
-      </div>
     `;
+    replyHtml = buildReplySection([
+      { label: 'Reassign surveillance (-1 urgency day)', cls: '', onclick: `reassignSuspect('${m.id}')` },
+      { label: 'Dismiss this mission', cls: 'reply-danger', onclick: `dismissMission('${m.id}')` }
+    ]);
 
   } else if (m.status === 'EXPIRED') {
-    content += `
+    bodyContent += `
       <div class="result-box failure">
         <div class="result-title">MISSION WINDOW CLOSED</div>
-        <div class="result-msg">The mission deadline has passed. No action was taken.</div>
-      </div>
-      <div class="dc-actions" style="margin-top:12px">
-        <button class="btn-neutral" onclick="archiveMission('${m.id}')">ARCHIVE</button>
+        <div class="result-msg">The deadline has passed. No action was taken.</div>
       </div>
     `;
+    replyHtml = buildReplySection([
+      { label: 'ACKNOWLEDGED — Archive', cls: '', onclick: `archiveMission('${m.id}')` }
+    ]);
   }
 
-  detailEl.innerHTML = content;
+  // Build email signature
+  const sigHtml = typeof buildEmailSignature === 'function' ? buildEmailSignature(sender) : '';
+
+  paneEl.innerHTML = `
+    ${emailHeader}
+    <div class="email-body">
+      ${bodyContent}
+      ${sigHtml}
+    </div>
+    ${replyHtml}
+  `;
+}
+
+// Render threats directly in the reading pane
+function renderThreatsInPane(paneEl) {
+  if (typeof pruneClosedHvts === 'function') pruneClosedHvts();
+  // Re-use existing renderThreats logic but output to paneEl
+  const el = document.getElementById('threats-panel');
+  if (el) renderThreats(); // populate hidden element
+  paneEl.innerHTML = `
+    <div class="email-body">
+      <div class="dc-section-title">THREAT FILES — ACTIVE DOSSIERS</div>
+      ${el ? el.innerHTML : '<div class="no-ops-msg">No tracked threats.</div>'}
+    </div>
+  `;
+}
+
+// Render agencies in reading pane
+function renderAgenciesInPane(paneEl) {
+  if (!G.cfg?.partnerAgencies) { paneEl.innerHTML = '<div class="no-ops-msg">No agency data.</div>'; return; }
+  const cards = Object.entries(G.cfg.partnerAgencies).map(([id, agCfg]) => {
+    const rel = G.relations?.[id]?.relation ?? 0;
+    const barCls = rel >= 70 ? 'rel-high' : rel >= 40 ? 'rel-med' : 'rel-low';
+    const typeLabel = agCfg.type === 'domestic' ? 'DOMESTIC COUNTER-INTELLIGENCE'
+      : agCfg.type === 'military' ? 'MILITARY INTELLIGENCE' : 'FOREIGN INTELLIGENCE';
+    return `<div class="dc-section">
+      <div class="dc-section-title">${agCfg.name}</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px">${typeLabel}</div>
+      <div style="font-size:11px;color:var(--text);line-height:1.6;margin-bottom:10px">${agCfg.desc || ''}</div>
+      <div class="dept-capacity-row">
+        <div class="dept-cap-bar-wrap"><div class="dept-cap-bar-fill ${barCls}" style="width:${rel}%"></div></div>
+        <span class="dept-cap-label" style="color:${rel >= 70 ? 'var(--green)' : rel >= 40 ? 'var(--amber)' : 'var(--red)'}">${rel}/100 RELATION</span>
+      </div>
+      ${agCfg.support ? `<div style="margin-top:8px;font-size:10px;color:var(--text-dim)">
+        ${agCfg.support.map(s => `<div style="padding:2px 0">▸ ${s.label} — ${s.desc} (cost: ${s.cost} rel)</div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+  paneEl.innerHTML = `<div class="email-body">${cards}</div>`;
+}
+
+// Render geopolitics in reading pane
+function renderGeoInPane(paneEl) {
+  const geoEl = document.getElementById('geo-panel');
+  // The geopolitics module renders into geo-panel via hooks, just copy its content
+  paneEl.innerHTML = `
+    <div class="email-body">
+      <div class="dc-section-title">GLOBAL THEATER STATUS</div>
+      ${geoEl ? geoEl.innerHTML : '<div class="no-ops-msg">Monitoring global theaters...</div>'}
+    </div>
+  `;
+}
+
+// Render departments in reading pane
+function renderDeptsInPane(paneEl) {
+  const deptEl = document.getElementById('dept-panel');
+  if (deptEl) renderDepts(); // populate hidden element
+  const activeEl = document.getElementById('active-ops-panel');
+  if (activeEl) renderActiveOps(); // populate hidden element
+  paneEl.innerHTML = `
+    <div class="email-body">
+      <div class="dc-section-title">DEPARTMENT STATUS</div>
+      ${deptEl ? deptEl.innerHTML : ''}
+      <div class="dc-section-title" style="margin-top:16px">ACTIVE OPERATIONS</div>
+      ${activeEl ? activeEl.innerHTML : '<div class="no-ops-msg">No active operations.</div>'}
+    </div>
+  `;
+}
+
+// Render elite roster in reading pane
+function renderRosterInPane(paneEl) {
+  // The operatives.js module renders into a #roster-panel element.
+  // We create one inside the reading pane so it has somewhere to render.
+  paneEl.innerHTML = `
+    <div class="email-body">
+      <div class="dc-section-title">ELITE UNITS — AGENCY ROSTER</div>
+      <div id="roster-panel"></div>
+    </div>
+  `;
+  // If renderRoster exists (from operatives.js), call it to populate
+  if (typeof renderRoster === 'function') renderRoster();
+}
+
+// Keep old renderDetail as compatibility stub
+function renderDetail() {
+  // No-op: reading pane handles this now
 }
 
 function renderDepts() {
@@ -2696,7 +2930,7 @@ function renderThreats() {
   const countEl = document.getElementById('threat-count');
   const panelEl = document.getElementById('threats-panel');
   if (!countEl || !panelEl) return;
-  pruneNeutralizedHvts();
+  pruneClosedHvts();
 
   const tracked     = G.hvts.filter(h => h.status === 'ACTIVE' || h.status === 'DETAINED' || h.status === 'TRACKED');
   countEl.textContent = tracked.length;
@@ -3005,6 +3239,54 @@ function showHelp() {
       </div>
 
       <div class="help-section">
+        <div class="help-section-title">ELITE UNITS</div>
+        <p>As departments gain experience, elite specialist units can be created — dedicated teams attached to specific operations for a probability bonus.</p>
+        <p style="margin-top:8px"><strong>Cooldown:</strong> After deployment, an elite unit is unavailable for 7 days. Plan assignments carefully.</p>
+        <p style="margin-top:8px"><strong>Risk of loss:</strong> When an operation with attached elite units fails, those units may be lost permanently:</p>
+        <div class="help-flow" style="margin-top:6px">
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--red)">KIA</span><div>Confirmed killed in action. Applies to direct-action types: field teams, strike elements, handlers, cells.</div></div>
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--red)">MIA</span><div>Missing in action — no recovered bodies. Applies to the same direct-action types.</div></div>
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--amber)">BURNED</span><div>Cover compromised, identity exposed. Applies to intelligence types: desks, stations, intercept teams.</div></div>
+        </div>
+        <p style="margin-top:8px">Lost units are honored in the <strong>Hall of Fame</strong> section of the roster panel.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">GEOPOLITICS</div>
+        <p>The world is divided into 8 <strong>theaters of operation</strong>, each with a base volatility reflecting real-world instability. The <strong>GEO</strong> tab shows all theaters with their current risk level (1–5) and any active geopolitical events.</p>
+        <p style="margin-top:8px"><strong>Theaters</strong> (ordered by volatility):</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:4px;font-size:10px">
+          <div><span style="color:#e67e22">☪</span> Middle East <span style="color:var(--text-dim)">(highest)</span></div>
+          <div><span style="color:#9b59b6">⛰</span> Central/South Asia</div>
+          <div><span style="color:#27ae60">◆</span> Africa</div>
+          <div><span style="color:#3498db">⚔</span> Eastern Europe</div>
+          <div><span style="color:#e74c3c">🐉</span> East Asia & Pacific</div>
+          <div><span style="color:#f39c12">⚡</span> Latin America</div>
+          <div><span style="color:#2980b9">⊕</span> Western Europe</div>
+          <div><span style="color:#1abc9c">★</span> North America <span style="color:var(--text-dim)">(lowest)</span></div>
+        </div>
+        <p style="margin-top:8px"><strong>Geopolitical events</strong> are long-term crises (weeks to months) that reshape the threat landscape:</p>
+        <div style="font-size:10px;line-height:1.6;margin-top:4px">
+          <strong>⚔ Regional War</strong> · <strong>⚑ Proxy Conflict</strong> · <strong>🔥 Insurgency</strong> · <strong>👁 Intelligence War</strong> · <strong>⟁ Cyber Campaign</strong> · <strong>☢ Arms Race</strong> · <strong>⚠ Civil Unrest</strong> · <strong>⚖ Regime Change</strong> · <strong>⚓ Naval Standoff</strong>
+        </div>
+        <p style="margin-top:8px"><strong>Effects of active crises:</strong></p>
+        <div style="font-size:10px;line-height:1.7;margin-top:2px">
+          ▸ Theater risk level increases (more dangerous missions)<br>
+          ▸ Partner agency favor availability increases (MILITARY, AGENCY, BUREAU depending on crisis type)<br>
+          ▸ New hostile organizations may emerge in the theater<br>
+          ▸ Domestic terror cells may spawn as crisis spillover<br>
+          ▸ Higher-volatility theaters generate events more frequently
+        </div>
+        <p style="margin-top:8px">Events resolve naturally after their duration. Up to 4 simultaneous crises can be active as the game progresses.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">SURVEILLANCE & FAILED OPS</div>
+        <p>Failing an <strong>abduct</strong> or <strong>eliminate</strong> operation on a TRACKED HVT causes <strong>loss of surveillance</strong>. The target goes underground — reverting to ACTIVE status. You must re-establish surveillance before attempting another direct action.</p>
+        <p style="margin-top:8px">Similarly, a failed <strong>org takedown</strong> burns your infiltration — the inside asset is compromised and the organization must be re-infiltrated from scratch before another takedown attempt.</p>
+      </div>
+
+      <div class="help-section">
         <div class="help-section-title">RANDOM EVENTS</div>
         <p>Political crises, internal incidents, external threats, and opportunities appear periodically. Some offer choices with trade-offs. Events can affect confidence, budget, department capacity, or agency relations.</p>
       </div>
@@ -3077,57 +3359,181 @@ window.dismissBriefingPopup = function() {
 };
 
 function showScreen(name) {
+  // Map old screen names to new ones
+  const map = { select: 'login', game: 'client' };
+  const mapped = map[name] || name;
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById(`screen-${name}`);
+  const el = document.getElementById(`screen-${mapped}`);
   if (el) el.classList.add('active');
 }
 
 // =============================================================================
-// COUNTRY SELECTION RENDER
+// LOGIN TERMINAL — Boot sequence + profile selection
 // =============================================================================
 
-function renderCountrySelect() {
-  const grid = document.getElementById('country-grid');
-  grid.innerHTML = Object.entries(COUNTRIES).map(([code, cfg]) => {
+function bootTerminal() {
+  const output = document.getElementById('term-output');
+  const profiles = document.getElementById('login-profiles');
+  const auth = document.getElementById('login-auth');
+  if (!output) return;
+
+  output.innerHTML = '';
+  profiles.classList.add('hidden');
+  auth.classList.add('hidden');
+
+  const lines = [
+    { text: 'SHADOWNET SECURE TERMINAL v4.7.2', delay: 0, cls: 'term-hi' },
+    { text: '================================', delay: 80, cls: 'term-dim' },
+    { text: '', delay: 120 },
+    { text: 'BIOS CHECK .......... OK', delay: 200 },
+    { text: 'CRYPTO MODULE ....... AES-256-GCM READY', delay: 350 },
+    { text: 'SECURE UPLINK ....... ESTABLISHING', delay: 500 },
+    { text: 'HANDSHAKE ........... COMPLETE', delay: 800 },
+    { text: 'IDENTITY VAULT ...... DECRYPTING', delay: 1000 },
+    { text: '', delay: 1150 },
+    { text: 'CLASSIFICATION: TOP SECRET // SCI // NOFORN', delay: 1250, cls: 'term-class' },
+    { text: 'WARNING: Unauthorized access is a federal crime under 18 U.S.C. § 1030.', delay: 1450, cls: 'term-warn' },
+    { text: '', delay: 1600 },
+    { text: 'SELECT IDENTITY PROFILE:', delay: 1700, cls: 'term-hi' },
+  ];
+
+  let idx = 0;
+  function typeLine() {
+    if (idx >= lines.length) {
+      // Show profile cards
+      setTimeout(() => renderProfileCards(), 200);
+      return;
+    }
+    const line = lines[idx++];
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.className = `term-line ${line.cls || ''}`;
+      div.textContent = line.text;
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+      typeLine();
+    }, line.delay - (idx > 1 ? lines[idx - 2].delay : 0));
+  }
+  typeLine();
+}
+
+function renderProfileCards() {
+  const profiles = document.getElementById('login-profiles');
+  if (!profiles) return;
+
+  profiles.innerHTML = Object.entries(COUNTRIES).map(([code, cfg]) => {
     const caps = cfg.deptCapacities;
-    const capRows = DEPT_CONFIG.map(d =>
-      `<div class="c-cap-row"><span>${d.short}</span><span>${caps[d.id]} ${d.unitName}</span></div>`
-    ).join('');
+    const totalCap = Object.values(caps).reduce((s, v) => s + v, 0);
     return `
-    <div class="country-card">
-      <div class="country-flag">${cfg.flag}</div>
-      <div class="country-name">${cfg.name}</div>
-      <div class="country-agency">${cfg.agency}</div>
-      <div class="country-reports">${cfg.reportsTo}</div>
-      <div class="country-stats">
-        <div class="c-stat"><span class="c-stat-lbl">BUDGET</span><span class="c-stat-val">${cfg.budgetLabel}</span></div>
-        <div class="c-stat"><span class="c-stat-lbl">CONFIDENCE</span><span class="c-stat-val">${cfg.confLabel}</span></div>
-        <div class="c-stat"><span class="c-stat-lbl">REGEN</span><span class="c-stat-val">${cfg.currencySymbol}${cfg.weeklyBudgetRegen}M/wk</span></div>
+    <div class="profile-card" onclick="selectProfile('${code}')">
+      <div class="profile-flag">${cfg.flag}</div>
+      <div class="profile-info">
+        <div class="profile-name">${cfg.agency}</div>
+        <div class="profile-country">${cfg.name}</div>
+        <div class="profile-meta">
+          <span>${cfg.budgetLabel} budget</span>
+          <span>${cfg.confLabel} confidence</span>
+          <span>${totalCap} personnel</span>
+        </div>
+        <div class="profile-desc">${cfg.desc}</div>
+        <div class="profile-reports">${cfg.reportsTo}</div>
       </div>
-      <div class="c-capacities">${capRows}</div>
-      <div class="country-desc">${cfg.desc}</div>
-      <button class="btn-assume" onclick="startGame('${code}')">ASSUME COMMAND</button>
     </div>`;
   }).join('');
+
+  profiles.classList.remove('hidden');
 }
+
+window.selectProfile = function(countryCode) {
+  const cfg = COUNTRIES[countryCode];
+  if (!cfg) return;
+
+  const profiles = document.getElementById('login-profiles');
+  const auth = document.getElementById('login-auth');
+  const output = document.getElementById('term-output');
+
+  // Hide profile cards, show auth sequence
+  profiles.classList.add('hidden');
+
+  // Add terminal lines for auth
+  const authLines = [
+    `PROFILE SELECTED: ${cfg.agency} (${cfg.acronym})`,
+    `CLEARANCE: TOP SECRET // SCI`,
+    `AUTHENTICATING ............`,
+  ];
+  authLines.forEach(text => {
+    const div = document.createElement('div');
+    div.className = 'term-line term-hi';
+    div.textContent = text;
+    output.appendChild(div);
+  });
+  output.scrollTop = output.scrollHeight;
+
+  // Show auth animation
+  auth.classList.remove('hidden');
+  const authLinesEl = document.getElementById('auth-lines');
+  const authBar = document.getElementById('auth-bar');
+
+  authLinesEl.innerHTML = `
+    <div class="auth-line">BIOMETRIC SCAN ........ <span class="auth-pending">VERIFYING</span></div>
+    <div class="auth-line">RETINA PATTERN ........ <span class="auth-pending">VERIFYING</span></div>
+    <div class="auth-line">VOICE PRINT ........... <span class="auth-pending">VERIFYING</span></div>
+    <div class="auth-line">CRYPTO KEY ............ <span class="auth-pending">VERIFYING</span></div>
+  `;
+
+  let progress = 0;
+  const authSteps = authLinesEl.querySelectorAll('.auth-pending');
+  let stepIdx = 0;
+
+  const interval = setInterval(() => {
+    progress += randInt(8, 18);
+    if (progress > 100) progress = 100;
+    authBar.style.width = `${progress}%`;
+
+    // Complete auth steps
+    if (progress >= 25 && stepIdx === 0) { authSteps[0].textContent = 'CONFIRMED'; authSteps[0].className = 'auth-ok'; stepIdx++; }
+    if (progress >= 50 && stepIdx === 1) { authSteps[1].textContent = 'CONFIRMED'; authSteps[1].className = 'auth-ok'; stepIdx++; }
+    if (progress >= 75 && stepIdx === 2) { authSteps[2].textContent = 'CONFIRMED'; authSteps[2].className = 'auth-ok'; stepIdx++; }
+    if (progress >= 100) {
+      authSteps[3].textContent = 'CONFIRMED'; authSteps[3].className = 'auth-ok';
+      clearInterval(interval);
+
+      // Add final lines
+      setTimeout(() => {
+        const div1 = document.createElement('div');
+        div1.className = 'term-line term-success';
+        div1.textContent = 'IDENTITY CONFIRMED — ACCESS GRANTED';
+        output.appendChild(div1);
+        const div2 = document.createElement('div');
+        div2.className = 'term-line term-hi';
+        div2.textContent = `Welcome, Director. ${cfg.acronym} SECURE MAIL loading...`;
+        output.appendChild(div2);
+        output.scrollTop = output.scrollHeight;
+
+        // Start the game after a brief pause
+        setTimeout(() => startGame(countryCode), 800);
+      }, 400);
+    }
+  }, 120);
+};
 
 // =============================================================================
 // KEYBOARD SHORTCUTS
 // =============================================================================
 
 document.addEventListener('keydown', e => {
+  const clientActive = document.getElementById('screen-client')?.classList.contains('active');
   if (e.key === 'ArrowRight' || e.key === 'n') {
-    if (document.getElementById('screen-game')?.classList.contains('active') &&
-        !document.getElementById('modal-overlay')?.classList.contains('hidden') === false)
-      advanceDay();
+    if (clientActive && document.getElementById('modal-overlay')?.classList.contains('hidden'))
+      advanceToNextEvent();
   }
   if (e.key === 'Escape') hideModal();
   if (e.key === '?')
-    if (document.getElementById('screen-game')?.classList.contains('active')) showHelp();
+    if (clientActive) showHelp();
   if (e.key === 'u' || e.key === 'U')
-    if (document.getElementById('screen-game')?.classList.contains('active')) showCapabilitiesMenu(false);
+    if (clientActive) showCapabilitiesMenu(false);
   if ((e.key === 's' || e.key === 'S') && document.activeElement?.tagName !== 'INPUT')
-    if (document.getElementById('screen-game')?.classList.contains('active') && typeof showSaveMenu === 'function') showSaveMenu();
+    if (clientActive && typeof showSaveMenu === 'function') showSaveMenu();
 });
 
 // =============================================================================
@@ -3135,9 +3541,9 @@ document.addEventListener('keydown', e => {
 // =============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-  renderCountrySelect();
-  showScreen('select');
-  document.getElementById('btn-advance').addEventListener('click', advanceDay);
+  showScreen('login');
+  bootTerminal();
+  document.getElementById('btn-advance').addEventListener('click', advanceToNextEvent);
   document.getElementById('btn-help').addEventListener('click', showHelp);
   document.getElementById('btn-capabilities')?.addEventListener('click', () => showCapabilitiesMenu(false));
   document.getElementById('btn-abort-game')?.addEventListener('click', confirmAbortGame);

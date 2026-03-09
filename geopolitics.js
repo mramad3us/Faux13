@@ -756,9 +756,9 @@ function spawnGeoOrg(evt, theater, tmpl) {
     return;
   }
 
-  // Spawn a foreign mission from the theater
+  // Spawn a foreign mission from the theater (exclude domestic-only types)
   var typeId = pick(theater.threatProfile.missionTypes.filter(function (t) {
-    return MISSION_TYPES[t];
+    return MISSION_TYPES[t] && MISSION_TYPES[t].location !== 'DOMESTIC';
   }));
   if (!typeId) return;
 
@@ -767,10 +767,50 @@ function spawnGeoOrg(evt, theater, tmpl) {
   var m = G.missions.length > prevLen ? G.missions[0] : null;
   if (!m) return;
 
-  // Override location to theater
+  // Override location to theater — fix baked text fields
   var loc = pick(theater.cities);
+  var oldCity = m.city;
+  var oldCountry = m.country;
   m.city = loc.city;
   m.country = loc.country;
+  // Fix location tag if mission was domestic but theater is foreign
+  var isDomestic = G.cfg && loc.country === G.cfg.name;
+  m.location = isDomestic ? 'DOMESTIC' : 'FOREIGN';
+  if (m.fillVars) {
+    m.fillVars.city = loc.city;
+    m.fillVars.country = loc.country;
+  }
+  // Replace old location in all pre-rendered text fields
+  var geoTextFields = ['initialReport', 'fullReport', 'opNarrative', 'agencyJustification'];
+  for (var tf = 0; tf < geoTextFields.length; tf++) {
+    var fn = geoTextFields[tf];
+    if (m[fn] && typeof m[fn] === 'string') {
+      if (oldCity && loc.city && oldCity !== loc.city) m[fn] = m[fn].split(oldCity).join(loc.city);
+      if (oldCountry && loc.country && oldCountry !== loc.country) m[fn] = m[fn].split(oldCountry).join(loc.country);
+      if (m[fn].indexOf('{') >= 0 && m.fillVars) m[fn] = fillTemplate(m[fn], m.fillVars);
+    }
+  }
+  // Fix intel field values
+  if (m.intelFields) {
+    for (var fi = 0; fi < m.intelFields.length; fi++) {
+      var fv = m.intelFields[fi];
+      if (fv.value && typeof fv.value === 'string') {
+        if (oldCity && loc.city && oldCity !== loc.city) fv.value = fv.value.split(oldCity).join(loc.city);
+        if (oldCountry && loc.country && oldCountry !== loc.country) fv.value = fv.value.split(oldCountry).join(loc.country);
+      }
+    }
+  }
+  // Fix success/failure message arrays
+  var msgArrays = ['successMsgs', 'failureMsgs'];
+  for (var ma = 0; ma < msgArrays.length; ma++) {
+    if (Array.isArray(m[msgArrays[ma]])) {
+      m[msgArrays[ma]] = m[msgArrays[ma]].map(function (s) {
+        if (oldCity && loc.city && oldCity !== loc.city) s = s.split(oldCity).join(loc.city);
+        if (oldCountry && loc.country && oldCountry !== loc.country) s = s.split(oldCountry).join(loc.country);
+        return s;
+      });
+    }
+  }
   m.threat = Math.min(5, m.threat + tmpl.severity - 2);
   m.geoEventId = evt.id;
 

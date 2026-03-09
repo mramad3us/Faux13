@@ -620,13 +620,13 @@ const MISSION_TYPES = {
       'Target "{alias}" apprehended in {city}. Found in possession of {seized_material}. Significant intelligence haul.\n\nSubject is cooperating. Early debrief suggests the operation was part of a larger program.',
       'HVT neutralized. "{alias}" no longer poses a threat. Operation conducted with full deniability.\n\nPost-action sweep recovered {seized_material}. A follow-up surveillance operation has been recommended.',
       '"{alias}" taken into custody at a controlled location in {city}. Clean arrest — no public exposure.\n\n{seized_material} seized. Initial debrief underway.',
-      'Target "{alias}" neutralized without incident. {seized_material} recovered. Operation complete.\n\nNo attribution. The {country} service is unaware their asset has been rolled up.',
+      'Target "{alias}" neutralized without incident. {seized_material} recovered. Operation complete.\n\nNo attribution. The {hostile_country} service is unaware their asset has been rolled up.',
     ],
     failureMsgs: [
       '"{alias}" evaded capture in {city}. Target believed to have exited the country via {exfil}. Objective not achieved.\n\nA request for allied border monitoring has been submitted.',
-      'Operation blown. "{alias}" alerted by unknown leak. Target escaped. Diplomatic immunity invoked by {country}.\n\nDamage assessment is in progress.',
+      'Operation blown. "{alias}" alerted by unknown leak. Target escaped. Diplomatic immunity invoked by {hostile_country}.\n\nDamage assessment is in progress.',
       'Surveillance burned. "{alias}" performed counter-surveillance and identified our team. Target has gone to ground.\n\nWhether the target has departed the country is unknown.',
-      '"{alias}" not present at expected location. Target appears to have been tipped off. Exfil route used unknown.\n\n{country} service may have extracted their asset.',
+      '"{alias}" not present at expected location. Target appears to have been tipped off. Exfil route used unknown.\n\n{hostile_country} service may have extracted their asset.',
     ],
     confSuccess: [10, 16], confFail: [-12, -20],
     intelFields: [
@@ -661,7 +661,7 @@ const MISSION_TYPES = {
       security: ['none — operating alone', 'minimal counter-surveillance measures', 'backed by an embassy security team', 'lone operative with occasional hostile support', 'traveling with a single minder'],
       seized_material: ['classified documents', 'a list of recruited assets', 'technical schematics', 'encryption devices', 'a foreign intelligence service communication kit', 'operational tasking documents', 'a dead-drop cache'],
       exfil: ['commercial flight', 'a diplomatic vehicle', 'the northern border', 'a private aircraft', 'a ship in a commercial port'],
-      country: ['Russia', 'China', 'Iran', 'North Korea', 'Belarus', 'Venezuela', 'Syria'],
+      hostile_country: ['Russia', 'China', 'Iran', 'North Korea', 'Belarus', 'Venezuela', 'Syria'],
     }
   },
 

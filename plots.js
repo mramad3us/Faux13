@@ -346,9 +346,32 @@ function spawnPlotMission(plot) {
     var tCities = THEATERS[plot.geoTheaterId].cities;
     if (tCities && tCities.length > 0) {
       var tLoc = pick(tCities);
+      var pOldCity = m.city;
+      var pOldCountry = m.country;
       m.city = tLoc.city;
       m.country = tLoc.country;
+      // Fix location tag if overriding to a foreign country
+      var pIsDomestic = G.cfg && tLoc.country === G.cfg.name;
+      m.location = pIsDomestic ? 'DOMESTIC' : 'FOREIGN';
       if (m.fillVars) { m.fillVars.city = tLoc.city; m.fillVars.country = tLoc.country; }
+      // Fix baked text fields
+      var pFields = ['initialReport', 'fullReport', 'opNarrative', 'agencyJustification'];
+      for (var pf = 0; pf < pFields.length; pf++) {
+        if (m[pFields[pf]] && typeof m[pFields[pf]] === 'string') {
+          if (pOldCity && tLoc.city && pOldCity !== tLoc.city) m[pFields[pf]] = m[pFields[pf]].split(pOldCity).join(tLoc.city);
+          if (pOldCountry && tLoc.country && pOldCountry !== tLoc.country) m[pFields[pf]] = m[pFields[pf]].split(pOldCountry).join(tLoc.country);
+          if (m[pFields[pf]].indexOf('{') >= 0 && m.fillVars) m[pFields[pf]] = fillTemplate(m[pFields[pf]], m.fillVars);
+        }
+      }
+      if (m.intelFields) {
+        for (var pi = 0; pi < m.intelFields.length; pi++) {
+          var piv = m.intelFields[pi];
+          if (piv.value && typeof piv.value === 'string') {
+            if (pOldCity && tLoc.city && pOldCity !== tLoc.city) piv.value = piv.value.split(pOldCity).join(tLoc.city);
+            if (pOldCountry && tLoc.country && pOldCountry !== tLoc.country) piv.value = piv.value.split(pOldCountry).join(tLoc.country);
+          }
+        }
+      }
     }
   }
 

@@ -313,8 +313,8 @@
     const saves = loadAllSaves();
     if (Object.keys(saves).length === 0) return;
 
-    const selectScreen = document.getElementById('screen-select');
-    if (!selectScreen) return;
+    const loginScreen = document.getElementById('screen-login') || document.getElementById('screen-select');
+    if (!loginScreen) return;
 
     const resumeBar = document.createElement('div');
     resumeBar.id = 'resume-bar';
@@ -329,7 +329,8 @@
       <span class="resume-msg">${msg}</span>
       <button class="btn-primary resume-btn" onclick="showSaveMenu()">LOAD GAME</button>
     `;
-    selectScreen.querySelector('.select-content').appendChild(resumeBar);
+    const target = loginScreen.querySelector('.login-wrap') || loginScreen.querySelector('.select-content');
+    if (target) target.appendChild(resumeBar);
   });
 
 })();
