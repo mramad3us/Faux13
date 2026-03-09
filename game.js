@@ -43,7 +43,7 @@ const COUNTRIES = {
       MILITARY: { name: 'Defense Intelligence Agency', shortName: 'DIA', type: 'military', startingRelation: 50,
         desc: 'The Defense Intelligence Agency — military intelligence arm of the DoD. Provides combat-relevant intelligence to warfighters and policymakers; oversees attaché networks worldwide.',
         support: [
-          { id: 'DEVGRU',     label: 'DEVGRU Element',      desc: 'SEAL Team Six direct-action unit.',  cost: 20, bonusType: 'execProb',  bonusValue: 20 },
+          { id: 'JSOC_T1',    label: 'JSOC Tier 1 Element',  desc: 'Joint Special Operations Command tier-one asset (Delta Force / DEVGRU).',  cost: 20, bonusType: 'execProb',  bonusValue: 20 },
           { id: 'MARINE_QRF', label: 'Marine QRF',          desc: 'Quick Reaction Force (Marines).',    cost: 15, bonusType: 'execProb',  bonusValue: 15 },
           { id: 'DIA_HUMINT', label: 'DIA HUMINT Package',  desc: 'Defense attaché intel network.',     cost: 10, bonusType: 'intelField',bonusValue: 1  },
         ]},
@@ -134,7 +134,7 @@ const COUNTRIES = {
 const DEPT_CONFIG = [
   {
     id: 'ANALYSIS', name: 'Analysis Bureau', short: 'ANALYSIS',
-    unitName: 'analysts', unitNameSingle: 'analyst',
+    unitName: 'desks', unitNameSingle: 'desk',
     baseCapacity: 8, maxCapacity: 14, xpCostPerUnit: 4,
     desc: 'Processes raw intel, produces assessments',
     tip: 'Best general-purpose investigator — required for most mission types. Analysts can be spread across many simultaneous investigations. Does not contribute to direct-action operations.',
@@ -169,7 +169,7 @@ const DEPT_CONFIG = [
   },
   {
     id: 'FOREIGN_OPS', name: 'Foreign Operations', short: 'FOREIGN OPS',
-    unitName: 'operatives', unitNameSingle: 'operative',
+    unitName: 'cells', unitNameSingle: 'cell',
     baseCapacity: 4, maxCapacity: 10, xpCostPerUnit: 6,
     desc: 'International clandestine operations',
     tip: 'Runs all international clandestine operations. Each operative can only run one foreign operation at a time. Required for foreign HVT, rendition, asset rescue, and regime operations.',
@@ -589,7 +589,7 @@ function spawnMission(forcedType) {
       baseBudget: randInt(...tmpl.budgetRange),
       invDepts:   tmpl.invDepts,
       execDepts:  tmpl.execDepts,
-      opNarrative:   tmpl.opNarrative || '',
+      opNarrative:   tmpl.opNarrative ? fillTemplate(tmpl.opNarrative, fillVars) : '',
       initialReport: fillTemplate(pick(tmpl.initialReports), fillVars),
       fullReport:    fillTemplate(pick(tmpl.fullReports),    fillVars),
       successMsgs:   tmpl.successMsgs,
@@ -661,13 +661,13 @@ function advanceDay() {
   }
 
   // Favor missions every ~4 days, relation-weighted
-  if (G.day % 4 === 0 && G.cfg?.partnerAgencies) {
+  if (G.day % 5 === 0 && G.cfg?.partnerAgencies) {
     const inbox = G.missions.filter(m => !['EXECUTING', 'SUCCESS', 'FAILURE', 'ARCHIVED', 'EXPIRED'].includes(m.status));
     if (inbox.length < 6) {
       const candidates = Object.entries(G.cfg.partnerAgencies)
         .filter(([id]) => (G.relations?.[id]?.relation ?? 0) >= 25)
         .map(([id, ag]) => ({ id, ag, weight: G.relations[id].relation }));
-      if (candidates.length && Math.random() < 0.65) {
+      if (candidates.length && Math.random() < 0.40) {
         const chosen = weightedPick(candidates);
         const typeId = pick(AGENCY_FAVOR_TYPES[chosen.id] || []);
         if (typeId) {
@@ -1048,8 +1048,13 @@ function calcOpProb(m, budget, depts, selectedSupport) {
   const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
   const total            = m.intelFields?.length || 0;
   const revealed         = m.intelFields?.filter(f => f.revealed).length || 0;
-  const intelPenalty     = total > 0 ? Math.round((1 - revealed / total) * 30) : 0;
-  const intelBonusAmt    = m.intelBonus ? 10 : 0;
+  // Intel support reveals hidden fields — count them toward revealed
+  const intelSupportFields = (selectedSupport || [])
+    .filter(s => s.bonusType === 'intelField')
+    .reduce((sum, s) => sum + s.bonusValue, 0);
+  const effectiveRevealed = Math.min(total, revealed + intelSupportFields);
+  const intelPenalty     = total > 0 ? Math.round((1 - effectiveRevealed / total) * 30) : 0;
+  const intelBonusAmt    = (effectiveRevealed >= total && total > 0) ? 10 : (m.intelBonus ? 10 : 0);
   const blownPenalty     = m.blown ? 25 : 0;
   const agencyBonus      = (selectedSupport || [])
     .filter(s => s.bonusType === 'execProb')
@@ -1522,8 +1527,13 @@ const HVT_REGISTER_TYPES = new Set([
   'FOREIGN_HVT', 'DOMESTIC_HVT', 'RENDITION', 'SURVEILLANCE_TAKEDOWN', 'LONG_HUNT_HVT', 'MOLE_HUNT',
   'HVT_SURVEILLANCE_DOM', 'HVT_SURVEILLANCE_FOR', 'HVT_ABDUCTION_DOM', 'HVT_ABDUCTION_FOR',
   'FAVOR_BUREAU_DETENTION', 'FAVOR_AGENCY_RENDITION',
+  'DOMESTIC_TERROR', 'COUNTER_INTEL', 'ASSET_RESCUE', 'REGIME_OP',
 ]);
-const HVT_FAIL_TYPES      = new Set(['FOREIGN_HVT', 'DOMESTIC_HVT', 'LONG_HUNT_HVT']);
+const HVT_FAIL_TYPES      = new Set(['FOREIGN_HVT', 'DOMESTIC_HVT', 'LONG_HUNT_HVT', 'DOMESTIC_TERROR', 'COUNTER_INTEL']);
+// Types that produce a TRACKED status (surveillance only — no capture)
+const HVT_TRACKED_TYPES   = new Set(['HVT_SURVEILLANCE_DOM', 'HVT_SURVEILLANCE_FOR']);
+// Types that produce DETAINED status (target captured)
+const HVT_DETAINED_TYPES  = new Set(['RENDITION', 'SURVEILLANCE_TAKEDOWN', 'FAVOR_BUREAU_DETENTION', 'FAVOR_AGENCY_RENDITION', 'HVT_ABDUCTION_DOM', 'HVT_ABDUCTION_FOR']);
 
 function hvtAliasFromMission(m) {
   if (m.selectedSuspectIdx !== null && m.suspects?.[m.selectedSuspectIdx])
@@ -1539,12 +1549,16 @@ function hvtRoleFromMission(m) {
 function registerOrUpdateHvt(m) {
   if (!HVT_REGISTER_TYPES.has(m.typeId)) return;
 
-  // Surveillance missions: mark surveillanceEstablished on linked HVT
+  // Surveillance missions: mark surveillanceEstablished + TRACKED on linked HVT
   if (SURVEILLANCE_TYPES.has(m.typeId)) {
     const linkedHvtId = m.linkedHvtId;
     if (linkedHvtId) {
       const h = G.hvts.find(x => x.id === linkedHvtId);
-      if (h) { h.surveillanceEstablished = true; addLog(`Surveillance established on ${h.alias}.`, 'log-info'); }
+      if (h) {
+        h.surveillanceEstablished = true;
+        if (h.status === 'ACTIVE') h.status = 'TRACKED';
+        addLog(`Surveillance established on ${h.alias}.`, 'log-info');
+      }
     }
     return;
   }
@@ -1554,7 +1568,7 @@ function registerOrUpdateHvt(m) {
     const linkedHvtId = m.linkedHvtId;
     if (linkedHvtId) {
       const h = G.hvts.find(x => x.id === linkedHvtId);
-      if (h && h.status === 'ACTIVE') {
+      if (h && (h.status === 'ACTIVE' || h.status === 'TRACKED')) {
         h.status      = 'DETAINED';
         h.detainedAt  = pick(BLACK_SITE_NAMES);
         h.detainedDay = G.day;
@@ -1564,26 +1578,34 @@ function registerOrUpdateHvt(m) {
     return;
   }
 
+  // Determine outcome status
+  function resolveHvtStatus(typeId) {
+    if (HVT_DETAINED_TYPES.has(typeId)) return 'DETAINED';
+    if (HVT_TRACKED_TYPES.has(typeId)) return 'TRACKED';
+    return 'NEUTRALIZED';
+  }
+
   const idx = G.hvts.findIndex(h => h.linkedMissionIds.includes(m.id));
   if (idx >= 0) {
     const h = G.hvts[idx];
-    if (m.typeId === 'RENDITION' || ABDUCTION_TYPES.has(m.typeId) || m.typeId === 'FAVOR_BUREAU_DETENTION' || m.typeId === 'FAVOR_AGENCY_RENDITION') {
-      h.status      = 'DETAINED';
+    const newSt = resolveHvtStatus(m.typeId);
+    h.status = newSt;
+    if (newSt === 'DETAINED') {
       h.detainedAt  = pick(BLACK_SITE_NAMES);
       h.detainedDay = G.day;
-    } else {
-      h.status = 'NEUTRALIZED';
+    }
+    if (newSt === 'TRACKED') {
+      h.surveillanceEstablished = true;
     }
     h.gaps = [];
     return;
   }
 
   // New HVT entry
-  const isDetained = (m.typeId === 'RENDITION' || m.typeId === 'FAVOR_BUREAU_DETENTION' || m.typeId === 'FAVOR_AGENCY_RENDITION');
-  const newStatus  = isDetained ? 'DETAINED' : 'NEUTRALIZED';
+  const newStatus  = resolveHvtStatus(m.typeId);
   const entry = {
     id: `H${++G.hvtIdCounter}`,
-    type: (m.typeId.includes('HVT') || m.typeId === 'RENDITION' || isDetained) ? 'HVT' : 'ORG',
+    type: 'HVT',
     alias: hvtAliasFromMission(m),
     role:  hvtRoleFromMission(m),
     org:   m.category,
@@ -1591,13 +1613,13 @@ function registerOrUpdateHvt(m) {
     location: m.location || 'FOREIGN',
     status: newStatus,
     knownFields: { city: m.city, country: m.country || null },
-    gaps: [],
+    gaps: newStatus === 'TRACKED' ? ['Security detail size unknown'] : [],
     linkedMissionIds: [m.id],
     addedDay: G.day,
-    detainedAt:   isDetained ? pick(BLACK_SITE_NAMES) : null,
-    detainedDay:  isDetained ? G.day : null,
+    detainedAt:   newStatus === 'DETAINED' ? pick(BLACK_SITE_NAMES) : null,
+    detainedDay:  newStatus === 'DETAINED' ? G.day : null,
     interrogationCount: 0,
-    surveillanceEstablished: false,
+    surveillanceEstablished: newStatus === 'TRACKED',
     handedTo: null,
   };
   G.hvts.push(entry);
@@ -1634,7 +1656,7 @@ function registerOrUpdateHvtFailed(m) {
 
 window.openHvtMissionModal = function(hvtId) {
   const h = G.hvts.find(h => h.id === hvtId);
-  if (!h || h.status !== 'ACTIVE') return;
+  if (!h || (h.status !== 'ACTIVE' && h.status !== 'TRACKED')) return;
 
   // Build list of applicable mission types based on HVT location context
   const isForeign = !!(h.knownFields.country && h.knownFields.country !== (G.cfg?.name || ''));
@@ -2350,7 +2372,7 @@ function renderThreats() {
   const panelEl = document.getElementById('threats-panel');
   if (!countEl || !panelEl) return;
 
-  const tracked     = G.hvts.filter(h => h.status === 'ACTIVE' || h.status === 'DETAINED');
+  const tracked     = G.hvts.filter(h => h.status === 'ACTIVE' || h.status === 'DETAINED' || h.status === 'TRACKED');
   countEl.textContent = tracked.length;
 
   if (G.hvts.length === 0) {
@@ -2364,6 +2386,7 @@ function renderThreats() {
     // Status chip
     const statusChipMap = {
       ACTIVE:       `<span class="threat-status-chip threat-status-active">ACTIVE</span>`,
+      TRACKED:      `<span class="threat-status-chip threat-status-tracked">TRACKED</span>`,
       NEUTRALIZED:  `<span class="threat-status-chip threat-status-neutralized">NEUTRALIZED</span>`,
       DETAINED:     `<span class="threat-status-chip threat-status-detained">DETAINED</span>`,
       ELIMINATED:   `<span class="threat-status-chip threat-status-eliminated">ELIMINATED</span>`,
@@ -2393,17 +2416,21 @@ function renderThreats() {
     let actionSection = '';
 
     if (h.status === 'ACTIVE') {
-      if (h.surveillanceEstablished) {
-        actionSection = `
-          <div class="surv-indicator">◉ SURVEILLANCE ESTABLISHED</div>
-          <div class="threat-handover-row">
-            <button class="btn-threat-assign" onclick="spawnHvtMission('${h.id}','${h.location === 'DOMESTIC' ? 'HVT_ABDUCTION_DOM' : 'HVT_ABDUCTION_FOR'}')">ABDUCT</button>
-            <button class="btn-threat-assign" onclick="spawnHvtMission('${h.id}','${h.location === 'DOMESTIC' ? 'DOMESTIC_HVT' : 'FOREIGN_HVT'}')">ELIMINATE</button>
-            <button class="btn-threat-action" onclick="dropSurveillance('${h.id}')" data-tip="Abandon surveillance. Must re-establish to abduct.">DROP SURV.</button>
-          </div>`;
-      } else {
-        actionSection = `<button class="btn-threat-assign" onclick="openHvtMissionModal('${h.id}')">ASSIGN MISSION</button>`;
-      }
+      const trackTypeId = h.location === 'DOMESTIC' ? 'HVT_SURVEILLANCE_DOM' : 'HVT_SURVEILLANCE_FOR';
+      const trackAvail = MISSION_TYPES[trackTypeId];
+      actionSection = `
+        <div class="threat-handover-row">
+          ${trackAvail ? `<button class="btn-threat-assign" onclick="spawnHvtMission('${h.id}','${trackTypeId}')">TRACK</button>` : ''}
+          <button class="btn-threat-action" onclick="openHvtMissionModal('${h.id}')">MORE OPTIONS</button>
+        </div>`;
+    } else if (h.status === 'TRACKED') {
+      actionSection = `
+        <div class="surv-indicator">◉ SURVEILLANCE ESTABLISHED</div>
+        <div class="threat-handover-row">
+          <button class="btn-threat-assign" onclick="spawnHvtMission('${h.id}','${h.location === 'DOMESTIC' ? 'HVT_ABDUCTION_DOM' : 'HVT_ABDUCTION_FOR'}')">ABDUCT</button>
+          <button class="btn-threat-assign" onclick="spawnHvtMission('${h.id}','${h.location === 'DOMESTIC' ? 'DOMESTIC_HVT' : 'FOREIGN_HVT'}')">ELIMINATE</button>
+          <button class="btn-threat-action" onclick="dropSurveillance('${h.id}')" data-tip="Abandon surveillance. Target reverts to ACTIVE.">DROP SURV.</button>
+        </div>`;
     } else if (h.status === 'DETAINED') {
       const daysCustody = G.day - (h.detainedDay || G.day);
       const interrogCount = h.interrogationCount || 0;
@@ -2436,8 +2463,8 @@ function renderThreats() {
       actionSection = `<div class="threat-fate-badge threat-status-handed-over" style="padding:3px 8px">Transferred to ${agName}</div>`;
     }
 
-    const cardCls = h.status === 'ACTIVE' ? 'threat-card-active'
-      : h.status === 'DETAINED' ? 'threat-card-active'
+    const cardCls = (h.status === 'ACTIVE' || h.status === 'TRACKED' || h.status === 'DETAINED')
+      ? 'threat-card-active'
       : 'threat-card-neutralized';
 
     return `<div class="threat-card ${cardCls}">
@@ -2456,11 +2483,13 @@ function renderThreats() {
   };
 
   const active      = G.hvts.filter(h => h.status === 'ACTIVE');
+  const trackedHvts = G.hvts.filter(h => h.status === 'TRACKED');
   const detained    = G.hvts.filter(h => h.status === 'DETAINED');
   const neutralized = G.hvts.filter(h => h.status === 'NEUTRALIZED');
   const eliminated  = G.hvts.filter(h => h.status === 'ELIMINATED' || h.status === 'HANDED_OVER');
 
   let html = '';
+  if (trackedHvts.length > 0) html += `<div class="threat-section-title">UNDER SURVEILLANCE</div>${trackedHvts.map(buildCard).join('')}`;
   if (active.length > 0)    html += `<div class="threat-section-title">ACTIVE THREATS</div>${active.map(buildCard).join('')}`;
   if (detained.length > 0)  html += `<div class="threat-section-title">DETAINED</div>${detained.map(buildCard).join('')}`;
   if (neutralized.length > 0) html += `<div class="threat-section-title">NEUTRALIZED</div>${neutralized.map(buildCard).join('')}`;
@@ -2472,7 +2501,8 @@ window.dropSurveillance = function(hvtId) {
   const h = G.hvts.find(x => x.id === hvtId);
   if (!h || !h.surveillanceEstablished) return;
   h.surveillanceEstablished = false;
-  addLog(`Surveillance on ${h.alias} terminated.`, 'log-warn');
+  if (h.status === 'TRACKED') h.status = 'ACTIVE';
+  addLog(`Surveillance on ${h.alias} terminated. Target reverted to ACTIVE.`, 'log-warn');
   render();
 };
 

@@ -110,10 +110,34 @@
     Object.keys(G).forEach(k => delete G[k]);
     Object.assign(G, restored);
 
+    // Migrate old saves: re-fill mission text fields that may contain raw placeholders
+    migrateMissionText();
+
     showScreen('game');
     render();
     addLog('Game loaded.', 'log-info');
     return true;
+  }
+
+  function migrateMissionText() {
+    if (!G.missions || !G.cfg) return;
+    const pa = G.cfg.partnerAgencies || {};
+    const baseVars = {
+      agency: G.cfg.acronym,
+      leaderTitle: G.cfg.leaderTitle,
+      bureau_name: pa.BUREAU?.shortName || 'BUREAU',
+      agency_name: pa.AGENCY?.shortName || 'AGENCY',
+      military_name: pa.MILITARY?.shortName || 'MILITARY',
+    };
+    const textFields = ['opNarrative', 'initialReport', 'fullReport', 'agencyJustification', 'resultMsg'];
+    for (const m of G.missions) {
+      const vars = Object.assign({}, baseVars, m.fillVars || {});
+      for (const field of textFields) {
+        if (m[field] && typeof m[field] === 'string' && m[field].includes('{')) {
+          m[field] = fillTemplate(m[field], vars);
+        }
+      }
+    }
   }
 
   function deleteSave(slotId) {
@@ -121,6 +145,17 @@
     delete saves[slotId];
     persistAllSaves(saves);
   }
+
+  // =========================================================================
+  // MIGRATE EXISTING MISSIONS — fix raw placeholders from older sessions
+  // =========================================================================
+
+  let _migrated = false;
+  hook('render:after', function () {
+    if (_migrated || !G.country) return;
+    _migrated = true;
+    migrateMissionText();
+  });
 
   // =========================================================================
   // AUTOSAVE — hook into day advance
