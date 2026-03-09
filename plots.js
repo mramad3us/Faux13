@@ -435,6 +435,37 @@ function flagPlot(plot) {
     'File opened: ' + plot.fileName + ' \u2014 ' + plot.orgName + '.',
     'log-warn'
   );
+
+  // Ominous briefing pop-up
+  var ominousIntros = [
+    'Something has been moving in the dark. Separate incidents — different cities, different methods — but the pattern is unmistakable. This is coordinated.',
+    'The Analysis Bureau has been running correlation matrices on recent operations. The results are not encouraging. What looked like isolated incidents now forms a single, deliberate campaign.',
+    'It started as noise — a suspicious contact here, an intercepted signal there. But when the pieces were assembled, a shape emerged. Something organized. Something patient.',
+    'Three operations. Three different threat vectors. One shared signature buried in the tradecraft. The analysts didn\'t want to believe it at first. Now they have no choice.',
+    'The connections were invisible until last night. A junior analyst flagged an anomaly in the communications metadata. When the team pulled the thread, the whole picture unraveled — and it is worse than anyone expected.',
+    'What was dismissed as coincidence can no longer be ignored. The operational fingerprints are too consistent. Someone is running a coordinated campaign against us, and they have been doing it for some time.',
+  ];
+  var ominousClosers = [
+    'A file has been opened. From this point forward, every connected operation will be tracked under a single umbrella. This is no longer a series of incidents — it is a campaign.',
+    'The Director has authorized a dedicated tracking file. All linked intelligence will be consolidated. Whatever this organization is planning, we now know it exists. That is the first step.',
+    'The threat has been formally classified and a file opened. The full scope of their operation remains unknown. What we do know: they are organized, they are funded, and they are not finished.',
+    'A classified file has been opened. Connected assets are being retasked. The organization\'s endgame is still unclear — but the clock is now ticking for both sides.',
+    'This changes the threat picture. A new file has been opened and flagged for priority attention. We may already be behind.',
+  ];
+  var threatLabel = plot.threat >= 4 ? 'CRITICAL' : plot.threat >= 3 ? 'HIGH' : 'ELEVATED';
+  queueBriefingPopup({
+    title: 'PATTERN DETECTED — NEW THREAT',
+    category: 'THREAT INTELLIGENCE',
+    subtitle: 'FILE ' + plot.fileName + ' — ' + plot.orgLabel + ' — THREAT LEVEL ' + threatLabel,
+    accent: 'rgba(231, 76, 60, 0.9)',
+    body: pick(ominousIntros) + '<br><br>' + pick(ominousClosers) +
+      '<div style="margin-top:12px;padding:8px 10px;border:1px solid rgba(231,76,60,0.3);border-left:3px solid rgba(231,76,60,0.6);border-radius:4px;background:rgba(231,76,60,0.05)">' +
+        '<div style="font-size:11px;font-weight:700;letter-spacing:0.5px;color:rgba(231,76,60,0.95)">' + plot.orgName + '</div>' +
+        '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">FILE: ' + plot.fileName + ' · ' + plot.orgLabel + ' · ' + plot.baseCity + ', ' + plot.baseCountry + '</div>' +
+        '<div style="font-size:10px;color:var(--text-hi);margin-top:4px;line-height:1.4">' + plot.orgDesc + '</div>' +
+      '</div>',
+    buttonLabel: 'UNDERSTOOD',
+  });
 }
 
 // =============================================================================

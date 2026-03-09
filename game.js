@@ -305,15 +305,21 @@ function fmt(n) { return G.cfg ? `${G.cfg.currencySymbol}${n}M` : `$${n}M`; }
 function week() { return Math.ceil(G.day / 7); }
 
 function fillTemplate(tpl, vars) {
-  return tpl.replace(/\{(\w+)\}/g, (_, key) =>
-    vars[key] !== undefined ? vars[key] : `[${key}]`);
+  let result = tpl.replace(/\{(\w+)\}/g, (_, key) =>
+    vars[key] !== undefined ? vars[key] : `{${key}}`);
+  // Second pass: resolve nested placeholders (e.g. {military_name} inside a resolved var value)
+  if (result.includes('{')) {
+    result = result.replace(/\{(\w+)\}/g, (_, key) =>
+      vars[key] !== undefined ? vars[key] : `[${key}]`);
+  }
+  return result;
 }
 
 function resolveVars(varsTemplate, baseVars) {
   const resolved = { ...baseVars };
   for (const [k, v] of Object.entries(varsTemplate || {}))
     resolved[k] = Array.isArray(v) ? pick(v) : v;
-  // Second pass: resolve nested placeholders within var values (e.g. {military_name} inside element_type)
+  // Resolve nested placeholders within var values (e.g. {military_name} inside element_type)
   for (const [k, v] of Object.entries(resolved)) {
     if (typeof v === 'string' && v.includes('{'))
       resolved[k] = fillTemplate(v, resolved);
@@ -883,10 +889,44 @@ function completePhase(m, result, msg) {
   }
 }
 
+const HANDLER_ALIASES = [
+  'RAVEN', 'VOSTOK', 'CARDINAL', 'MERCURY', 'FULCRUM', 'NIGHTSHADE',
+  'TYPHON', 'GREMLIN', 'SABLE', 'KINGPIN', 'ONYX', 'MAGPIE',
+];
+
 function spawnFollowUpMission(m, phase) {
   const intelText = pick(phase.followUpIntelTexts || []);
   if (intelText) addLog(`INTELLIGENCE LEAD — OP ${m.codename}: ${intelText}`, 'log-info');
   spawnMission(phase.spawnsFollowUp);
+
+  // Register the identified target as an ACTIVE HVT in the threats tab
+  const handlerRole = m.fillVars?.handler_description || 'foreign intelligence officer — identity obtained through interrogation';
+  const alias = pick(HANDLER_ALIASES);
+  const followUpMission = G.missions[0]; // spawnMission unshifts
+  const hvtId = `H${++G.hvtIdCounter}`;
+  G.hvts.push({
+    id: hvtId,
+    type: 'HVT',
+    alias: alias,
+    role: handlerRole,
+    org: m.category || 'COUNTER-ESPIONAGE',
+    threat: m.threat,
+    location: 'FOREIGN',
+    status: 'ACTIVE',
+    knownFields: { city: followUpMission?.city || null, country: followUpMission?.country || null },
+    gaps: ['Exact location unknown', 'Cover identity not confirmed'],
+    linkedMissionIds: followUpMission ? [m.id, followUpMission.id] : [m.id],
+    addedDay: G.day,
+    detainedAt: null,
+    detainedDay: null,
+    interrogationCount: 0,
+    surveillanceEstablished: false,
+    handedTo: null,
+  });
+  // Link follow-up mission to this HVT
+  if (followUpMission) followUpMission.linkedHvtId = hvtId;
+  addLog(`NEW THREAT: ${alias} — ${handlerRole}. Added to threat tracker.`, 'log-warn');
+  hvtBriefingPopup('newTarget', G.hvts[G.hvts.length - 1], { codename: m.codename, detail: 'Identified through interrogation of detained subject during OP ' + (m.codename || '???') + '.' });
 }
 
 // =============================================================================
@@ -1183,6 +1223,7 @@ function openOperationModal(missionId) {
         ).join('')
       }</div>
     </div>` : ''}
+    ${typeof window.buildEliteUnitsHtml === 'function' ? window.buildEliteUnitsHtml(missionId, m.execDepts) : ''}
     <div class="modal-section">
       <div class="prob-display" data-tip="Estimated success probability. Budget and recommended departments are the main drivers.${m.phaseFalseFlagPenalty ? ' Reduced 25% due to anomaly.' : ''}">
         <div class="prob-label">ESTIMATED SUCCESS PROBABILITY</div>
@@ -1199,7 +1240,9 @@ function openOperationModal(missionId) {
 
   window._currentOpMission       = missionId;
   window._currentOpSelectedDepts = selectedDepts;
+  window._currentOpSelectedElites = [];
   showModal();
+  if (typeof window.refreshEliteRelevance === 'function') window.refreshEliteRelevance();
 }
 
 window.toggleExecDept = function(deptId, missionId) {
@@ -1214,6 +1257,7 @@ window.toggleExecDept = function(deptId, missionId) {
   document.querySelectorAll('.modal-dept-check').forEach(el => {
     if (el.dataset.dept === deptId) el.classList.toggle('selected', arr.includes(deptId));
   });
+  if (typeof window.refreshEliteRelevance === 'function') window.refreshEliteRelevance();
   window.updateModalProb(missionId);
 };
 
@@ -1248,7 +1292,11 @@ window.updateModalProb = function(missionId) {
   const b  = parseInt(bi.value);
   const bv = document.getElementById('op-budget-val');
   if (bv) bv.textContent = fmt(b);
+  // Temporarily attach elite IDs so calcProb:modify hook can pick them up
+  const prevElites = m.attachedEliteIds;
+  m.attachedEliteIds = window._currentOpSelectedElites || [];
   const p       = calcOpProb(m, b, window._currentOpSelectedDepts || [], window._currentOpSelectedSupport || []);
+  m.attachedEliteIds = prevElites; // restore
   const probEl  = document.getElementById('op-prob');
   const probWrap = document.getElementById('op-prob-wrap');
   if (probEl)   probEl.textContent = `${p}%`;
@@ -1289,6 +1337,12 @@ window.executeOperation = function(missionId) {
     m.agencySupport.push(s);
   }
 
+  // Attach elite units and start their cooldown
+  m.attachedEliteIds  = (window._currentOpSelectedElites || []).slice();
+  for (const eid of m.attachedEliteIds) {
+    const eu = (G.eliteUnits || []).find(u => u.id === eid);
+    if (eu) eu.lastDeployedDay = G.day;
+  }
   m.successProb       = calcOpProb(m, budget, depts, agSupport);
   m.status            = 'EXECUTING';
   m.execDaysLeft      = m.execDays;
@@ -1298,7 +1352,8 @@ window.executeOperation = function(missionId) {
 
   const phaseLabel   = m.isMultiPhase ? ` [${m.phases[m.currentPhaseIndex].shortName}]` : '';
   const supportNote  = agSupport.length ? ` · ${agSupport.length} agency support` : '';
-  addLog(`OP ${m.codename}${phaseLabel} launched. ${fmt(budget)} · ${depts.length} dept(s)${supportNote} · ETA ${m.execDays}d.`, 'log-info');
+  const eliteNote    = m.attachedEliteIds.length ? ` · ${m.attachedEliteIds.length} elite unit(s)` : '';
+  addLog(`OP ${m.codename}${phaseLabel} launched. ${fmt(budget)} · ${depts.length} dept(s)${supportNote}${eliteNote} · ETA ${m.execDays}d.`, 'log-info');
   hideModal();
   G.selected = m.id;
   render();
@@ -1553,6 +1608,134 @@ function hvtRoleFromMission(m) {
   return m.fillVars?.hvt_role || m.fillVars?.target_role || m.fillVars?.rendition_role || 'Unknown';
 }
 
+// =============================================================================
+// HVT BRIEFING POP-UPS — vivid flavor text for threat lifecycle events
+// =============================================================================
+
+const HVT_POPUP_TEXT = {
+  newTarget: {
+    intros: [
+      'A name has surfaced — pulled from the noise of intercepted transmissions, cross-referenced against a dozen watchlists. The analysts are certain: this one is real.',
+      'Field reporting and signals intelligence have converged on a single individual. The profile is thin, but the threat signature is unmistakable.',
+      'A new face in the file. Flagged during the aftermath of OP {codename}, this individual has been assessed as a person of operational interest.',
+      'The intelligence is fragmentary but consistent. Someone is operating in the shadows — directing, financing, or facilitating hostile activity. We have a name.',
+      'Buried in the operational debris of a recent mission, a thread emerged. Pulled carefully, it led to a previously unknown individual with concerning connections.',
+      'An analyst working the overnight shift noticed an anomaly in the pattern of life data. By morning, a new file had been opened.',
+    ],
+    category: 'THREAT IDENTIFICATION',
+    accent: 'rgba(243, 156, 18, 0.9)',
+  },
+  newTargetFailed: {
+    intros: [
+      'The operation failed — but not without producing intelligence. In the wreckage of OP {codename}, a name was recovered. Someone we hadn\'t seen before.',
+      'It was a costly failure. But the one thing worse than a blown operation is a blown operation that teaches nothing. This one gave up a name.',
+      'The target slipped through. But in the chaos of the failed extraction, a new thread was pulled. We may have lost the battle, but we found the next one.',
+      'Post-mortem analysis of the failed operation has flagged a previously unknown individual. The connection is circumstantial — but in this business, coincidence is a luxury we cannot afford.',
+      'The failure stings. But the debrief produced something unexpected — a name, a location, a pattern of movement. Someone we need to watch.',
+    ],
+    category: 'POST-OP INTELLIGENCE',
+    accent: 'rgba(231, 76, 60, 0.85)',
+  },
+  tracked: {
+    intros: [
+      'Surveillance is in place. Eyes on the target around the clock — cameras, microphones, a rotating team of watchers. They don\'t know we\'re there. Not yet.',
+      'The surveillance net has been deployed. Every movement, every contact, every phone call — all being recorded. The target is now living inside our observation.',
+      'The watchers are in position. Three teams rotating twelve-hour shifts, supported by SIGINT intercepts and overhead imagery. The target is under continuous observation.',
+      'A careful web of surveillance has been woven around the target. They move through their daily routine unaware that every step is being catalogued.',
+      'The operation is delicate — too close and we spook the target, too far and we lose them. But the team has found the balance. Surveillance is active.',
+      'Phone cloned. Apartment wired. Cover team deployed. The target has become the most watched person in the city — and they have no idea.',
+    ],
+    category: 'SURVEILLANCE ESTABLISHED',
+    accent: 'rgba(52, 152, 219, 0.9)',
+  },
+  detained: {
+    intros: [
+      'The snatch was clean. One moment the target was walking freely — the next, a van, a hood, and silence. They are now in our custody.',
+      'Target acquired. The extraction team moved at 0340 hours — a precision operation lasting under ninety seconds. The subject is now secured in a black site.',
+      'It happened fast. A staged vehicle breakdown, a diversionary argument on the street corner, and then the team moved. The target never saw it coming.',
+      'The abduction team reports success. Target was taken without witnesses, sedated, and transferred through the exfiltration chain. Currently held at a secure facility.',
+      'A door kicked in before dawn. A groggy target dragged from bed. By the time anyone noticed they were missing, the subject was already in a windowless room hundreds of miles away.',
+      'The rendition was textbook. Months of preparation compressed into forty-five seconds of controlled violence. The target is now answering to us.',
+    ],
+    category: 'TARGET DETAINED',
+    accent: 'rgba(155, 89, 182, 0.9)',
+  },
+  neutralized: {
+    intros: [
+      'The operation is concluded. The threat has been neutralized — permanently removed from the board. The intelligence community sleeps a little easier tonight.',
+      'Target neutralized. The operational file will be sealed and archived. One fewer name on the watchlist.',
+      'It\'s done. Months of work, hundreds of man-hours, millions in funding — all culminating in a single decisive action. The target will trouble us no more.',
+      'The threat has been eliminated with prejudice. No loose ends, no complications. The after-action report will be brief.',
+      'A clean resolution. The kind of outcome that justifies the existence of agencies like ours. Threat neutralized, file closed.',
+    ],
+    category: 'THREAT NEUTRALIZED',
+    accent: 'rgba(46, 204, 113, 0.9)',
+  },
+  eliminated: {
+    intros: [
+      'The order was given. There was no trial, no appeal, no public record. In the calculus of national security, this was the only arithmetic that worked.',
+      'It is done. The detention facility reports the subject is no longer among the living. The paperwork will say what it needs to say.',
+      'The Director signed the order at 0600. By 0615, it was carried out. Some threats cannot be managed — only ended.',
+      'A quiet room. A final decision. The kind that doesn\'t appear in any official record but changes the threat landscape all the same.',
+      'The detainee has been terminated. The moral weight of the decision will be debated by people who weren\'t in the room. Those who were already know the answer.',
+    ],
+    category: 'SUBJECT ELIMINATED',
+    accent: 'rgba(192, 57, 43, 0.95)',
+  },
+  handedOver: {
+    intros: [
+      'The prisoner transfer was completed under cover of darkness. A handshake, a signed document that doesn\'t officially exist, and the detainee changed custody.',
+      'The handover went smoothly. Our allies now hold the subject — and with them, the responsibility of extraction. In return, we received something more valuable: goodwill.',
+      'A black sedan at a service entrance. A hooded figure transferred between vehicles. The detainee now belongs to someone else\'s interrogation program.',
+      'The transfer is complete. We\'ve traded a detainee for diplomatic capital. In this business, relationships are the only currency that appreciates.',
+      'The subject was moved to allied custody in the early hours. A strategic calculation: the intelligence value was diminishing, but the alliance value was not.',
+    ],
+    category: 'DETAINEE TRANSFERRED',
+    accent: 'rgba(41, 128, 185, 0.9)',
+  },
+};
+
+function hvtBriefingPopup(type, h, extra) {
+  var cfg = HVT_POPUP_TEXT[type];
+  if (!cfg) return;
+  var intro = pick(cfg.intros);
+  if (extra?.codename) intro = intro.replace(/\{codename\}/g, extra.codename);
+  var location = '';
+  if (h.knownFields?.city) location = h.knownFields.city;
+  if (h.knownFields?.country) location += (location ? ', ' : '') + h.knownFields.country;
+
+  var subtitle = h.alias + (h.role ? ' — ' + h.role : '');
+  if (location) subtitle += ' · ' + location;
+
+  var statusColor = {
+    ACTIVE: 'rgba(243,156,18,0.9)', TRACKED: 'rgba(52,152,219,0.9)',
+    DETAINED: 'rgba(155,89,182,0.9)', NEUTRALIZED: 'rgba(46,204,113,0.9)',
+    ELIMINATED: 'rgba(192,57,43,0.95)', HANDED_OVER: 'rgba(41,128,185,0.9)',
+  }[h.status] || 'var(--text-dim)';
+
+  var detailLines = '<div style="font-size:11px;font-weight:700;letter-spacing:0.5px;color:' + statusColor + '">' + h.alias + '</div>';
+  detailLines += '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">' + (h.role || 'Unknown role') + '</div>';
+  if (location) detailLines += '<div style="font-size:9px;color:var(--text-dim)">' + location + '</div>';
+  detailLines += '<div style="font-size:9px;margin-top:3px;letter-spacing:0.8px;color:' + statusColor + '">STATUS: ' + h.status + '</div>';
+  if (extra?.detail) detailLines += '<div style="font-size:10px;color:var(--text-hi);margin-top:4px;line-height:1.4">' + extra.detail + '</div>';
+
+  var borderColor = cfg.accent.replace('0.9', '0.3').replace('0.85', '0.3').replace('0.95', '0.3');
+  var borderLeftColor = cfg.accent.replace('0.9', '0.6').replace('0.85', '0.6').replace('0.95', '0.6');
+  var bgColor = cfg.accent.replace('0.9', '0.05').replace('0.85', '0.05').replace('0.95', '0.05');
+
+  queueBriefingPopup({
+    title: cfg.category,
+    category: 'THREAT INTELLIGENCE',
+    subtitle: subtitle,
+    accent: cfg.accent,
+    body: intro +
+      '<div style="margin-top:12px;padding:8px 10px;border:1px solid ' + borderColor + ';border-left:3px solid ' + borderLeftColor + ';border-radius:4px;background:' + bgColor + '">' +
+        detailLines +
+      '</div>',
+    buttonLabel: 'ACKNOWLEDGED',
+  });
+}
+
 function registerOrUpdateHvt(m) {
   if (!HVT_REGISTER_TYPES.has(m.typeId)) return;
 
@@ -1565,6 +1748,7 @@ function registerOrUpdateHvt(m) {
         h.surveillanceEstablished = true;
         if (h.status === 'ACTIVE') h.status = 'TRACKED';
         addLog(`Surveillance established on ${h.alias}.`, 'log-info');
+        hvtBriefingPopup('tracked', h, { codename: m.codename });
       }
     }
     return;
@@ -1580,6 +1764,7 @@ function registerOrUpdateHvt(m) {
         h.detainedAt  = pick(BLACK_SITE_NAMES);
         h.detainedDay = G.day;
         addLog(`${h.alias} abducted and detained at ${h.detainedAt}.`, 'log-success');
+        hvtBriefingPopup('detained', h, { codename: m.codename, detail: 'Held at: ' + h.detainedAt });
       }
     }
     return;
@@ -1595,6 +1780,8 @@ function registerOrUpdateHvt(m) {
   const idx = G.hvts.findIndex(h => h.linkedMissionIds.includes(m.id));
   if (idx >= 0) {
     const h = G.hvts[idx];
+    // ORG entries are managed exclusively by the plots.js infiltrate→takedown chain
+    if (h.type === 'ORG') return;
     const newSt = resolveHvtStatus(m.typeId);
     h.status = newSt;
     if (newSt === 'DETAINED') {
@@ -1605,6 +1792,8 @@ function registerOrUpdateHvt(m) {
       h.surveillanceEstablished = true;
     }
     h.gaps = [];
+    const popupType = newSt === 'DETAINED' ? 'detained' : newSt === 'TRACKED' ? 'tracked' : 'neutralized';
+    hvtBriefingPopup(popupType, h, { codename: m.codename, detail: newSt === 'DETAINED' ? 'Held at: ' + h.detainedAt : undefined });
     return;
   }
 
@@ -1630,6 +1819,11 @@ function registerOrUpdateHvt(m) {
     handedTo: null,
   };
   G.hvts.push(entry);
+  // Only show pop-up for targets that remain active threats — neutralized-on-arrival needs no fanfare
+  if (newStatus !== 'NEUTRALIZED') {
+    const popupType = newStatus === 'DETAINED' ? 'detained' : newStatus === 'TRACKED' ? 'tracked' : 'newTarget';
+    hvtBriefingPopup(popupType, entry, { codename: m.codename, detail: newStatus === 'DETAINED' ? 'Held at: ' + entry.detainedAt : undefined });
+  }
 }
 
 function registerOrUpdateHvtFailed(m) {
@@ -1659,6 +1853,7 @@ function registerOrUpdateHvtFailed(m) {
     surveillanceEstablished: false,
     handedTo: null,
   });
+  hvtBriefingPopup('newTargetFailed', G.hvts[G.hvts.length - 1], { codename: m.codename });
 }
 
 window.openHvtMissionModal = function(hvtId) {
@@ -1718,6 +1913,7 @@ window.spawnHvtMission = function(hvtId, typeId) {
   spawnMission(typeId);
   const newest = G.missions[0];
   if (newest) {
+    newest.codename = h.alias;
     newest.linkedHvtId = hvtId;
     if (!h.linkedMissionIds.includes(newest.id)) h.linkedMissionIds.push(newest.id);
     addLog(`New mission spawned for target ${h.alias}: OP ${newest.codename}.`, 'log-info');
@@ -1735,6 +1931,7 @@ window.executeTarget = function(hvtId) {
   const gain = randInt(3, 7);
   G.confidence = clamp(G.confidence + gain, 0, 100);
   addLog(`${h.alias} executed. +${gain}% confidence.`, 'log-success');
+  hvtBriefingPopup('eliminated', h);
   render();
 };
 
@@ -1759,6 +1956,7 @@ window.handoverTarget = function(hvtId, agencyId) {
   if (G.relations[agencyId]) G.relations[agencyId].relation = clamp(G.relations[agencyId].relation + relGain, 0, 100);
   G.confidence = clamp(G.confidence + confGain, 0, 100);
   addLog(`${h.alias} handed over to ${agCfg.name}. +${relGain} relation, +${confGain}% confidence.`, 'log-success');
+  hvtBriefingPopup('handedOver', h, { detail: 'Transferred to: ' + agCfg.name + ' (+' + relGain + ' relation, +' + confGain + '% confidence)' });
   render();
 };
 
@@ -2458,7 +2656,6 @@ function renderThreats() {
       actionSection = `
         <div class="threat-handover-row">
           ${trackAvail ? `<button class="btn-threat-assign" onclick="spawnHvtMission('${h.id}','${trackTypeId}')">TRACK</button>` : ''}
-          <button class="btn-threat-action" onclick="openHvtMissionModal('${h.id}')">MORE OPTIONS</button>
         </div>`;
     } else if (h.status === 'TRACKED') {
       actionSection = `
@@ -2697,6 +2894,38 @@ function showHelp() {
 function showModal()     { document.getElementById('modal-overlay').classList.remove('hidden'); }
 function hideModal()     { document.getElementById('modal-overlay').classList.add('hidden'); }
 function closeModalBg(e) { if (e.target === document.getElementById('modal-overlay')) hideModal(); }
+
+// ---- Briefing pop-ups (informational, single dismiss) ----
+var _briefingQueue = [];
+var _briefingShowing = false;
+
+function queueBriefingPopup(cfg) {
+  _briefingQueue.push(cfg);
+  if (!_briefingShowing) _showNextBriefing();
+}
+
+function _showNextBriefing() {
+  if (_briefingQueue.length === 0) { _briefingShowing = false; return; }
+  _briefingShowing = true;
+  var cfg = _briefingQueue.shift();
+  var accentColor = cfg.accent || 'var(--accent)';
+  document.getElementById('modal-title').textContent = cfg.title || 'BRIEFING';
+  document.getElementById('modal-body').innerHTML =
+    '<div class="modal-section">' +
+      '<div class="modal-section-title" style="color:' + accentColor + ';font-family:var(--font-disp);letter-spacing:1.5px">' + (cfg.category || 'NOTICE') + ' — DAY ' + G.day + '</div>' +
+      (cfg.subtitle ? '<div style="font-size:10px;letter-spacing:1px;color:var(--text-dim);margin:4px 0 8px">' + cfg.subtitle + '</div>' : '') +
+      '<p style="font-family:var(--font-body);font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-hi)">' + cfg.body + '</p>' +
+    '</div>' +
+    '<div style="margin-top:10px;text-align:right">' +
+      '<button class="btn-primary" onclick="dismissBriefingPopup()" style="min-width:100px">' + (cfg.buttonLabel || 'ACKNOWLEDGE') + '</button>' +
+    '</div>';
+  showModal();
+}
+
+window.dismissBriefingPopup = function() {
+  hideModal();
+  setTimeout(_showNextBriefing, 150);
+};
 
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));

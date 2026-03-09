@@ -148,6 +148,14 @@
           m[field] = fillTemplate(m[field], vars);
         }
       }
+      // Also fix intel field values with unresolved placeholders
+      if (m.intelFields) {
+        for (const f of m.intelFields) {
+          if (f.value && typeof f.value === 'string' && f.value.includes('{')) {
+            f.value = fillTemplate(f.value, vars);
+          }
+        }
+      }
     }
   }
 
