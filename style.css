@@ -1803,6 +1803,20 @@ html, body {
   width: 100%;
 }
 .btn-threat-assign:hover { color: var(--accent); border-color: var(--accent); }
+.btn-threat-assign.unavail {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+.btn-threat-assign.unavail:hover { color: var(--text-dim); border-color: var(--border2); }
+.btn-threat-assign.danger {
+  border-color: var(--red-dim);
+  color: var(--red);
+}
+.btn-threat-assign.danger:hover {
+  border-color: var(--red);
+  background: rgba(231,76,60,0.1);
+}
 .hvt-mission-grid { display: flex; flex-direction: column; gap: 6px; }
 .hvt-mission-option {
   background: var(--bg3);

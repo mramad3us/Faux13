@@ -16,7 +16,6 @@ const PLOT_ORG_TYPES = [
     label: 'TERROR NETWORK',
     region: 'EITHER',
     missionPool: ['DOMESTIC_TERROR', 'FOREIGN_HVT', 'COUNTER_INTEL'],
-    climaxPool:  ['DOMESTIC_TERROR'],
     threatBase: [3, 4],
     descs: [
       'A decentralized terror network with cells operating across multiple countries.',
@@ -35,7 +34,6 @@ const PLOT_ORG_TYPES = [
     label: 'ESPIONAGE RING',
     region: 'DOMESTIC',
     missionPool: ['COUNTER_INTEL', 'MOLE_HUNT', 'DOMESTIC_TERROR'],
-    climaxPool:  ['MOLE_HUNT'],
     threatBase: [3, 5],
     descs: [
       'A foreign intelligence penetration network embedded within government institutions.',
@@ -54,7 +52,6 @@ const PLOT_ORG_TYPES = [
     label: 'PROLIFERATION NETWORK',
     region: 'FOREIGN',
     missionPool: ['FOREIGN_HVT', 'RENDITION', 'ASSET_RESCUE'],
-    climaxPool:  ['FOREIGN_HVT', 'RENDITION'],
     threatBase: [3, 5],
     descs: [
       'A procurement network supplying weapons technology to sanctioned states.',
@@ -73,7 +70,6 @@ const PLOT_ORG_TYPES = [
     label: 'STATE PROXY',
     region: 'FOREIGN',
     missionPool: ['FOREIGN_HVT', 'COUNTER_INTEL', 'REGIME_OP', 'ASSET_RESCUE'],
-    climaxPool:  ['REGIME_OP', 'FOREIGN_HVT'],
     threatBase: [4, 5],
     descs: [
       'A state-directed proxy force conducting asymmetric operations against allied interests.',
@@ -92,7 +88,6 @@ const PLOT_ORG_TYPES = [
     label: 'CRIMINAL SYNDICATE',
     region: 'EITHER',
     missionPool: ['DOMESTIC_TERROR', 'FOREIGN_HVT', 'RENDITION'],
-    climaxPool:  ['DOMESTIC_TERROR', 'RENDITION'],
     threatBase: [2, 4],
     descs: [
       'A transnational criminal organization with intelligence-grade operational security.',
@@ -218,7 +213,6 @@ function createPlot() {
     orgDesc: pick(orgType.descs),
     objective: pick(orgType.objectives),
     missionPool: orgType.missionPool,
-    climaxPool: orgType.climaxPool,
     threat: randInt(...orgType.threatBase),
     region: region,
     baseCity: city,
@@ -236,6 +230,7 @@ function createPlot() {
 
     // Status: ACTIVE, DISRUPTED, DESTROYED, DORMANT
     status: 'ACTIVE',
+    infiltrated: false,
 
     // Timing
     createdDay: G.day,
@@ -262,11 +257,9 @@ function createPlot() {
 
 function spawnPlotMission(plot) {
   const step = plot.currentStep;
-  const isClimax = step === plot.totalSteps - 1;
 
-  // Pick mission type
-  const pool = isClimax ? plot.climaxPool : plot.missionPool;
-  const validTypes = pool.filter(function (t) { return MISSION_TYPES[t]; });
+  // Pick mission type from pool
+  const validTypes = plot.missionPool.filter(function (t) { return MISSION_TYPES[t]; });
   if (validTypes.length === 0) return;
   const typeId = pick(validTypes);
 
@@ -281,19 +274,11 @@ function spawnPlotMission(plot) {
   m.plotStep = step;
   m.plotFileName = plot.flagged ? plot.fileName : null;
   m.plotOrgName = plot.flagged ? plot.orgName : null;
-  m.isClimax = isClimax;
 
   // Escalate threat based on arc progress
   var progress = step / Math.max(1, plot.totalSteps - 1);
   var escalation = Math.floor(progress * 2);
   m.threat = clamp(m.threat + escalation, 1, 5);
-
-  // Climax: tighten urgency
-  if (isClimax) {
-    m.urgency = Math.max(5, m.urgency - 3);
-    m.urgencyLeft = m.urgency;
-    m.threat = clamp(plot.threat + 1, 4, 5);
-  }
 
   // Record in plot
   plot.missions.push({
@@ -315,6 +300,85 @@ function spawnPlotMission(plot) {
     addLog(`FILE ${plot.fileName}: New linked intelligence — OP ${m.codename} [${m.label}].`, 'log-warn');
   }
 }
+
+// =============================================================================
+// PLAYER-INITIATED ORG MISSIONS (Infiltration / Takedown)
+// =============================================================================
+
+function spawnOrgInfiltration(plotId) {
+  var plot = G.plots.find(function (p) { return p.id === plotId; });
+  if (!plot || plot.status !== 'ACTIVE' || plot.infiltrated) return;
+
+  var prevLen = G.missions.length;
+  spawnMission('ORG_INFILTRATION');
+  var m = G.missions.length > prevLen ? G.missions[0] : null;
+  if (!m) {
+    addLog('Mission inbox full — cannot launch infiltration.', 'log-warn');
+    return;
+  }
+
+  m.plotId = plot.id;
+  m.plotFileName = plot.fileName;
+  m.plotOrgName = plot.orgName;
+  m.isOrgInfiltration = true;
+  m.location = plot.region;
+  m.threat = clamp(plot.threat, 3, 5);
+
+  // Inject org name into fill vars for briefs
+  if (m.fillVars) m.fillVars.org_name = plot.orgName;
+
+  if (!plot.missions) plot.missions = [];
+  plot.missions.push({
+    missionId: m.id, stepIndex: -1, typeId: 'ORG_INFILTRATION',
+    codename: m.codename, status: 'PENDING',
+  });
+
+  addLog('FILE ' + plot.fileName + ': Infiltration operation launched — OP ' + m.codename + '.', 'log-info');
+  hideModal();
+  render();
+}
+
+function spawnOrgTakedown(plotId) {
+  var plot = G.plots.find(function (p) { return p.id === plotId; });
+  if (!plot || plot.status !== 'ACTIVE' || !plot.infiltrated) return;
+
+  // Require full intel
+  var intel = plot.knownIntel;
+  if (!intel.type || !intel.leader || !intel.objective || !intel.strength || !intel.baseLocation) {
+    addLog('FILE ' + plot.fileName + ': Insufficient intelligence for takedown. All intel fields must be confirmed.', 'log-warn');
+    return;
+  }
+
+  var prevLen = G.missions.length;
+  spawnMission('ORG_TAKEDOWN');
+  var m = G.missions.length > prevLen ? G.missions[0] : null;
+  if (!m) {
+    addLog('Mission inbox full — cannot launch takedown.', 'log-warn');
+    return;
+  }
+
+  m.plotId = plot.id;
+  m.plotFileName = plot.fileName;
+  m.plotOrgName = plot.orgName;
+  m.isOrgTakedown = true;
+  m.location = plot.region;
+  m.threat = 5;
+
+  if (m.fillVars) m.fillVars.org_name = plot.orgName;
+
+  if (!plot.missions) plot.missions = [];
+  plot.missions.push({
+    missionId: m.id, stepIndex: -2, typeId: 'ORG_TAKEDOWN',
+    codename: m.codename, status: 'PENDING',
+  });
+
+  addLog('FILE ' + plot.fileName + ': TAKEDOWN OPERATION launched — OP ' + m.codename + '. All resources committed.', 'log-warn');
+  hideModal();
+  render();
+}
+
+window.spawnOrgInfiltration = spawnOrgInfiltration;
+window.spawnOrgTakedown = spawnOrgTakedown;
 
 // =============================================================================
 // FLAGGING — pattern recognized by analysts
@@ -443,6 +507,21 @@ hook('render:after', function () {
   if (_plotMigrated) return;
   _plotMigrated = true;
   if (!G.plots) { G.plots = []; G.plotIdCounter = 0; G.plotNextCheck = G.day + 14; }
+  // Ensure infiltrated field exists on old saves
+  for (var i = 0; i < G.plots.length; i++) {
+    if (G.plots[i].infiltrated === undefined) G.plots[i].infiltrated = false;
+  }
+});
+
+// ---- Infiltration bonus: +10% on ops against infiltrated orgs ----
+hook('calcProb:modify', function (data) {
+  var m = data.mission;
+  if (!m.plotId || !G.plots) return data.prob;
+  var plot = G.plots.find(function (p) { return p.id === m.plotId; });
+  if (plot && plot.infiltrated && plot.status === 'ACTIVE') {
+    return data.prob + 10;
+  }
+  return data.prob;
 });
 
 // ---- Day tick: maybe start new plot, spawn due missions ----
@@ -501,32 +580,58 @@ hook('operation:resolved', function (data) {
     }
   }
 
-  // Climax resolution
-  if (m.isClimax) {
-    var hvt = G.hvts.find(function (h) { return h.linkedPlotId === plot.id; });
+  // ---- Infiltration resolution ----
+  if (m.isOrgInfiltration) {
+    var hvtInf = G.hvts.find(function (h) { return h.linkedPlotId === plot.id; });
+    if (data.success) {
+      plot.infiltrated = true;
+      if (hvtInf) hvtInf.knownFields.infiltration = 'ACTIVE — inside asset producing intelligence';
+      addLog(
+        'FILE ' + plot.fileName + ': Infiltration established. ' +
+        plot.orgName + ' is now compromised from within. +10% on all linked ops.',
+        'log-success'
+      );
+      gainXP(5, 'FILE ' + plot.fileName + ' infiltrated');
+    } else {
+      addLog(
+        'FILE ' + plot.fileName + ': Infiltration failed. ' +
+        plot.orgName + ' remains impenetrable. A new attempt may be possible.',
+        'log-fail'
+      );
+    }
+    return;
+  }
+
+  // ---- Takedown resolution ----
+  if (m.isOrgTakedown) {
+    var hvtTd = G.hvts.find(function (h) { return h.linkedPlotId === plot.id; });
     if (data.success) {
       plot.status = 'DESTROYED';
-      if (hvt) hvt.status = 'ELIMINATED';
-      // Reveal all remaining intel
+      if (hvtTd) hvtTd.status = 'ELIMINATED';
       plot.knownIntel.objective = true;
       plot.knownIntel.leader = true;
       plot.knownIntel.strength = true;
       revealPlotIntel(plot, true);
       addLog(
         'FILE ' + plot.fileName + ' CLOSED: ' + plot.orgName +
-        ' has been dismantled. Network leadership neutralized.',
+        ' has been permanently dismantled. All leadership neutralized.',
         'log-success'
       );
-      gainXP(8, 'FILE ' + plot.fileName + ' closed');
+      gainXP(12, 'FILE ' + plot.fileName + ' destroyed');
     } else {
       plot.status = 'DORMANT';
-      if (hvt) hvt.status = 'ACTIVE'; // org survives
+      plot.infiltrated = false; // inside asset burned
+      if (hvtTd) {
+        hvtTd.status = 'ACTIVE';
+        delete hvtTd.knownFields.infiltration;
+      }
       addLog(
-        'FILE ' + plot.fileName + ': Climax operation failed. ' +
-        plot.orgName + ' endures. Expect retaliation.',
+        'FILE ' + plot.fileName + ': Takedown failed. ' +
+        plot.orgName + ' survives. Inside asset compromised. Expect retaliation.',
         'log-fail'
       );
     }
+    return;
   }
 });
 
@@ -592,7 +697,9 @@ hook('render:after', function () {
     '<span class="plot-banner-label">FILE: ' + selPlot.fileName + '</span>' +
     '<span class="plot-banner-org">' + selPlot.orgName + '</span>' +
     '<span class="plot-banner-progress">' + completedSteps + '/' + selPlot.totalSteps + ' operations</span>' +
-    (selMission.isClimax ? '<span class="plot-banner-climax">CLIMAX OPERATION</span>' : '');
+    (selMission.isOrgInfiltration ? '<span class="plot-banner-climax" style="background:var(--purple)">INFILTRATION OP</span>' : '') +
+    (selMission.isOrgTakedown ? '<span class="plot-banner-climax">TAKEDOWN OP</span>' : '') +
+    (selPlot.infiltrated ? '<span class="plot-banner-climax" style="background:var(--green-dim)">INFILTRATED +10%</span>' : '');
 
   detailEl.insertBefore(banner, detailEl.firstChild);
 });

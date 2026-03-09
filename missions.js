@@ -2472,4 +2472,385 @@ const MISSION_TYPES = {
     }
   },
 
+  // =========================================================================
+  // ORGANIZATION INFILTRATION (multi-phase, spawned from threat panel)
+  // =========================================================================
+
+  ORG_INFILTRATION: {
+    label: 'ORG INFILTRATION',
+    category: 'NETWORK PENETRATION',
+    location: 'FOREIGN',
+    isMultiPhase: true,
+    hasSuspects: false,
+    urgencyRange: [40, 60],
+    threatRange: [3, 5],
+    agencyJustification: 'Standard intelligence collection has failed to penetrate this organization. A long-term human penetration operation under {agency} covert action authority is required to develop the access needed to map, monitor, and ultimately dismantle the network from within.',
+    phases: [
+      {
+        id: 'APPROACH',
+        name: 'Phase 1: Approach & Recruitment',
+        shortName: 'APPROACH',
+        invDaysRange: [4, 7],
+        invDepts: ['HUMINT', 'ANALYSIS', 'COUNTER_INTEL'],
+        execDaysRange: [4, 6],
+        execDepts: ['HUMINT', 'FOREIGN_OPS'],
+        budgetRange: [4, 8],
+        confSuccess: [0, 0],
+        confFail: [-4, -8],
+        falseFlagChance: 0.15,
+        invDeptEfficiency: { HUMINT: 85, ANALYSIS: 70, COUNTER_INTEL: 75 },
+        intelFields: [
+          { key: 'access_vector', label: 'ACCESS VECTOR' },
+          { key: 'cover_identity', label: 'COVER IDENTITY' },
+          { key: 'vetting_process', label: 'ORG VETTING PROCESS' },
+        ],
+        intelFieldValues: {
+          access_vector: [
+            'Peripheral associate identified — viable recruitment pathway established',
+            'Access vector identified through financial intermediary network',
+            'Cultural or familial connection exploitable for initial introduction',
+          ],
+          cover_identity: [
+            'Cover identity backstopped and validated against open-source checks',
+            'Cover legend partially constructed — additional backstopping required',
+            'Deep cover identity fully established with supporting documentation',
+          ],
+          vetting_process: [
+            'Organization uses multi-stage vetting — expect 30-60 day probation period',
+            'Vetting appears informal — rely on personal introductions and vouching',
+            'Hostile counter-intelligence active — vetting includes surveillance detection',
+          ],
+        },
+        opNarrative: '{agency} HUMINT officers identify a viable access vector into the target organization. A cover identity is prepared and backstopped. The operative makes initial contact through an intermediary, presenting credentials that will withstand the organization\'s vetting process.',
+        investigateReports: [
+          'Network analysis has identified a viable penetration pathway into the organization. HUMINT team has proposed an approach strategy and cover identity for review.',
+          'An access vector has been identified through signals intelligence correlation. Recommend deploying a HUMINT asset with backstopped cover for initial contact.',
+        ],
+        fullBriefs: [
+          'INFILTRATION BRIEF — OP {codename} / Phase 1: APPROACH\n\nTarget organization: {org_name}. Access vector: {access_vector}.\n\nCover identity: {cover_identity}. Vetting assessment: {vetting_process}.\n\nThe operative will make initial contact and begin the recruitment/embedding process. Counter-intelligence support will monitor for compromise indicators.',
+        ],
+        successOutcomes: [
+          'Initial contact established. Operative has been introduced to peripheral network members. Cover identity accepted without challenge. Proceeding to embedding phase.',
+          'Approach phase successful. The operative has passed initial vetting and gained access to a low-level cell. Cover identity is holding. Ready for Phase 2.',
+          'Contact made through identified access vector. Organization has accepted the operative as a new associate. Embedding authorized.',
+        ],
+        failureOutcomes: [
+          'Approach compromised. Organization\'s counter-intelligence detected anomalies in the cover identity. Operative extracted before capture.',
+          'Initial contact failed — the intermediary was already under suspicion by the organization. Access vector burned.',
+          'Vetting process flagged the operative. Cover identity did not withstand scrutiny. Operation aborted to protect sources.',
+        ],
+      },
+      {
+        id: 'EMBED',
+        name: 'Phase 2: Embedding',
+        shortName: 'EMBED',
+        invDaysRange: [3, 5],
+        invDepts: ['HUMINT', 'COUNTER_INTEL'],
+        execDaysRange: [5, 8],
+        execDepts: ['HUMINT', 'FOREIGN_OPS'],
+        budgetRange: [5, 10],
+        confSuccess: [0, 0],
+        confFail: [-6, -12],
+        falseFlagChance: 0.10,
+        invDeptEfficiency: { HUMINT: 80, COUNTER_INTEL: 85 },
+        intelFields: [
+          { key: 'trust_level', label: 'TRUST LEVEL' },
+          { key: 'cell_access', label: 'CELL ACCESS' },
+          { key: 'comms_channel', label: 'COMMS CHANNEL' },
+        ],
+        intelFieldValues: {
+          trust_level: [
+            'Operative has gained sufficient trust to attend operational planning meetings',
+            'Trust building in progress — operative has access to logistics but not operations',
+            'Operative is fully trusted and being considered for increased responsibilities',
+          ],
+          cell_access: [
+            'Operative embedded in a logistics cell — lateral access to two other cells confirmed',
+            'Embedded in communications cell — intercepting internal message traffic',
+            'Embedded in operational cell — direct visibility on planned actions',
+          ],
+          comms_channel: [
+            'Secure dead-drop communication channel established with handler',
+            'Encrypted digital channel active — regular reporting schedule maintained',
+            'Brush-pass protocol established — weekly intelligence packages confirmed',
+          ],
+        },
+        opNarrative: 'The operative deepens their position within the organization, building trust and gaining access to operational cells. A secure communication channel is established with the handling officer. The goal is to reach a position where the operative can provide actionable intelligence on the organization\'s structure and plans.',
+        investigateReports: [
+          'Phase 1 complete. Operative is in position and making progress. Recommend proceeding with embedding to deepen access and establish communications.',
+        ],
+        fullBriefs: [
+          'INFILTRATION BRIEF — OP {codename} / Phase 2: EMBEDDING\n\nOperative is inside the organization. Trust level: {trust_level}.\n\nCell access: {cell_access}. Communications: {comms_channel}.\n\nObjective: Deepen access, map organizational structure, and establish reliable intelligence pipeline.',
+        ],
+        successOutcomes: [
+          'Embedding complete. Operative has established a trusted position within the organization. Secure communications confirmed. Intelligence pipeline active.',
+          'Phase 2 successful. The operative has mapped significant portions of the network structure and established reliable comms. Infiltration is fully established.',
+          'Operative is embedded and producing high-value intelligence. Network structure, leadership, and operations are now partially visible from within.',
+        ],
+        failureOutcomes: [
+          'Operative\'s communications channel was detected by the organization\'s security arm. Emergency extraction initiated.',
+          'Embedding compromised when the operative was subjected to a loyalty test they could not pass. Cover blown — operative extracted under duress.',
+          'Internal purge within the organization. Operative identified as an outsider and forced to flee. Network has gone dark.',
+        ],
+      },
+      {
+        id: 'ESTABLISH',
+        name: 'Phase 3: Establish Network',
+        shortName: 'ESTABLISH',
+        invDaysRange: [2, 4],
+        invDepts: ['HUMINT', 'ANALYSIS', 'COUNTER_INTEL'],
+        execDaysRange: [3, 5],
+        execDepts: ['HUMINT'],
+        budgetRange: [3, 6],
+        confSuccess: [2, 5],
+        confFail: [-8, -15],
+        falseFlagChance: 0.05,
+        invDeptEfficiency: { HUMINT: 85, ANALYSIS: 80, COUNTER_INTEL: 75 },
+        intelFields: [
+          { key: 'network_map', label: 'NETWORK MAP' },
+          { key: 'leadership_access', label: 'LEADERSHIP ACCESS' },
+        ],
+        intelFieldValues: {
+          network_map: [
+            'Full organizational chart developed — all cells and command structure mapped',
+            'Partial network map — key nodes identified but some connections remain unclear',
+          ],
+          leadership_access: [
+            'Operative has direct access to senior leadership — reporting on strategic decisions',
+            'Operative has indirect access — intelligence flows through one intermediary',
+          ],
+        },
+        opNarrative: 'The operative consolidates their position and begins systematic intelligence collection on leadership, structure, finances, and planned operations. The goal is to establish a durable penetration that provides ongoing strategic intelligence and enables future disruption or takedown operations.',
+        investigateReports: [
+          'Operative is ready to move to the final phase — establishing a permanent intelligence network within the organization.',
+        ],
+        fullBriefs: [
+          'INFILTRATION BRIEF — OP {codename} / Phase 3: ESTABLISH\n\nOperative is embedded and trusted. Network map: {network_map}.\n\nLeadership access: {leadership_access}.\n\nFinal phase: Consolidate the penetration and establish ongoing intelligence production. This will enable future takedown operations.',
+        ],
+        successOutcomes: [
+          'Infiltration fully established. Operative has penetrated the organization\'s inner circle. Continuous intelligence production confirmed. The organization is now compromised from within.',
+          'Phase 3 complete. Network fully mapped, leadership identified, operations monitored. {agency} now has an active penetration agent inside the organization.',
+          'Infiltration successful. The operative is producing high-grade intelligence on all aspects of the organization. Takedown operations can now be planned with full inside knowledge.',
+        ],
+        failureOutcomes: [
+          'Operative was identified during a security sweep. Extraction successful but the penetration is lost. Organization is now aware of intelligence interest.',
+          'Leadership rotated security protocols. Operative lost access to key meetings and was sidelined. Infiltration effectively neutralized.',
+          'Organization conducted a mole hunt. Operative extracted before identification but the intelligence network within the org is burned.',
+        ],
+      },
+    ],
+    vars: {
+      org_name: ['the target organization'],
+    },
+  },
+
+  // =========================================================================
+  // ORGANIZATION TAKEDOWN (multi-phase, requires full intel + infiltration)
+  // =========================================================================
+
+  ORG_TAKEDOWN: {
+    label: 'ORG TAKEDOWN',
+    category: 'NETWORK DISMANTLEMENT',
+    location: 'FOREIGN',
+    isMultiPhase: true,
+    hasSuspects: false,
+    urgencyRange: [50, 75],
+    threatRange: [4, 5],
+    agencyJustification: 'Full-spectrum dismantlement of a hostile organization requires coordinated action across multiple domains under {agency} covert action authorities. This operation will leverage existing penetration assets, allied support, and direct action capabilities to permanently neutralize the network.',
+    phases: [
+      {
+        id: 'PLANNING',
+        name: 'Phase 1: Operational Planning',
+        shortName: 'PLANNING',
+        invDaysRange: [3, 5],
+        invDepts: ['ANALYSIS', 'HUMINT', 'SIGINT'],
+        execDaysRange: [2, 3],
+        execDepts: ['ANALYSIS', 'HUMINT'],
+        budgetRange: [5, 8],
+        confSuccess: [0, 0],
+        confFail: [-3, -6],
+        falseFlagChance: 0.0,
+        invDeptEfficiency: { ANALYSIS: 90, HUMINT: 80, SIGINT: 75 },
+        intelFields: [
+          { key: 'target_package', label: 'TARGET PACKAGE' },
+          { key: 'timing_window', label: 'TIMING WINDOW' },
+          { key: 'inside_asset', label: 'INSIDE ASSET STATUS' },
+        ],
+        intelFieldValues: {
+          target_package: [
+            'Complete target package assembled — all key nodes, leadership, and infrastructure identified',
+            'Target package near-complete — some secondary nodes require additional collection',
+          ],
+          timing_window: [
+            'Optimal timing window identified — leadership concentrated at single location',
+            'Timing assessment ongoing — multiple dispersed targets require phased approach',
+          ],
+          inside_asset: [
+            'Inside asset confirms readiness — will facilitate access and disable communications at H-hour',
+            'Inside asset in position but communication intermittent — contingency plans prepared',
+          ],
+        },
+        opNarrative: 'Analysis synthesizes all available intelligence — HUMINT from the infiltration agent, SIGINT intercepts, and allied reporting — into a comprehensive operational plan. Every key node, leader, financier, and logistics point is mapped. The inside asset\'s role in the takedown is coordinated.',
+        investigateReports: [
+          'All intelligence prerequisites met. Full organizational mapping complete. Inside asset in position. Recommend proceeding with takedown planning.',
+        ],
+        fullBriefs: [
+          'TAKEDOWN BRIEF — OP {codename} / Phase 1: PLANNING\n\nTarget: {org_name}. Target package: {target_package}.\n\nTiming: {timing_window}. Inside asset: {inside_asset}.\n\nPlanning phase will produce the detailed operational order for the dismantlement sequence.',
+        ],
+        successOutcomes: [
+          'Operational planning complete. Target packages for all key nodes finalized. Timing window confirmed. Inside asset briefed on H-hour role. Proceeding to financial disruption.',
+          'Phase 1 complete. Comprehensive takedown plan approved. All elements coordinated. Financial disruption phase authorized.',
+        ],
+        failureOutcomes: [
+          'Planning compromised — intelligence indicates the organization suspects imminent action. Leadership has begun dispersing.',
+          'Inside asset went silent during planning phase. Unable to confirm target locations. Operation cannot proceed without re-establishing contact.',
+        ],
+      },
+      {
+        id: 'FINANCIAL_DISRUPTION',
+        name: 'Phase 2: Financial Disruption',
+        shortName: 'FINANCES',
+        invDaysRange: [2, 4],
+        invDepts: ['ANALYSIS', 'SIGINT'],
+        execDaysRange: [2, 3],
+        execDepts: ['ANALYSIS', 'SIGINT'],
+        budgetRange: [4, 7],
+        confSuccess: [1, 2],
+        confFail: [-4, -8],
+        falseFlagChance: 0.0,
+        invDeptEfficiency: { ANALYSIS: 85, SIGINT: 80 },
+        intelFields: [
+          { key: 'financial_network', label: 'FINANCIAL NETWORK' },
+          { key: 'freeze_targets', label: 'FREEZE TARGETS' },
+        ],
+        intelFieldValues: {
+          financial_network: [
+            'Complete financial map — shell companies, hawala networks, and cryptocurrency wallets identified',
+            'Primary financial channels mapped — some secondary funding streams still unidentified',
+          ],
+          freeze_targets: [
+            'All accounts flagged for simultaneous freeze — allied financial services on standby',
+            'Freeze targets identified but international coordination still being finalized',
+          ],
+        },
+        opNarrative: 'A coordinated financial strike targets every identified funding channel simultaneously. Bank accounts are frozen, shell companies are flagged, cryptocurrency wallets are seized, and hawala networks are disrupted. The goal is to cut the organization off from its resources before the kinetic phases begin.',
+        investigateReports: [
+          'Planning phase complete. Financial intelligence package ready. Recommend proceeding with coordinated financial disruption before kinetic action.',
+        ],
+        fullBriefs: [
+          'TAKEDOWN BRIEF — OP {codename} / Phase 2: FINANCIAL DISRUPTION\n\nFinancial network: {financial_network}.\n\nFreeze targets: {freeze_targets}.\n\nSimultaneous action across all identified financial channels. This will degrade the organization\'s ability to respond to subsequent phases.',
+        ],
+        successOutcomes: [
+          'Financial disruption successful. Primary funding channels severed. Organization is operating on reserves only. Proceeding to network isolation.',
+          'Phase 2 complete. Coordinated financial strike executed. Estimated 80-90% of funding disrupted. Organization\'s operational tempo will degrade rapidly.',
+        ],
+        failureOutcomes: [
+          'Financial disruption partially successful but key accounts were moved before the freeze. Organization retains significant funding capability.',
+          'International coordination broke down — several allied services failed to execute on time. Organization was alerted and began emergency fund transfers.',
+        ],
+      },
+      {
+        id: 'ISOLATION',
+        name: 'Phase 3: Network Isolation',
+        shortName: 'ISOLATION',
+        invDaysRange: [2, 3],
+        invDepts: ['COUNTER_INTEL', 'SIGINT', 'FIELD_OPS'],
+        execDaysRange: [3, 5],
+        execDepts: ['FIELD_OPS', 'SPECIAL_OPS', 'COUNTER_INTEL'],
+        budgetRange: [6, 10],
+        confSuccess: [1, 3],
+        confFail: [-5, -10],
+        falseFlagChance: 0.0,
+        invDeptEfficiency: { COUNTER_INTEL: 85, SIGINT: 80, FIELD_OPS: 75 },
+        intelFields: [
+          { key: 'comms_interdiction', label: 'COMMS INTERDICTION' },
+          { key: 'safe_houses', label: 'SAFE HOUSE STATUS' },
+          { key: 'lt_positions', label: 'LIEUTENANT POSITIONS' },
+        ],
+        intelFieldValues: {
+          comms_interdiction: [
+            'All primary communication channels identified and ready for simultaneous interdiction',
+            'Primary channels mapped — some encrypted backup channels may exist',
+          ],
+          safe_houses: [
+            'All known safe houses under surveillance — entry teams staged',
+            'Primary safe houses located — some secondary locations still being confirmed',
+          ],
+          lt_positions: [
+            'All known lieutenants under surveillance — positions confirmed',
+            'Most lieutenants located — two remain unaccounted for',
+          ],
+        },
+        opNarrative: 'Coordinated strikes isolate network cells from each other and from leadership. Communications are interdicted, safe houses are raided, and known lieutenants are detained simultaneously. The inside asset disables internal alarm systems. The goal is to prevent the network from coordinating a response.',
+        investigateReports: [
+          'Financial disruption is degrading the organization\'s capability. Recommend immediate transition to network isolation phase before they adapt.',
+        ],
+        fullBriefs: [
+          'TAKEDOWN BRIEF — OP {codename} / Phase 3: NETWORK ISOLATION\n\nCommunications: {comms_interdiction}.\n\nSafe houses: {safe_houses}. Lieutenants: {lt_positions}.\n\nSimultaneous action across all identified nodes. Inside asset will facilitate. SIGINT maintains real-time monitoring for breakout attempts.',
+        ],
+        successOutcomes: [
+          'Network isolation successful. Cells severed from leadership. Multiple lieutenants detained. Safe houses secured. Organization cannot coordinate.',
+          'Phase 3 complete. Simultaneous raids conducted across multiple locations. Network fragmented. Leadership cut off from operational cells. Final assault authorized.',
+        ],
+        failureOutcomes: [
+          'Isolation partially successful but leadership cell received warning and fled the primary location. Final assault will face a dispersed and alerted target.',
+          'Inside asset was compromised during the isolation phase. Network partially fragmented but leadership initiated contingency protocols.',
+        ],
+      },
+      {
+        id: 'ASSAULT',
+        name: 'Phase 4: Leadership Assault',
+        shortName: 'ASSAULT',
+        invDaysRange: [1, 2],
+        invDepts: ['HUMINT', 'SIGINT', 'FIELD_OPS'],
+        execDaysRange: [1, 2],
+        execDepts: ['SPECIAL_OPS', 'FIELD_OPS', 'FOREIGN_OPS'],
+        budgetRange: [8, 15],
+        confSuccess: [5, 10],
+        confFail: [-10, -18],
+        falseFlagChance: 0.0,
+        invDeptEfficiency: { HUMINT: 85, SIGINT: 80, FIELD_OPS: 80 },
+        intelFields: [
+          { key: 'leadership_location', label: 'LEADERSHIP LOCATION' },
+          { key: 'breach_plan', label: 'BREACH PLAN' },
+          { key: 'exfil_route', label: 'EXFILTRATION ROUTE' },
+        ],
+        intelFieldValues: {
+          leadership_location: [
+            'Leadership confirmed at primary compound — real-time surveillance active',
+            'Leadership believed to be at secondary location — confirmation pending',
+          ],
+          breach_plan: [
+            'Multi-vector breach plan confirmed — primary and secondary entry points identified',
+            'Single-vector breach — limited entry points increase risk but simplify coordination',
+          ],
+          exfil_route: [
+            'Primary and secondary exfiltration routes confirmed and secured',
+            'Exfiltration route identified but not fully secured — contingency plan in place',
+          ],
+        },
+        opNarrative: 'The final assault targets the organization\'s leadership directly. Special operations forces conduct a coordinated breach of the leadership compound while field teams maintain a security cordon. The inside asset provides real-time intelligence on leadership positions. The objective is the capture or neutralization of all senior leadership.',
+        investigateReports: [
+          'Network is isolated and degrading. Leadership location confirmed. Recommend immediate final assault before they can reconstitute.',
+        ],
+        fullBriefs: [
+          'TAKEDOWN BRIEF — OP {codename} / Phase 4: LEADERSHIP ASSAULT\n\nTarget: {org_name} senior leadership. Location: {leadership_location}.\n\nBreach plan: {breach_plan}. Exfiltration: {exfil_route}.\n\nThis is the final phase. Success permanently dismantles the organization. Failure allows leadership to escape and potentially reconstitute.',
+        ],
+        successOutcomes: [
+          'OPERATION COMPLETE. Leadership compound breached and secured. Senior leadership neutralized. Organization dismantled.',
+          'Final assault successful. All identified leadership captured or neutralized. Network infrastructure seized. Organization destroyed.',
+          'Leadership assault executed flawlessly. Target organization has been permanently dismantled. All operational files and communications recovered.',
+        ],
+        failureOutcomes: [
+          'Assault met heavy resistance. Leadership escaped through an unknown tunnel system. Organization severely damaged but leadership survives.',
+          'Breach was repelled. Leadership extracted under fire. Organization is crippled but not destroyed. Expect retaliation and reconstitution attempts.',
+          'Inside asset was neutralized before the assault. Breach succeeded but leadership had already fled. Network damaged but core leadership intact.',
+        ],
+      },
+    ],
+    vars: {
+      org_name: ['the target organization'],
+    },
+  },
+
 };

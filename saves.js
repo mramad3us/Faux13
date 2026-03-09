@@ -110,6 +110,9 @@
     Object.keys(G).forEach(k => delete G[k]);
     Object.assign(G, restored);
 
+    // Re-apply budget upgrades (cfg is restored fresh from COUNTRIES, losing mutations)
+    reapplyBudgetUpgrades();
+
     // Migrate old saves: re-fill mission text fields that may contain raw placeholders
     migrateMissionText();
 
@@ -117,6 +120,14 @@
     render();
     addLog('Game loaded.', 'log-info');
     return true;
+  }
+
+  function reapplyBudgetUpgrades() {
+    if (!G.cfg || !G.upgrades) return;
+    const regen = G.upgrades.budgetRegen || 0;
+    const cap   = G.upgrades.budgetCap   || 0;
+    if (regen > 0) G.cfg.weeklyBudgetRegen += regen * 2;
+    if (cap > 0)   G.cfg.budget            += cap * 10;
   }
 
   function migrateMissionText() {

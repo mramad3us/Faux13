@@ -313,6 +313,11 @@ function resolveVars(varsTemplate, baseVars) {
   const resolved = { ...baseVars };
   for (const [k, v] of Object.entries(varsTemplate || {}))
     resolved[k] = Array.isArray(v) ? pick(v) : v;
+  // Second pass: resolve nested placeholders within var values (e.g. {military_name} inside element_type)
+  for (const [k, v] of Object.entries(resolved)) {
+    if (typeof v === 'string' && v.includes('{'))
+      resolved[k] = fillTemplate(v, resolved);
+  }
   return resolved;
 }
 
@@ -834,6 +839,7 @@ function completePhase(m, result, msg) {
     m.confDelta = confLoss; m.budgetDelta = 0;
     m.resultMsg = msg;
     gainXP(1, `OP ${m.codename} phase failed`);
+    fire('operation:resolved', { mission: m, success: false });
     addLog(`FAILURE: OP ${m.codename} [${ph.shortName}]. ${confLoss}% confidence.`, 'log-fail');
     return;
   }
@@ -872,6 +878,7 @@ function completePhase(m, result, msg) {
     m.resultMsg = msg;
     gainXP(m.threat * 4, `OP ${m.codename} full chain`);
     registerOrUpdateHvt(m);
+    fire('operation:resolved', { mission: m, success: true });
     addLog(`SUCCESS: OP ${m.codename} — Full operation complete. +${confGain}% confidence.`, 'log-success');
   }
 }
@@ -2415,7 +2422,37 @@ function renderThreats() {
     // Status-specific action sections
     let actionSection = '';
 
-    if (h.status === 'ACTIVE') {
+    // ORG entries have their own action logic (infiltrate / takedown)
+    if (h.type === 'ORG' && h.linkedPlotId && h.status === 'ACTIVE') {
+      const plot = G.plots?.find(p => p.id === h.linkedPlotId);
+      if (plot) {
+        const intel = plot.knownIntel || {};
+        const hasIntel = intel.leader || intel.objective || intel.strength; // beyond auto-revealed type/baseLocation
+        const allIntel = intel.type && intel.leader && intel.objective && intel.strength && intel.baseLocation;
+        const infiltrated = !!plot.infiltrated;
+        const canTakedown = allIntel && infiltrated;
+
+        let orgBtns = '';
+        if (infiltrated) {
+          orgBtns += `<div class="surv-indicator" style="color:var(--green)">◉ INFILTRATED — +10% on linked ops</div>`;
+        }
+        if (!infiltrated && hasIntel) {
+          orgBtns += `<button class="btn-threat-assign" onclick="spawnOrgInfiltration('${plot.id}')" data-tip="Launch multi-phase infiltration op. Requires at least 1 intel field beyond type/location.">INFILTRATE</button>`;
+        } else if (!infiltrated && !hasIntel) {
+          orgBtns += `<button class="btn-threat-assign unavail" disabled data-tip="Gather more intel on this organization before attempting infiltration.">INFILTRATE</button>`;
+        }
+        if (canTakedown) {
+          orgBtns += `<button class="btn-threat-assign danger" onclick="spawnOrgTakedown('${plot.id}')" data-tip="Launch full org takedown. Requires ALL intel + active infiltration.">TAKEDOWN</button>`;
+        } else {
+          const missing = [];
+          if (!allIntel) missing.push('full intel');
+          if (!infiltrated) missing.push('infiltration');
+          orgBtns += `<button class="btn-threat-assign unavail" disabled data-tip="Requires: ${missing.join(' + ')}">TAKEDOWN</button>`;
+        }
+
+        actionSection = `<div class="threat-handover-row">${orgBtns}</div>`;
+      }
+    } else if (h.status === 'ACTIVE') {
       const trackTypeId = h.location === 'DOMESTIC' ? 'HVT_SURVEILLANCE_DOM' : 'HVT_SURVEILLANCE_FOR';
       const trackAvail = MISSION_TYPES[trackTypeId];
       actionSection = `
@@ -2550,44 +2587,103 @@ function showHelp() {
         <div class="help-section-title">OVERVIEW</div>
         <p>You are the Director of a covert intelligence agency. Missions arrive as raw intelligence reports. Investigate them, decide what to act on, and execute operations before the window closes. Keep Confidence above zero to stay in command.</p>
       </div>
+
       <div class="help-section">
         <div class="help-section-title">DEPARTMENT RESOURCES</div>
-        <p>Each department has a limited pool of units — analysts, field teams, strike units, etc. Assigning a department to investigate or execute a mission commits one unit from that pool for the duration. Multiple missions can draw from the same department simultaneously, as long as capacity allows.</p>
+        <p>Each department has a limited pool of units (desks, cells, squads, etc.). Assigning a department to investigate or execute a mission commits one unit for the duration. Multiple missions can draw from the same department simultaneously, as long as capacity allows.</p>
         <p style="margin-top:8px">Monitor capacity in the Departments panel. A full department (0 available) cannot accept new assignments until an active mission concludes.</p>
         ${DEPT_CONFIG.map(d => `<div class="help-dept-row">
           <div class="help-dept-name">${d.name} <span style="color:var(--text-dim);font-weight:400">(${d.unitName})</span></div>
           <div class="help-dept-tip">${d.tip}</div>
         </div>`).join('')}
       </div>
+
       <div class="help-section">
         <div class="help-section-title">MISSION FLOW</div>
         <div class="help-flow">
           <div class="help-flow-step"><span class="help-step-num">1</span><div><strong>INCOMING</strong> — Assign a department to investigate. Costs 1 unit for the investigation period.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">2</span><div><strong>INVESTIGATING</strong> — Department works the case. Other missions can use the same dept if capacity allows.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">3</span><div><strong>BRIEF READY</strong> — Full intel unlocked. Approve or archive.</div></div>
-          <div class="help-flow-step"><span class="help-step-num">4</span><div><strong>CONFIGURE</strong> — Set budget. Select departments (each recommended dept +12%, optional +5%). No staff slider — resource cost is one unit per assigned department.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">2</span><div><strong>INVESTIGATING</strong> — Department works the case. Intel fields are revealed progressively.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">3</span><div><strong>BRIEF READY</strong> — Full intel unlocked. Approve or archive. All fields confirmed grants a +10% intel bonus.</div></div>
+          <div class="help-flow-step"><span class="help-step-num">4</span><div><strong>CONFIGURE</strong> — Set budget, departments (recommended +12%, optional +5%), and agency support assets. Intel support assets count as revealed fields for probability.</div></div>
           <div class="help-flow-step"><span class="help-step-num">5</span><div><strong>EXECUTING</strong> — Operation runs. Each assigned department has one unit committed until resolution.</div></div>
           <div class="help-flow-step"><span class="help-step-num">6</span><div><strong>RESULT</strong> — Earn confidence and XP. Archive to clear.</div></div>
         </div>
       </div>
-      <div class="help-section">
-        <div class="help-section-title">XP & CAPABILITIES</div>
-        <p>You earn XP for each completed mission — more for higher-threat successes. Every 30 days a <strong>Monthly Review</strong> fires automatically, letting you spend XP to expand department capacity or increase budget. You can also open the upgrade shop anytime via the <strong>UPGRD</strong> button.</p>
-        <p style="margin-top:8px">Unspent XP carries over. Prioritize scarce departments (Special Ops, Field Ops) early.</p>
-      </div>
+
       <div class="help-section">
         <div class="help-section-title">MULTI-PHASE OPERATIONS</div>
-        <p>Some operations span multiple phases — surveillance, evidence collection, and a final action. Each phase requires its own investigation and execution. ⚠ False flag anomalies can occur mid-investigation: proceed with a probability penalty or reinvestigate.</p>
+        <p>Some operations span multiple phases — surveillance, evidence collection, and a final action. Each phase requires its own investigation and execution. False flag anomalies can occur mid-investigation: proceed with a probability penalty or reinvestigate.</p>
+        <p style="margin-top:8px">Infiltration ops (3 phases) and Org Takedowns (4 phases) are the longest multi-phase operations in the game.</p>
       </div>
+
+      <div class="help-section">
+        <div class="help-section-title">INTER-AGENCY RELATIONS</div>
+        <p>The agency bar below the header shows your relationship with partner agencies (domestic bureau, foreign intelligence, military). Relations range from 0 to 100.</p>
+        <p style="margin-top:8px"><strong>Favor missions</strong> appear periodically from agencies with relation 25+. Completing favors improves the relationship; failing them damages it.</p>
+        <p style="margin-top:8px"><strong>Agency support</strong> can be requested during operation configuration. Each asset costs relation points with that agency. Support types include execution probability bonuses (+X%) and intel field bonuses (+N fields revealed).</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">THREATS & HVT TRACKER</div>
+        <p>The Threats tab tracks High-Value Targets and hostile Organizations. HVTs progress through a lifecycle:</p>
+        <div class="help-flow" style="margin-top:6px">
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--red-dim)">A</span><div><strong>ACTIVE</strong> — Target at large, location unknown. Use TRACK to launch a surveillance mission.</div></div>
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--accent2)">T</span><div><strong>TRACKED</strong> — Under surveillance. Choose ABDUCT (capture alive) or ELIMINATE (neutralize).</div></div>
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--amber-dim)">D</span><div><strong>DETAINED</strong> — In custody. INTERROGATE (max 3 sessions, spawns follow-up missions), EXECUTE (+confidence), or HAND OVER to a partner agency (+relation).</div></div>
+        </div>
+        <p style="margin-top:8px">Failed HVT and counter-terror ops automatically register escaped targets as ACTIVE threats.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">LONG PLOTS & ORGANIZATIONS</div>
+        <p>Hostile organizations run persistent plots — linked chains of missions that escalate over time. After enough linked missions are resolved, analysts flag the pattern and open a <strong>FILE</strong>. The organization appears in the Threats tab as an ORG entry.</p>
+        <p style="margin-top:8px"><strong>Dismantling an org requires two major operations:</strong></p>
+        <div class="help-flow" style="margin-top:6px">
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--purple)">1</span><div><strong>INFILTRATE</strong> (3-phase op) — Available when you have intel beyond type/location. On success: +10% bonus on all ops against that org.</div></div>
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--red)">2</span><div><strong>TAKEDOWN</strong> (4-phase op) — Available only when ALL intel is confirmed AND the org is infiltrated. On success: org permanently destroyed.</div></div>
+        </div>
+        <p style="margin-top:8px">Intel is revealed progressively through successful linked missions. Interrogating detained org members can also reveal intelligence.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">DEFCON</div>
+        <p>The <strong>DEFCON</strong> badge reflects your operational pressure — how stretched your resources are right now.</p>
+        <p style="margin-top:4px">
+          <span style="color:#3cbf3c">DEFCON 5</span> (relaxed) →
+          <span style="color:#2cc4b0">4</span> →
+          <span style="color:#d4a017">3</span> →
+          <span style="color:#e04040">2</span> →
+          <span style="color:#ff2020">DEFCON 1</span> (overwhelmed)
+        </p>
+        <p style="margin-top:8px">Calculated from department utilization (70% weight) and unhandled inbox missions (30% weight). DEFCON drops when departments are near capacity and missions pile up. It rises when you have spare resources. Expand department capacity via upgrades to keep pressure manageable.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">RANDOM EVENTS</div>
+        <p>Political crises, internal incidents, external threats, and opportunities appear periodically. Some offer choices with trade-offs. Events can affect confidence, budget, department capacity, or agency relations.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">CASCADING CONSEQUENCES</div>
+        <p>Failed operations can spawn retaliatory threats — a failed counter-terror op may embolden attackers, a failed foreign op may blow back on the agency. Success prevents escalation; failure compounds it.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">XP & CAPABILITIES</div>
+        <p>Earn XP for completed missions — more for higher-threat successes. Every 30 days a <strong>Monthly Review</strong> fires, letting you spend XP to expand department capacity or improve budget regen/cap. Open the upgrade shop anytime via <strong>UPGRD</strong>.</p>
+        <p style="margin-top:8px">Unspent XP carries over. Prioritize scarce departments early.</p>
+      </div>
+
       <div class="help-section">
         <div class="help-section-title">RESOURCES</div>
-        <div class="help-resource-row"><strong>CONFIDENCE</strong> — Drops 2% weekly, falls on failures, rises on successes. Hits 0% and you're out.</div>
-        <div class="help-resource-row" style="margin-top:8px"><strong>BUDGET</strong> — Spent on operations. Regenerates weekly. Running dry defunds the agency.</div>
-        <div class="help-resource-row" style="margin-top:8px"><strong>XP</strong> — Earned from operations. Spend at monthly reviews to grow your capabilities.</div>
+        <div class="help-resource-row"><strong>CONFIDENCE</strong> — Drops 2%/week (more at high DEFCON), falls on failures, rises on successes. Hits 0% = game over.</div>
+        <div class="help-resource-row" style="margin-top:8px"><strong>BUDGET</strong> — Spent on operations. Regenerates weekly (upgradeable). Running dry ends the agency.</div>
+        <div class="help-resource-row" style="margin-top:8px"><strong>XP</strong> — Earned from operations. Spend at monthly reviews or anytime via UPGRD.</div>
       </div>
+
       <div class="help-section">
         <div class="help-section-title">CONTROLS</div>
-        <div class="help-resource-row"><strong>→ / N</strong> — Advance day. <strong>ESC</strong> — Close modal. <strong>?</strong> — This handbook. <strong>U</strong> — Open upgrade shop.</div>
+        <div class="help-resource-row"><strong>→ / N</strong> — Advance day &nbsp; <strong>ESC</strong> — Close modal &nbsp; <strong>?</strong> — This handbook &nbsp; <strong>U</strong> — Upgrades &nbsp; <strong>S</strong> — Save/Load</div>
       </div>
     </div>
   `;
