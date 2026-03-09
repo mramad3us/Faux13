@@ -405,7 +405,8 @@ function startGame(countryCode) {
     xp: 0, xpThisMonth: 0,
     monthOpsCompleted: 0, monthOpsSucceeded: 0, lastRecapDay: 0,
     missions: [], depts: initDepts(cfg), log: [],
-    selected: null, opsCompleted: 0, opsSucceeded: 0,
+    intelMessages: [], intelIdCounter: 0,
+    selected: null, selectedType: null, opsCompleted: 0, opsSucceeded: 0,
     missionIdCounter: 0, usedCodenames: new Set(), nextSpawnDay: 1,
     upgrades: initUpgrades(),
     hvts: [], hvtIdCounter: 0,
@@ -779,6 +780,7 @@ function advanceToNextEvent() {
 function switchFolder(folderId) {
   G.currentFolder = folderId;
   G.selected = null;
+  G.selectedType = null;
   render();
 }
 
@@ -794,21 +796,26 @@ function getFolderMissions(folderId) {
     case 'results':
       return G.missions.filter(m => ['SUCCESS', 'FAILURE'].includes(m.status));
     case 'archive':
-      return []; // archived missions are removed from array, nothing to show
+      return G.missions.filter(m => m.status === 'ARCHIVED').sort((a, b) => (b.archivedDay || 0) - (a.archivedDay || 0));
     default:
       return [];
   }
 }
 
+function getInboxIntelMessages() {
+  return (G.intelMessages || []).filter(m => m.status !== 'ARCHIVED');
+}
+
 function getFolderCount(folderId) {
   switch (folderId) {
-    case 'inbox':    return G.missions.filter(m => ['INCOMING', 'READY', 'BLOWN', 'PHASE_COMPLETE', 'DEAD_END', 'EXPIRED'].includes(m.status)).length;
+    case 'inbox':    return G.missions.filter(m => ['INCOMING', 'READY', 'BLOWN', 'PHASE_COMPLETE', 'DEAD_END', 'EXPIRED'].includes(m.status)).length + getInboxIntelMessages().filter(m => !m.read).length;
     case 'pending':  return G.missions.filter(m => m.status === 'INVESTIGATING').length;
     case 'active':   return G.missions.filter(m => m.status === 'EXECUTING').length;
     case 'results':  return G.missions.filter(m => ['SUCCESS', 'FAILURE'].includes(m.status)).length;
     case 'threats':  return G.hvts.filter(h => ['ACTIVE', 'TRACKED', 'DETAINED'].includes(h.status)).length;
-    case 'agencies': return Object.keys(G.cfg?.partnerAgencies || {}).length;
+    case 'agencies': return 0;
     case 'geo':      return G.geo?.activeEvents ? G.geo.activeEvents.filter(e => !e.resolved).length : 0;
+    case 'archive':  return 0;
     default: return 0;
   }
 }
@@ -1037,7 +1044,9 @@ function spawnFollowUpMission(m, phase) {
 // MISSION MANAGEMENT ACTIONS
 // =============================================================================
 
-function selectMission(id) { G.selected = id; render(); }
+function selectMission(id) { G.selected = id; G.selectedType = 'mission'; render(); }
+function selectIntelMessage(id) { G.selected = id; G.selectedType = 'intel'; const msg = G.intelMessages.find(m => m.id === id); if (msg) msg.read = true; render(); }
+function acknowledgeIntelMessage(id) { G.intelMessages = G.intelMessages.filter(m => m.id !== id); G.selected = null; G.selectedType = null; render(); }
 
 function assignInvestigation(missionId, deptId) {
   const m    = getMission(missionId);
@@ -1065,9 +1074,24 @@ function assignInvestigation(missionId, deptId) {
 }
 
 function archiveMission(missionId) {
-  G.missions = G.missions.filter(x => x.id !== missionId);
+  const m = getMission(missionId);
+  if (m) {
+    m.status = 'ARCHIVED';
+    m.archivedDay = G.day;
+  }
   if (G.selected === missionId) G.selected = null;
+  pruneArchive();
   render();
+}
+
+function pruneArchive() {
+  const archived = G.missions.filter(m => m.status === 'ARCHIVED');
+  if (archived.length > 10) {
+    const toRemove = archived.slice(0, archived.length - 10);
+    for (const m of toRemove) {
+      G.missions = G.missions.filter(x => x.id !== m.id);
+    }
+  }
 }
 
 function dismissMission(missionId) {
@@ -2362,21 +2386,42 @@ function renderMessageList() {
   }
 
   const missions = getFolderMissions(folder);
+  const intelMsgs = folder === 'inbox' ? getInboxIntelMessages() : [];
+  const totalCount = missions.length + intelMsgs.length;
   const folderLabels = { inbox: 'INBOX', pending: 'PENDING', active: 'ACTIVE OPS', results: 'RESULTS', archive: 'ARCHIVE' };
   if (titleEl) titleEl.textContent = folderLabels[folder] || folder.toUpperCase();
-  if (countEl) countEl.textContent = `${missions.length}`;
+  if (countEl) countEl.textContent = `${totalCount}`;
 
   // Also update hidden inbox-count for compatibility
   const inboxCountEl = document.getElementById('inbox-count');
   if (inboxCountEl) inboxCountEl.textContent = getFolderCount('inbox');
 
-  if (missions.length === 0) {
+  if (totalCount === 0) {
     listEl.innerHTML = '<div class="msg-list-empty">No messages.</div>';
     return;
   }
 
-  listEl.innerHTML = missions.map(m => {
-    const isSelected = G.selected === m.id;
+  // Build intel message rows (shown at top of inbox)
+  const intelRows = intelMsgs.map(im => {
+    const isSelected = G.selected === im.id && G.selectedType === 'intel';
+    const senderMap = {
+      POLITICAL: 'Oversight Liaison', INTERNAL: 'Security Division', EXTERNAL: 'Global Threat Watch',
+      OPPORTUNITY: 'Deputy Director', NOTICE: 'Operations Center', ALERT: 'Operations Center',
+      PERSONNEL: 'Personnel Division', GEOPOLITICS: 'Global Threat Watch',
+    };
+    const senderName = senderMap[im.category] || 'Operations Center';
+    const unreadCls = im.read ? '' : 'msg-unread';
+    return `<div class="msg-row ${isSelected ? 'msg-selected' : ''} ${unreadCls}" onclick="selectIntelMessage('${im.id}')">
+      <span class="msg-priority msg-priority-normal">◆</span>
+      <span class="msg-from">${senderName}</span>
+      <span class="msg-subject">${im.title}${im.subtitle ? ' — ' + im.subtitle : ''}</span>
+      <span class="msg-status status-intel">${im.category}</span>
+    </div>`;
+  }).join('');
+
+  // Build mission rows
+  const missionRows = missions.map(m => {
+    const isSelected = G.selected === m.id && G.selectedType !== 'intel';
     const sender = typeof getEmailSender === 'function' ? getEmailSender(m, m.status) : { name: 'Operations', desk: '' };
     const subject = typeof getEmailSubject === 'function' ? getEmailSubject(m, m.status) : `OP ${m.codename}`;
     const priority = typeof getEmailPriority === 'function' ? getEmailPriority(m) : 'normal';
@@ -2394,6 +2439,7 @@ function renderMessageList() {
       EXECUTING:      '<span class="msg-status status-executing">ACTIVE</span>',
       SUCCESS:        '<span class="msg-status status-success">SUCCESS</span>',
       FAILURE:        '<span class="msg-status status-failure">FAILED</span>',
+      ARCHIVED:       '<span class="msg-status status-archived">ARCHIVED</span>',
     }[m.status] || '';
 
     const prioIcon = priority === 'FLASH' ? '!!' : priority === 'IMMEDIATE' ? '!' : priority === 'PRIORITY' ? '▸' : '·';
@@ -2408,6 +2454,8 @@ function renderMessageList() {
       ${daysLeft !== '' ? `<span class="msg-deadline ${deadlineCls}">${daysLeft}d</span>` : ''}
     </div>`;
   }).join('');
+
+  listEl.innerHTML = intelRows + missionRows;
 }
 
 function renderPhaseRoadmap(m) {
@@ -2464,8 +2512,40 @@ function renderReadingPane() {
     return;
   }
 
+  // Intel message rendering
+  if (G.selectedType === 'intel') {
+    const im = (G.intelMessages || []).find(m => m.id === G.selected);
+    if (!im) { G.selected = null; G.selectedType = null; renderReadingPane(); return; }
+    const senderMap = {
+      POLITICAL: EMAIL_SENDERS.OVERSIGHT, INTERNAL: EMAIL_SENDERS.SECURITY,
+      EXTERNAL: EMAIL_SENDERS.INTEL_DIGEST, OPPORTUNITY: EMAIL_SENDERS.DEPUTY_DIR,
+      NOTICE: EMAIL_SENDERS.OPS_CENTER, ALERT: EMAIL_SENDERS.OPS_CENTER,
+      PERSONNEL: EMAIL_SENDERS.HR, GEOPOLITICS: EMAIL_SENDERS.INTEL_DIGEST,
+    };
+    const sender = senderMap[im.category] || EMAIL_SENDERS.OPS_CENTER;
+    const subject = im.title + (im.subtitle ? ' — ' + im.subtitle : '');
+    const emailHeader = typeof buildEmailHeader === 'function'
+      ? buildEmailHeader(sender, subject, { priority: 'ROUTINE' })
+      : '';
+    const replyHtml = typeof buildReplySection === 'function'
+      ? buildReplySection([{ label: im.buttonLabel || 'ACKNOWLEDGED', cls: 'reply-primary', onclick: `acknowledgeIntelMessage('${im.id}')` }])
+      : '';
+    const sig = typeof buildEmailSignature === 'function' ? buildEmailSignature(sender) : '';
+    paneEl.innerHTML = `<div class="email-wrap">
+      ${emailHeader}
+      <div class="email-body">
+        <div class="dc-section">
+          <div class="dc-report">${im.body}</div>
+        </div>
+      </div>
+      ${replyHtml}
+      ${sig}
+    </div>`;
+    return;
+  }
+
   const m = getMission(G.selected);
-  if (!m) { G.selected = null; renderReadingPane(); return; }
+  if (!m) { G.selected = null; G.selectedType = null; renderReadingPane(); return; }
 
   // Build email header
   const sender = typeof getEmailSender === 'function' ? getEmailSender(m, m.status) : { name: 'Operations', desk: 'Joint Operations Center' };
@@ -2766,6 +2846,16 @@ function renderReadingPane() {
     replyHtml = buildReplySection([
       { label: 'ACKNOWLEDGED — Archive', cls: '', onclick: `archiveMission('${m.id}')` }
     ]);
+
+  } else if (m.status === 'ARCHIVED') {
+    const wasSuccess = m.confDelta > 0;
+    bodyContent += `
+      <div class="result-box ${wasSuccess ? 'success' : 'failure'}">
+        <div class="result-title">${wasSuccess ? 'OPERATION SUCCESSFUL' : 'OPERATION CLOSED'}</div>
+        <div class="result-msg">${m.resultMsg || 'No further details available.'}</div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:8px">ARCHIVED — DAY ${m.archivedDay || '?'}</div>
+    `;
   }
 
   // Build email signature
@@ -3326,37 +3416,30 @@ function showModal()     { document.getElementById('modal-overlay').classList.re
 function hideModal()     { document.getElementById('modal-overlay').classList.add('hidden'); }
 function closeModalBg(e) { if (e.target === document.getElementById('modal-overlay')) hideModal(); }
 
-// ---- Briefing pop-ups (informational, single dismiss) ----
-var _briefingQueue = [];
-var _briefingShowing = false;
+// ---- Briefing messages — routed to inbox as intel messages ----
 
 function queueBriefingPopup(cfg) {
-  _briefingQueue.push(cfg);
-  if (!_briefingShowing) _showNextBriefing();
+  if (!G || !G.intelMessages) return; // guard before game starts
+  const msg = {
+    id: `IM_${++G.intelIdCounter}`,
+    type: 'intel',
+    title: cfg.title || 'BRIEFING',
+    category: cfg.category || 'NOTICE',
+    subtitle: cfg.subtitle || '',
+    accent: cfg.accent || 'var(--accent)',
+    body: cfg.body || '',
+    buttonLabel: cfg.buttonLabel || 'ACKNOWLEDGED',
+    day: G.day,
+    read: false,
+    status: 'UNREAD',
+  };
+  G.intelMessages.unshift(msg);
+  // Auto-prune: keep last 30 intel messages
+  if (G.intelMessages.length > 30) G.intelMessages.length = 30;
 }
 
-function _showNextBriefing() {
-  if (_briefingQueue.length === 0) { _briefingShowing = false; return; }
-  _briefingShowing = true;
-  var cfg = _briefingQueue.shift();
-  var accentColor = cfg.accent || 'var(--accent)';
-  document.getElementById('modal-title').textContent = cfg.title || 'BRIEFING';
-  document.getElementById('modal-body').innerHTML =
-    '<div class="modal-section">' +
-      '<div class="modal-section-title" style="color:' + accentColor + ';font-family:var(--font-disp);letter-spacing:1.5px">' + (cfg.category || 'NOTICE') + ' — DAY ' + G.day + '</div>' +
-      (cfg.subtitle ? '<div style="font-size:10px;letter-spacing:1px;color:var(--text-dim);margin:4px 0 8px">' + cfg.subtitle + '</div>' : '') +
-      '<p style="font-family:var(--font-body);font-size:12px;line-height:1.6;margin:8px 0;color:var(--text-hi)">' + cfg.body + '</p>' +
-    '</div>' +
-    '<div style="margin-top:10px;text-align:right">' +
-      '<button class="btn-primary" onclick="dismissBriefingPopup()" style="min-width:100px">' + (cfg.buttonLabel || 'ACKNOWLEDGE') + '</button>' +
-    '</div>';
-  showModal();
-}
-
-window.dismissBriefingPopup = function() {
-  hideModal();
-  setTimeout(_showNextBriefing, 150);
-};
+// Legacy compat — in case anything still calls these
+window.dismissBriefingPopup = function() { hideModal(); };
 
 function showScreen(name) {
   // Map old screen names to new ones

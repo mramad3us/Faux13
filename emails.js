@@ -72,6 +72,8 @@ function getEmailSubject(m, status) {
       return `RE: ${code} — Investigation Inconclusive`;
     case 'EXPIRED':
       return `RE: ${code} — Mission Window Closed`;
+    case 'ARCHIVED':
+      return `RE: ${code} — File Closed`;
     default:
       return `${code} — ${m.category}`;
   }
