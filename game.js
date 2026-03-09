@@ -640,7 +640,19 @@ function spawnMission(forcedType) {
 // DAY ADVANCEMENT
 // =============================================================================
 
+function triggerDayScanline() {
+  const pane = document.getElementById('reading-pane');
+  if (!pane) return;
+  pane.style.position = 'relative';
+  const line = document.createElement('div');
+  line.className = 'day-advance-flash';
+  pane.appendChild(line);
+  line.addEventListener('animationend', () => line.remove());
+}
+
 function advanceDay() {
+  // Snapshot mission IDs before spawning for new-arrival detection
+  G._prevMissionIds = new Set(G.missions.map(m => m.id));
   G.day++;
   fire('day:pre', G);
 
@@ -713,12 +725,35 @@ function advanceDay() {
   fire('day:post', G);
   checkGameOver();
   render();
+  triggerDayScanline();
+  // Mark newly spawned missions for arrival animation
+  if (G._prevMissionIds) {
+    requestAnimationFrame(() => {
+      G.missions.forEach(m => {
+        if (!G._prevMissionIds.has(m.id)) {
+          const row = document.querySelector(`.msg-row[onclick*="${m.id}"]`);
+          if (row) row.classList.add('msg-new-arrival');
+        }
+      });
+      // Also mark new intel messages
+      (G.intelMessages || []).forEach(im => {
+        if (!im.read) {
+          const row = document.querySelector(`.msg-row[onclick*="${im.id}"]`);
+          if (row && !row.classList.contains('msg-intel-new')) row.classList.add('msg-intel-new');
+        }
+      });
+    });
+    delete G._prevMissionIds;
+  }
   if (G.selected && !getMission(G.selected)) G.selected = null;
 
-  // Monthly recap — every 30 days
+  // Monthly recap — every 30 days: presidential message + reset counters
   if (G.day - G.lastRecapDay >= 30) {
+    sendPresidentialReview();
     G.lastRecapDay = G.day;
-    showCapabilitiesMenu(true);
+    G.monthOpsCompleted  = 0;
+    G.monthOpsSucceeded  = 0;
+    G.xpThisMonth        = 0;
   }
 }
 
@@ -738,11 +773,13 @@ function advanceToNextEvent() {
     for (const m of G.missions) prevStatuses[m.id] = m.status;
     const prevConf = G.confidence;
 
+    const prevIntelCount = G.intelMessages.length;
     advanceDay();
     daysAdvanced++;
 
     // Check if something significant happened
     if (G.missions.length !== prevMissionCount) eventOccurred = true;
+    if (G.intelMessages.length !== prevIntelCount) eventOccurred = true; // new intel arrived
     for (const m of G.missions) {
       if (prevStatuses[m.id] && prevStatuses[m.id] !== m.status) eventOccurred = true;
     }
@@ -751,11 +788,21 @@ function advanceToNextEvent() {
     if (G.confidence <= 0 || G.budget <= 0) { eventOccurred = true; break; }
   }
 
+  // Auto-switch to inbox if new intel or missions arrived
+  const hasNewInbox = G.missions.some(m => m.status === 'INCOMING' && m.dayReceived === G.day)
+    || G.intelMessages.some(m => !m.read);
+  if (hasNewInbox && G.currentFolder !== 'inbox') {
+    G.currentFolder = 'inbox';
+    G.selected = null;
+    G.selectedType = null;
+    render();
+  }
+
   // Show time skip interstitial
   if (daysAdvanced > 1) {
     const newMsgs = G.missions.filter(m =>
       !['EXECUTING', 'ARCHIVED'].includes(m.status)
-    ).length;
+    ).length + G.intelMessages.filter(m => !m.read).length;
 
     const overlay = document.createElement('div');
     overlay.className = 'time-skip-overlay';
@@ -902,6 +949,7 @@ function resolveOperation(m) {
     G.monthOpsCompleted++;
     if (success) {
       m.status = 'SUCCESS';
+      m._resultNew = true; // flag for result-reveal animation
       const confGain    = randInt(...m.confSuccess);
       const budgetReturn = Math.floor(m.assignedBudget * 0.1);
       G.confidence = clamp(G.confidence + confGain, 0, 100);
@@ -915,6 +963,7 @@ function resolveOperation(m) {
       addLog(`SUCCESS: OP ${m.codename}. +${confGain}% confidence.`, 'log-success');
     } else {
       m.status = 'FAILURE';
+      m._resultNew = true; // flag for result-reveal animation
       const confLoss = randInt(...m.confFail);
       G.confidence = clamp(G.confidence + confLoss, 0, 100);
       m.confDelta = confLoss; m.budgetDelta = 0;
@@ -1045,6 +1094,48 @@ function spawnFollowUpMission(m, phase) {
 // =============================================================================
 
 function selectMission(id) { G.selected = id; G.selectedType = 'mission'; render(); }
+
+// Inline confirmation panel — slides open below the clicked button
+window._pendingConfirmAction = null;
+window.confirmAction = function(btnEl, message, actionFn) {
+  // Remove any existing confirm panel
+  const existing = document.querySelector('.inline-confirm');
+  if (existing) { existing.remove(); }
+
+  window._pendingConfirmAction = actionFn;
+  const panel = document.createElement('div');
+  panel.className = 'inline-confirm';
+  panel.innerHTML = `
+    <div class="inline-confirm-inner">
+      <div class="inline-confirm-msg">${message}</div>
+      <div class="inline-confirm-actions">
+        <button class="btn-primary btn-sm" onclick="this.closest('.inline-confirm').remove(); if(window._pendingConfirmAction) window._pendingConfirmAction();">CONFIRM</button>
+        <button class="btn-neutral btn-sm" onclick="this.closest('.inline-confirm').remove(); window._pendingConfirmAction=null;">CANCEL</button>
+      </div>
+    </div>
+  `;
+  btnEl.parentElement.insertBefore(panel, btnEl.nextSibling);
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+// Follow a mission to whatever folder it now belongs in
+function followMission(missionId) {
+  const m = getMission(missionId);
+  if (!m) { G.selected = null; render(); return; }
+  const folderMap = {
+    INCOMING: 'inbox', READY: 'inbox', BLOWN: 'inbox', PHASE_COMPLETE: 'inbox',
+    DEAD_END: 'inbox', EXPIRED: 'inbox',
+    INVESTIGATING: 'pending',
+    EXECUTING: 'active',
+    SUCCESS: 'results', FAILURE: 'results',
+    ARCHIVED: 'archive',
+  };
+  const targetFolder = folderMap[m.status] || 'inbox';
+  G.currentFolder = targetFolder;
+  G.selected = missionId;
+  G.selectedType = 'mission';
+  render();
+}
 function selectIntelMessage(id) { G.selected = id; G.selectedType = 'intel'; const msg = G.intelMessages.find(m => m.id === id); if (msg) msg.read = true; render(); }
 function acknowledgeIntelMessage(id) { G.intelMessages = G.intelMessages.filter(m => m.id !== id); G.selected = null; G.selectedType = null; render(); }
 
@@ -1068,9 +1159,8 @@ function assignInvestigation(missionId, deptId) {
   m.invDaysLeft     = m.invDays;
 
   const phaseLabel = m.isMultiPhase ? ` (${m.phases[m.currentPhaseIndex].shortName})` : '';
-  const avail      = deptAvail(deptId); // still shows pre-assignment since we just set status
   addLog(`${dept.name} assigned to OP ${m.codename}${phaseLabel}. Est. ${m.invDays} days.`, 'log-info');
-  render();
+  followMission(missionId);
 }
 
 function archiveMission(missionId) {
@@ -1079,8 +1169,10 @@ function archiveMission(missionId) {
     m.status = 'ARCHIVED';
     m.archivedDay = G.day;
   }
-  if (G.selected === missionId) G.selected = null;
   pruneArchive();
+  // Stay in current folder, deselect
+  G.selected = null;
+  G.selectedType = null;
   render();
 }
 
@@ -1117,7 +1209,7 @@ window.acknowledgePhaseProceeding = function(missionId) {
   if (!m || m.status !== 'PHASE_COMPLETE') return;
   m.status = 'INCOMING';
   addLog(`OP ${m.codename}: Proceeding to ${m.phases[m.currentPhaseIndex].name}.`, 'log-info');
-  render();
+  followMission(missionId);
 };
 
 window.falseFlagProceed = function(missionId) {
@@ -1246,6 +1338,14 @@ function openOperationModal(missionId) {
   const m = getMission(missionId);
   if (!m) return;
 
+  // Check if config panel already open — toggle it off
+  const existing = document.getElementById('op-config-panel');
+  if (existing) {
+    existing.classList.add('op-config-closing');
+    setTimeout(() => existing.remove(), 300);
+    return;
+  }
+
   const minBudget = Math.max(1, Math.floor(m.baseBudget * 0.5));
   const maxBudget = Math.min(G.budget, m.baseBudget * 2);
   const defBudget = Math.min(G.budget, m.baseBudget);
@@ -1261,7 +1361,6 @@ function openOperationModal(missionId) {
     if (deptAvail(did) > 0) { selectedDepts = [did]; break; }
   }
 
-  const phaseLabel  = m.isMultiPhase ? ` — ${m.phases[m.currentPhaseIndex].name.toUpperCase()}` : '';
   const penaltyNote = m.phaseFalseFlagPenalty
     ? `<div class="op-penalty-note">⚠ ANOMALY PENALTY: −25% success probability due to inconclusive investigation.</div>`
     : '';
@@ -1283,7 +1382,6 @@ function openOperationModal(missionId) {
     const cfg   = DEPT_CONFIG.find(d => d.id === did);
     const avail = deptAvail(did);
     const total = dept.capacity;
-    const alloc = deptAllocated(did);
     const canSelect = avail > 0;
     const sel       = selectedDepts.includes(did);
     return `<div class="modal-dept-check ${sel ? 'selected' : ''} ${canSelect ? '' : 'unavail'}"
@@ -1300,76 +1398,96 @@ function openOperationModal(missionId) {
   const otherRows = DEPT_CONFIG.filter(d => !m.execDepts.includes(d.id))
                                .map(d => buildDeptRow(d.id, false)).join('');
 
-  document.getElementById('modal-title').textContent = `OP ${m.codename}${phaseLabel} — CONFIGURE OPERATION`;
-  document.getElementById('modal-body').innerHTML = `
-    ${penaltyNote}${intelNote}${blownNote}
-    <div class="modal-section">
-      <div class="modal-section-title">OPERATION PLAN</div>
-      <div class="op-narrative">${m.opNarrative}</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">BUDGET ALLOCATION</div>
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">
-        Minimum: ${fmt(minBudget)}. Recommended: ${fmt(m.baseBudget)}. More funding = higher success.
-      </div>
-      <div class="modal-slider-row">
-        <label>BUDGET</label>
-        <input type="range" id="op-budget" min="${minBudget}" max="${maxBudget}" value="${defBudget}"
-          oninput="updateModalProb('${missionId}')"
-          data-tip="Available: ${fmt(G.budget)}">
-        <span class="modal-slider-val" id="op-budget-val">${fmt(defBudget)}</span>
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">RECOMMENDED DEPARTMENTS <span style="font-size:9px;color:var(--text-dim)">(each +12% success)</span></div>
-      <div class="modal-dept-grid">${recRows}</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">OPTIONAL SUPPORT <span style="font-size:9px;color:var(--text-dim)">(each +5% success)</span></div>
-      <div class="modal-dept-grid">${otherRows}</div>
-    </div>
-    ${G.cfg?.partnerAgencies ? `<div class="modal-section">
-      <div class="modal-section-title">AGENCY SUPPORT <span style="font-size:9px;color:var(--text-dim)">(costs relation points)</span></div>
-      <div class="modal-dept-grid">${
-        Object.entries(G.cfg.partnerAgencies).filter(([, agCfg]) => {
-          if (m.location === 'DOMESTIC') return agCfg.type === 'domestic';
-          return agCfg.type === 'foreign' || agCfg.type === 'military';
-        }).flatMap(([agencyId, agCfg]) =>
-          (agCfg.support || []).map(s => {
-            const rel = G.relations?.[agencyId]?.relation ?? 0;
-            const can = rel >= s.cost;
-            return `<div class="agency-support-check ${can ? '' : 'unavail'}"
-              data-agency="${agencyId}" data-support="${s.id}"
-              onclick="toggleAgencySupport('${agencyId}','${s.id}','${missionId}')"
-              data-tip="${s.desc}${can ? '' : '&#10;&#10;Insufficient relation points.'}">
-              <span class="as-agency-tag">${agCfg.shortName}</span>
-              <span class="as-label">${s.label}</span>
-              <span class="support-cost-badge ${can ? '' : 'unavail-cost'}">−${s.cost} REL</span>
-              <span class="support-bonus-badge">${s.bonusType === 'execProb' ? `+${s.bonusValue}%` : `+${s.bonusValue} INTEL`}</span>
-            </div>`;
-          })
-        ).join('')
-      }</div>
-    </div>` : ''}
-    ${typeof window.buildEliteUnitsHtml === 'function' ? window.buildEliteUnitsHtml(missionId, m.execDepts) : ''}
-    <div class="modal-section">
-      <div class="prob-display" data-tip="Estimated success probability. Budget and recommended departments are the main drivers.${m.phaseFalseFlagPenalty ? ' Reduced 25% due to anomaly.' : ''}">
-        <div class="prob-label">ESTIMATED SUCCESS PROBABILITY</div>
-        <div class="prob-value ${initProb >= 70 ? 'prob-high' : initProb >= 45 ? 'prob-med' : 'prob-low'}" id="op-prob-wrap">
-          <span id="op-prob">${initProb}%</span>
+  const configHtml = `
+    <div id="op-config-panel" class="op-config-panel">
+      <div class="op-config-inner">
+        <div class="op-config-hdr">
+          <span class="op-config-title">CONFIGURE OPERATION</span>
+          <button class="op-config-close" onclick="openOperationModal('${missionId}')">✕</button>
+        </div>
+        ${penaltyNote}${intelNote}${blownNote}
+        <div class="op-config-section anim-section" style="animation-delay:0.05s">
+          <div class="modal-section-title">OPERATION PLAN</div>
+          <div class="op-narrative">${m.opNarrative}</div>
+        </div>
+        <div class="op-config-section anim-section" style="animation-delay:0.1s">
+          <div class="modal-section-title">BUDGET ALLOCATION</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">
+            Minimum: ${fmt(minBudget)}. Recommended: ${fmt(m.baseBudget)}. More funding = higher success.
+          </div>
+          <div class="modal-slider-row">
+            <label>BUDGET</label>
+            <input type="range" id="op-budget" min="${minBudget}" max="${maxBudget}" value="${defBudget}"
+              oninput="updateModalProb('${missionId}')"
+              data-tip="Available: ${fmt(G.budget)}">
+            <span class="modal-slider-val" id="op-budget-val">${fmt(defBudget)}</span>
+          </div>
+        </div>
+        <div class="op-config-section anim-section" style="animation-delay:0.15s">
+          <div class="modal-section-title">RECOMMENDED DEPARTMENTS <span style="font-size:9px;color:var(--text-dim)">(each +12% success)</span></div>
+          <div class="modal-dept-grid">${recRows}</div>
+        </div>
+        <div class="op-config-section anim-section" style="animation-delay:0.2s">
+          <div class="modal-section-title">OPTIONAL SUPPORT <span style="font-size:9px;color:var(--text-dim)">(each +5% success)</span></div>
+          <div class="modal-dept-grid">${otherRows}</div>
+        </div>
+        ${G.cfg?.partnerAgencies ? `<div class="op-config-section anim-section" style="animation-delay:0.25s">
+          <div class="modal-section-title">AGENCY SUPPORT <span style="font-size:9px;color:var(--text-dim)">(costs relation points)</span></div>
+          <div class="modal-dept-grid">${
+            Object.entries(G.cfg.partnerAgencies).filter(([, agCfg]) => {
+              if (m.location === 'DOMESTIC') return agCfg.type === 'domestic';
+              return agCfg.type === 'foreign' || agCfg.type === 'military';
+            }).flatMap(([agencyId, agCfg]) =>
+              (agCfg.support || []).map(s => {
+                const rel = G.relations?.[agencyId]?.relation ?? 0;
+                const can = rel >= s.cost;
+                return `<div class="agency-support-check ${can ? '' : 'unavail'}"
+                  data-agency="${agencyId}" data-support="${s.id}"
+                  onclick="toggleAgencySupport('${agencyId}','${s.id}','${missionId}')"
+                  data-tip="${s.desc}${can ? '' : '&#10;&#10;Insufficient relation points.'}">
+                  <span class="as-agency-tag">${agCfg.shortName}</span>
+                  <span class="as-label">${s.label}</span>
+                  <span class="support-cost-badge ${can ? '' : 'unavail-cost'}">−${s.cost} REL</span>
+                  <span class="support-bonus-badge">${s.bonusType === 'execProb' ? `+${s.bonusValue}%` : `+${s.bonusValue} INTEL`}</span>
+                </div>`;
+              })
+            ).join('')
+          }</div>
+        </div>` : ''}
+        ${typeof window.buildEliteUnitsHtml === 'function' ? `<div class="op-config-section anim-section" style="animation-delay:0.3s">${window.buildEliteUnitsHtml(missionId, m.execDepts)}</div>` : ''}
+        <div class="op-config-section anim-section" style="animation-delay:0.35s">
+          <div class="prob-display" data-tip="Estimated success probability.${m.phaseFalseFlagPenalty ? ' Reduced 25% due to anomaly.' : ''}">
+            <div class="prob-label">ESTIMATED SUCCESS PROBABILITY</div>
+            <div class="prob-value ${initProb >= 70 ? 'prob-high' : initProb >= 45 ? 'prob-med' : 'prob-low'}" id="op-prob-wrap">
+              <span id="op-prob">${initProb}%</span>
+            </div>
+          </div>
+        </div>
+        <div class="op-config-actions anim-section" style="animation-delay:0.4s">
+          <button class="btn-primary" onclick="executeOperation('${missionId}')">EXECUTE OPERATION</button>
+          <button class="btn-neutral" onclick="openOperationModal('${missionId}')">CANCEL</button>
         </div>
       </div>
     </div>
-    <div class="modal-actions">
-      <button class="btn-primary" onclick="executeOperation('${missionId}')">EXECUTE OPERATION</button>
-      <button class="btn-neutral" onclick="hideModal()">CANCEL</button>
-    </div>
   `;
+
+  // Inject the config panel after the reply section in the reading pane
+  const replyEl = document.querySelector('.email-reply');
+  if (replyEl) {
+    replyEl.insertAdjacentHTML('afterend', configHtml);
+  } else {
+    // Fallback: append to reading pane
+    const paneEl = document.getElementById('reading-pane');
+    if (paneEl) paneEl.insertAdjacentHTML('beforeend', configHtml);
+  }
+
+  // Scroll the config panel into view
+  const panel = document.getElementById('op-config-panel');
+  if (panel) setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
 
   window._currentOpMission       = missionId;
   window._currentOpSelectedDepts = selectedDepts;
   window._currentOpSelectedElites = [];
-  showModal();
   if (typeof window.refreshEliteRelevance === 'function') window.refreshEliteRelevance();
 }
 
@@ -1439,14 +1557,14 @@ window.executeOperation = function(missionId) {
   const depts  = window._currentOpSelectedDepts || [];
   const agSupport = window._currentOpSelectedSupport || [];
 
-  if (G.budget < budget) { addLog('Insufficient budget.', 'log-warn'); hideModal(); render(); return; }
+  if (G.budget < budget) { addLog('Insufficient budget.', 'log-warn'); render(); return; }
 
   // Verify dept availability (re-check at commit time)
   for (const did of depts) {
     if (deptAvail(did) < 1) {
       const cfg = DEPT_CONFIG.find(d => d.id === did);
       addLog(`${cfg?.name || did} has no available ${cfg?.unitName || 'units'}.`, 'log-warn');
-      hideModal(); render(); return;
+      render(); return;
     }
   }
 
@@ -1482,10 +1600,215 @@ window.executeOperation = function(missionId) {
   const supportNote  = agSupport.length ? ` · ${agSupport.length} agency support` : '';
   const eliteNote    = m.attachedEliteIds.length ? ` · ${m.attachedEliteIds.length} elite unit(s)` : '';
   addLog(`OP ${m.codename}${phaseLabel} launched. ${fmt(budget)} · ${depts.length} dept(s)${supportNote}${eliteNote} · ETA ${m.execDays}d.`, 'log-info');
-  hideModal();
-  G.selected = m.id;
-  render();
+  hideModal(); // still safe to call — no-ops if modal isn't open
+  followMission(m.id);
+  // Launch glow on the reading pane
+  requestAnimationFrame(() => {
+    const pane = document.getElementById('reading-pane');
+    if (pane) {
+      const wrap = pane.querySelector('.email-wrap') || pane.firstElementChild;
+      if (wrap) { wrap.classList.add('op-launching'); wrap.addEventListener('animationend', () => wrap.classList.remove('op-launching'), { once: true }); }
+    }
+  });
 };
+
+// =============================================================================
+// PRESIDENTIAL MONTHLY REVIEW
+// =============================================================================
+
+// --- US messages (DJT voice) ---
+const PRES_MSGS_US = {
+  great: [
+    "Director — Tremendous month. Truly tremendous. Many people are saying this is the best intelligence work they've ever seen, and frankly, I agree. I picked you, so really this is also my success. Maybe mostly my success. But you helped.",
+    "Just got your numbers. Incredible. The best numbers. Nobody's had numbers like this, maybe ever. I showed them to the Joint Chiefs and they were speechless. Literally could not speak. That's how good you are. Almost as good as me.",
+    "Director — I want you to know, I always believed in you. Even when other people — very weak people, by the way — said we should replace you, I said no. I said this person is a winner. And I was right. I'm always right.",
+    "Beautiful work this month. Really beautiful. Like a perfect phone call. The senators are calling ME now, saying 'Sir, your intelligence agency is doing an incredible job.' They actually call me Sir, they do.",
+    "You know what they're saying on the news? They're saying your agency is doing great. Even the fake news is saying it. When THEY admit it, you know it's really something special. Congratulations. I take full credit.",
+    "Director — Fox & Friends mentioned your operations this morning. Very positively. I TiVo'd it. I've watched it three times. Your success rate is almost as high as my electoral college margin, which was historic by the way.",
+    "I told the Prime Minister about your work and he couldn't believe it. His intelligence people are terrible — not like ours. Ours are the best. You're the best. After me, obviously.",
+    "Your numbers are so good I almost didn't believe them. I said 'are these real?' They said yes. I said 'check again.' Still real. Fantastic. Nobody does intelligence like we do intelligence.",
+    "Director — People are saying this might be the greatest month in intelligence history. I don't know if that's true but a lot of people are saying it. Smart people. The best people. Many of them work for me.",
+    "The First Lady read your report and said 'wow.' Just 'wow.' She doesn't say wow very often. I've only gotten maybe ten or fifteen wows, tops. So that's very impressive. Very impressive.",
+  ],
+  good: [
+    "Director — Good month. Not great — I've seen great, believe me, I invented great — but good. Solid. Like a B+. I was always an A+ student myself but B+ is fine for you.",
+    "Your report came in. I read it. Well, I looked at the graphs. The graphs were going up. Up is good. I like up. Keep making things go up and we won't have any problems.",
+    "Not bad, Director. Not bad. The fake news hasn't mentioned us once this month, which means nobody screwed up badly enough to notice. In this business, that's basically a medal.",
+    "Director — My advisors say you're doing 'adequately.' I told them adequate is a very low-energy word, but they said it's actually fine. So — fine. You're fine. Keep being fine.",
+    "I mentioned your agency at Mar-a-Lago last weekend. Nobody booed. In fact, a very important person — I can't say who, but very important — said 'sounds like they know what they're doing.' High praise.",
+    "Your numbers are decent. Could be better, could be worse. Like a well-done steak. Some people say that's wrong but I say it's exactly how it should be. With ketchup. The point is, keep going.",
+    "Director — The NSC meeting about your department only lasted 12 minutes. That's almost a record. My meetings are usually much shorter because I make decisions very quickly, but 12 minutes is good for regular people.",
+    "Looked at your success rate. It's okay. It's like my golf handicap — there's room for improvement but it's still better than most people's. And most people are not very good. At golf or intelligence.",
+    "Director — You're doing a solid job. Not a spectacular job, but solid. Like the wall. The wall is solid. Very solid. Nobody builds walls like me but your intelligence work is somewhat wall-like in its solidity.",
+    "Things are stable. I like stable. Stable genius — that's what they call me. You're not a genius, but you're stable, and that's half the equation. The important half is the genius part, which is mine.",
+  ],
+  meh: [
+    "Director — I looked at your monthly numbers and I have to be honest, they're not great. And I know great. I'm very familiar with great. These numbers are not it. Sad!",
+    "Your report is sitting on my desk. It's been sitting there for three days because every time I pick it up I get a little depressed. Not very depressed — I don't get depressed, I'm a very positive person — but a little.",
+    "Director — People are starting to talk. Not good talk. The kind of talk that happens before someone gets a very nice letter thanking them for their service. I'm not saying that's happening. But people are talking.",
+    "I showed your numbers to a friend of mine — very successful guy, tremendous businessman — and he said 'Sir, I would fire that person.' I said let's give them another month. You're welcome. Don't waste it.",
+    "Director — The Democrats are asking questions about your agency. THE DEMOCRATS. When the Democrats notice something is wrong, it's really wrong, because usually they can't find their own offices. Think about that.",
+    "Your success rate this month reminds me of a casino I used to own. Not one of the good ones. One of the ones that had 'challenges.' We don't talk about those anymore. Like we might not talk about you.",
+    "Director — I don't want to say I'm disappointed because that's a very strong word and I use words very carefully. But if there was a word between 'fine' and 'disappointed,' that would be the word. Find that word.",
+    "The Vice President offered to take over your daily briefings. THE VICE PRESIDENT. Nobody wants that. Get your numbers up before I have to let him do something.",
+    "Director — My approval ratings went down 1.5 points this month. Now, I'm not saying that's your fault. But I'm not NOT saying it either. Just... do better.",
+    "I played golf this weekend and my caddie — great guy, very smart for a caddie — asked if everything was okay with national security. A CADDIE is worried. That's where we are right now.",
+  ],
+  bad: [
+    "Director — This is a disaster. A total disaster. I've seen disasters — I've fixed many disasters, some of the biggest disasters ever — and this is definitely one. Your numbers are a catastrophe. Worse than CNN's ratings, and that's saying something.",
+    "I just read your monthly report and honestly, I think my phone autocorrect could run your agency better. It changed 'intelligence' to 'unintelligence' the other day and I'm starting to think it was right.",
+    "Director — Very bad month. The worst month. People are saying it might be the worst month in the history of intelligence, and intelligence has been around for a very long time. Since at least the 1800s. Maybe longer.",
+    "I had a meeting with the Joint Chiefs today. They didn't mention your agency at all. NOT EVEN ONCE. They've given up on you. When the military gives up on you, that's very bad. Almost as bad as your numbers.",
+    "Director — I'm going to be very direct with you. I'm a very direct person, everyone says so. Your performance is terrible. Just terrible. I've seen better work from my interns, and my interns are mostly there for the photos.",
+    "Your agency's performance this month makes my impeachment hearings look like a spa day. And I HATED those hearings. Do you understand how bad you have to be to make impeachment look relaxing? That bad.",
+    "Director — I talked to Putin last week. Even HE said your agency seems to be struggling. PUTIN. When your enemies feel sorry for you, it's time to take a long, hard look in the mirror. A very long look.",
+    "The fake news is actually being NICE to me this week because your failures make such good content they don't need to attack me anymore. You've united the country, Director. Against your own competence.",
+    "Director — I'm not going to fire you. Yet. But I want you to know that I've already mentally redecorated your office for your replacement. I'm thinking gold curtains. Very classy. Much better than whatever's happening in there now.",
+    "Spoke with several world leaders today. They all asked the same question: 'Is everything okay over there?' No. No it is not. It is the opposite of okay. Please fix this before I have to explain your numbers at the G7. Again.",
+  ],
+};
+
+// --- UK messages (dry, understated, PM voice) ---
+const PRES_MSGS_UK = {
+  great: [
+    "Director — I reviewed your monthly figures over tea this morning. I shall not exaggerate, as that would be unseemly, but they are... rather good. The Cabinet Secretary nearly raised an eyebrow. For him, that's practically a standing ovation.",
+    "Your operational record this month is the sort of thing one doesn't mention at dinner but privately feels rather smug about. Well done. I've informed the Palace that things are, and I quote, 'in hand.'",
+    "Director — The Intelligence and Security Committee has nothing critical to say about your department. I want you to understand how extraordinary that sentence is. They have something critical to say about oxygen.",
+    "Splendid work. The Home Secretary described your performance as 'not entirely displeasing,' which in Westminster is the equivalent of a ticker-tape parade. I suggest you frame those words.",
+    "Your numbers have arrived and I must say, they restore one's faith in the civil service. Not entirely — let's not go mad — but measurably. The Chief of Defence Staff sent what I believe was meant to be a compliment. Hard to tell with military types.",
+    "Director — I mentioned your agency at PMQs and the Leader of the Opposition had nothing to say. Nothing. Do you understand how unprecedented that is? The man objects to the weather. You've silenced him. Remarkable.",
+    "I shared your results with the Foreign Secretary over a rather decent claret. He said 'finally.' One word, but from him, that's Shakespearean praise. Carry on exactly as you are.",
+    "Your department has performed with a quiet competence that is, frankly, the most British thing I've encountered since a queue formed spontaneously at the Palace gates. Well done.",
+    "Director — The Americans called to ask how we're managing such results with our budget. I told them it was a combination of expertise and not spending forty million on office furniture. They didn't laugh. I did.",
+    "This month's briefing was the first in my tenure that didn't require a stiff drink afterwards. I'd call that progress. The Deputy PM called it 'adequate,' which from her is practically romantic.",
+  ],
+  good: [
+    "Director — Your monthly report arrived. It's fine. Not the sort of fine that means someone is about to cry, but genuinely, unremarkably fine. In government, that's rather an achievement.",
+    "Decent month. Nothing caught fire, nobody defected, and The Guardian hasn't published anything embarrassing about us. That's three wins by Whitehall standards. Four if you count the catering improving.",
+    "Director — I reviewed your numbers between the Home Affairs Committee and a very tedious reception at Lancaster House. They were, on balance, acceptable. Rather like the canapés.",
+    "Your performance is steady. The Permanent Secretary described it as 'within parameters.' He describes everything as within parameters, including his own marriage, so take from that what you will.",
+    "Director — Things appear to be ticking along. The weekly intelligence briefing lasted only nine minutes, which means nothing went spectacularly wrong. Nine minutes. A personal best for this government.",
+    "I showed your report to the Defence Secretary. He nodded. Not enthusiastically — the man doesn't do enthusiasm — but it was a definite nod. Upward motion. Chin involved. Positive.",
+    "Your agency is performing with the reliable mediocrity of a British Rail service that arrives only four minutes late. Honestly, I mean that as a compliment. We've all recalibrated our expectations in this job.",
+    "Director — The backbenchers haven't asked a single question about intelligence this month. Blessed, beautiful silence. If you can maintain this level of invisibility, we shall get along famously.",
+    "Reviewed your figures. Success rate is respectable. Not the sort of thing one writes home about, but then one doesn't write home about intelligence matters at all, so the point is rather moot.",
+    "Director — My Chief of Staff summarised your month as 'uneventful.' Given that the last three months were described as 'concerning,' 'alarming,' and 'Tuesday' respectively, I'd call that an improvement.",
+  ],
+  meh: [
+    "Director — Your monthly figures have arrived and I shall be diplomatic. They are not what one would call encouraging. Nor what one would call catastrophic. They inhabit a sort of grey middle ground, like Swindon.",
+    "I've been studying your report. It has the unmistakable quality of something written by people who are working very hard and achieving remarkably little. Like Brexit negotiations, but with more acronyms.",
+    "Director — The Home Secretary has used the phrase 'room for improvement,' which in Westminster means 'I am composing your resignation letter in my head.' Consider this a friendly warning.",
+    "Your success rate is, to put it charitably, inconsistent. The Chancellor compared it to the economy, which was not the compliment he thought it was. Neither found it amusing.",
+    "Director — I don't wish to be harsh, but my constituency postman has a better completion rate than your operations this month. He's called Derek. Derek is outperforming British intelligence. Reflect on that.",
+    "The Intelligence Committee chair took me aside after Prime Minister's Questions to express 'gentle concern.' When a politician uses the word 'gentle,' they mean the opposite. Sort it out.",
+    "Director — I've received a letter from the Shadow Home Secretary. It was polite, which means it was threatening. She's noticed. When the Opposition notices, one has approximately three weeks before it becomes a headline.",
+    "Your numbers remind me of England's cricket performance — occasional flashes of brilliance surrounded by vast expanses of confusion. We both know how that usually ends. Poorly.",
+    "Director — The Palace enquired whether 'everything was quite alright' with national security. When the Palace enquires, it is not actually a question. It is a command wrapped in politeness. Do better.",
+    "I met with the heads of MI5 and MI6 yesterday. They were both, in their own uniquely passive-aggressive ways, rather critical of your coordination. When those two agree on anything, one should worry.",
+  ],
+  bad: [
+    "Director — I shall be blunt, which as you know is not my natural inclination. Your monthly performance is appalling. The sort of appalling that generates select committee inquiries and very long editorials in The Times.",
+    "Your report arrived this morning. I read it twice, hoping I'd misunderstood something fundamental. I hadn't. The Chief of Defence Staff has begun sentences with 'when your replacement arrives,' which I found presumptuous but understandable.",
+    "Director — The Americans have offered to 'help.' The AMERICANS. The country that spells 'colour' wrong has offered to assist with our intelligence operations. I cannot adequately convey how humiliating that is.",
+    "I had to address the 1922 Committee yesterday. A backbencher asked if we still had an intelligence service. He wasn't joking. Nobody laughed. The silence was excruciating, rather like your operational record.",
+    "Director — Downing Street has received more complaint letters about your agency than about the council tax increase. The council tax went up seventeen percent. Think about what that means.",
+    "The Daily Mail is running a three-part investigation into intelligence failures. Part one landed this morning. It was accurate. I hate it when they're accurate. Part two publishes Thursday. Fix something before then.",
+    "Director — I've been Prime Minister for long enough to know when something has gone properly wrong, as opposed to the usual low-level wrongness. This is the first sort. The proper sort. The career-ending sort, if uncorrected.",
+    "I showed your figures to the Cabinet. The room went quiet in the specific way it goes quiet before someone suggests a reshuffle. I defended you. I shouldn't have had to. Don't make me do it again.",
+    "Director — The French intelligence service sent a sympathy card. I am not joking. It arrived via diplomatic bag. Handwritten. They included a bottle of burgundy. This is the lowest point of my premiership.",
+    "Your monthly performance has been raised at the NATO security council. BY OUR ALLIES. They're worried about us, Director. The Belgians are worried about us. Belgium. A country that once couldn't form a government for 589 days is concerned about our competence.",
+  ],
+};
+
+// --- France messages (literary, philosophical, Président voice) ---
+const PRES_MSGS_FR = {
+  great: [
+    "Directeur — J'ai lu votre rapport ce matin. Enfin, un document qui ne me donne pas envie de démissionner. Vos résultats sont excellents. Comme on dit à l'Élysée : 'Ce n'est pas un désastre.' Chez nous, c'est le plus beau compliment.",
+    "Bravo. Le Conseil de Défense a été étonné par vos chiffres, ce qui est remarquable car ces gens ne sont étonnés par rien, pas même par la qualité catastrophique du café de l'Élysée.",
+    "Directeur — Votre travail ce mois-ci est le genre de chose qui me réconcilie presque avec la bureaucratie française. Presque. Ne poussons pas trop loin l'optimisme, on est en France.",
+    "Le Premier Ministre m'a appelé pour me féliciter de vos résultats. Je lui ai rappelé que c'est MOI qui vous ai nommé. Il y a eu un silence. Un bon silence. Le silence d'un homme qui sait qu'il a perdu un point.",
+    "Directeur — J'ai mentionné vos opérations lors du dîner avec la Chancelière allemande. Elle a dit 'impressionnant.' Une Allemande qui dit 'impressionnant' à propos du renseignement français — on n'avait pas vu ça depuis la Résistance.",
+    "Vos résultats sont superbes. Le Ministre de la Défense m'a demandé votre secret. Je lui ai dit que c'était le talent et un budget dérisoire. Il n'a pas ri. Moi si. Deux fois.",
+    "Directeur — Le Quai d'Orsay est ravi. Le QUAI D'ORSAY. Ces gens ne sont jamais ravis. Ils sont 'satisfaits,' parfois 'pas mécontents,' mais jamais ravis. Vous avez accompli l'impossible.",
+    "J'ai lu vos chiffres entre deux crises ministérielles. Ils m'ont presque mis de bonne humeur. Vous êtes la seule chose dans ce gouvernement qui fonctionne comme prévu. Et peut-être l'ascenseur du bloc B.",
+    "Directeur — Les Américains sont jaloux de nos résultats. LES AMÉRICAINS. Avec leur budget qui fait dix fois le nôtre. Comme quoi, l'argent ne fait pas le renseignement. Mais il aide, soyons honnêtes.",
+    "Votre mois a été exceptionnel. J'envisage de vous décorer. Pas la Légion d'Honneur — on la donne à n'importe qui de nos jours — mais quelque chose. Un mot gentil, peut-être. C'est plus rare.",
+  ],
+  good: [
+    "Directeur — Votre rapport est arrivé. Il est correct. Pas brillant, pas catastrophique. Correct. En France, c'est le mot qu'on utilise quand on ne veut froisser personne tout en étant vaguement déçu.",
+    "Mois convenable. Le Secrétaire Général de la Défense a qualifié vos résultats de 'satisfaisants.' C'est le mot qu'il utilise aussi pour décrire la cantine de Matignon, alors calibrez vos attentes.",
+    "Directeur — Les chiffres sont raisonnables. Comme un bourgogne de supermarché : on ne s'en vante pas, mais ça fait le travail. On espère quand même mieux le mois prochain.",
+    "J'ai survolé votre bilan entre une réforme des retraites et une grève SNCF. Il m'a semblé acceptable. Mais à ce stade de la journée, tout me semble acceptable tant que ça ne prend pas feu.",
+    "Directeur — Le Conseil de Défense a duré seize minutes. C'est un record de brièveté. En France, les réunions courtes sont suspectes, mais je choisis d'y voir un signe positif.",
+    "Vos résultats sont dans la moyenne. La moyenne française, certes, qui est plus haute que la plupart. C'est un compliment géographique. Prenez-le comme vous voudrez.",
+    "Directeur — Rien de spectaculaire, rien de honteux. Vous êtes le fonctionnaire que la République mérite : compétent, discret, et légèrement sous-payé. Continuez.",
+    "Le Ministre de l'Intérieur n'a rien dit sur votre département ce mois-ci. En politique française, le silence est un cadeau. Un cadeau rare, fragile, et temporaire. Profitez-en.",
+    "Directeur — J'ai montré vos chiffres au Directeur de Cabinet. Il a haussé un sourcil. UN sourcil. L'autre est resté immobile. C'est un résultat mitigé, sourcilièrement parlant.",
+    "Mois solide. Pas le genre de mois qui inspire un discours, mais le genre qui ne provoque pas de motion de censure. En France, c'est déjà une victoire.",
+  ],
+  meh: [
+    "Directeur — Vos chiffres sont... comment dire... décevants. Pas le genre de déception qui provoque un remaniement. Plutôt le genre qui provoque un soupir long et philosophique, suivi d'un deuxième café.",
+    "J'ai lu votre rapport. Puis j'ai regardé par la fenêtre pendant dix minutes en me demandant si De Gaulle avait ce genre de problèmes. Il en avait probablement. Ça ne me console pas.",
+    "Directeur — Le Quai d'Orsay qualifie vos performances de 'perfectibles.' C'est le mot que les diplomates utilisent quand ils veulent dire 'lamentable' mais qu'ils sont trop bien élevés pour le dire.",
+    "Vos résultats me rappellent la cuisine d'un restaurant qui a perdu son étoile Michelin. Techniquement comestible. Officiellement décevant. On sent qu'il y a eu mieux autrefois.",
+    "Directeur — L'Assemblée Nationale commence à poser des questions. LES DÉPUTÉS. Les mêmes qui ne trouvent pas le bouton pour voter commencent à s'inquiéter de notre renseignement. Mesurez l'ironie.",
+    "Le Ministre de la Défense m'a suggéré de 'reconsidérer certaines nominations.' Il ne vous a pas nommé directement. Il n'avait pas besoin de le faire. La subtilité française est un art cruel.",
+    "Directeur — Ma cote de popularité a baissé de deux points. En France, la cote du Président baisse toujours, c'est une tradition nationale. Mais je préférerais que ce ne soit pas à cause de vous.",
+    "J'ai dîné avec le Président du Sénat hier soir. Il m'a posé des questions sur votre agence avec une douceur suspecte. En politique, la douceur est le prélude au couteau.",
+    "Directeur — Les résultats sont médiocres. Je ne dis pas ça pour être cruel. Je le dis parce que quelqu'un doit le dire, et en France, c'est toujours le Président qui dit les choses désagréables. C'est dans la Constitution. Presque.",
+    "Votre taux de réussite est comparable à celui du système ferroviaire français : en théorie excellent, en pratique... variable. On s'habitue, mais on ne devrait pas.",
+  ],
+  bad: [
+    "Directeur — Je vais être direct, ce qui en France est un acte de bravoure. Vos résultats sont catastrophiques. Le genre de catastrophe qui fait la une du Canard Enchaîné et les délices de l'opposition.",
+    "Votre rapport mensuel est le document le plus déprimant que j'ai lu depuis le dernier rapport du Commissariat au Plan. Et celui-là parlait de l'effondrement démographique. Le vôtre est pire, car il est évitable.",
+    "Directeur — Les Britanniques m'ont envoyé un message de 'solidarité.' LES BRITANNIQUES. Le pays du Brexit nous offre sa solidarité en matière de renseignement. On en est là. On en est exactement là.",
+    "J'ai dû répondre à une question au Conseil Européen sur nos capacités de renseignement. Le Premier Ministre luxembourgeois avait l'air inquiet. LE LUXEMBOURG S'INQUIÈTE POUR NOUS. Le Luxembourg.",
+    "Directeur — Le Canard Enchaîné a publié un dessin de votre agence. Vous êtes représenté en canard sans tête. C'est injuste. Les canards sans tête sont au moins rapides. Vos opérations ne le sont pas.",
+    "Le Conseil de Défense a duré trois heures. TROIS HEURES. La dernière fois qu'un Conseil de Défense a duré aussi longtemps, c'était pendant une vraie guerre. Nous ne sommes pas en guerre. Nous sommes juste incompétents.",
+    "Directeur — J'ai envisagé de vous remplacer par un algorithme. Mon conseiller numérique dit que ce serait 'techniquement faisable et possiblement préférable.' Il ne plaisantait pas. Moi non plus.",
+    "Les Américains ont proposé de nous 'prêter' des analystes. PRÊTER. Comme on prête un parapluie à quelqu'un qui a oublié le sien. Sauf que le parapluie, c'est notre souveraineté, et il pleut très fort.",
+    "Directeur — Ma femme m'a demandé si 'tout allait bien au travail.' Elle ne pose jamais cette question. Elle a lu Le Monde. Le Monde a lu votre bilan. Tout le monde a lu votre bilan. C'est un désastre public.",
+    "Je me suis réveillé ce matin en pensant à Napoléon. Pas pour les victoires — pour Sainte-Hélène. C'est là où finissent les dirigeants qui s'entourent de gens qui ne font pas leur travail. Je n'irai pas à Sainte-Hélène, Directeur.",
+  ],
+};
+
+function sendPresidentialReview() {
+  const ops = G.monthOpsCompleted;
+  const wins = G.monthOpsSucceeded;
+  const rate = ops > 0 ? wins / ops : 0;
+  const conf = G.confidence;
+
+  const countryMsgs = G.country === 'UK' ? PRES_MSGS_UK : G.country === 'FRANCE' ? PRES_MSGS_FR : PRES_MSGS_US;
+
+  let tier;
+  if (conf >= 70 && rate >= 0.7)      tier = 'great';
+  else if (conf >= 45 && rate >= 0.5)  tier = 'good';
+  else if (conf >= 25 || rate >= 0.3)  tier = 'meh';
+  else                                  tier = 'bad';
+
+  const msg = pick(countryMsgs[tier]);
+  const leader = G.cfg?.leaderFormal || 'Mr. President';
+  const statsLine = `<div style="margin-top:14px;padding:10px 12px;border:1px solid var(--border);border-radius:4px;background:var(--bg-2);font-family:var(--font-mono);font-size:10px;line-height:1.8;color:var(--text-dim)">
+    MONTHLY PERFORMANCE REVIEW — DAY ${G.day}<br>
+    Operations completed: <span style="color:var(--text)">${ops}</span> ·
+    Successes: <span style="color:var(--green)">${wins}</span> ·
+    Failures: <span style="color:var(--red)">${ops - wins}</span><br>
+    Public confidence: <span style="color:${conf >= 60 ? 'var(--green)' : conf >= 35 ? 'var(--amber)' : 'var(--red)'}">${conf}%</span> ·
+    XP earned: <span style="color:var(--accent)">+${G.xpThisMonth}</span> ·
+    XP bank: <span style="color:var(--accent)">${G.xp}</span>
+  </div>`;
+
+  queueBriefingPopup({
+    title: `MONTHLY REVIEW — FROM THE DESK OF ${leader.toUpperCase()}`,
+    category: 'POLITICAL',
+    subtitle: `Confidence: ${conf}% · Success rate: ${ops > 0 ? Math.round(rate * 100) : '—'}%`,
+    accent: conf >= 50 ? 'rgba(0,201,167,0.85)' : 'rgba(243,156,18,0.85)',
+    body: `<div style="font-style:italic;color:var(--text);line-height:1.8">${msg}</div>${statsLine}`,
+    buttonLabel: ops > 0 ? 'ACKNOWLEDGED' : 'NOTED',
+  });
+
+  addLog(`Monthly review from ${leader}. Confidence: ${conf}%.`, conf >= 50 ? 'log-info' : 'log-warn');
+}
 
 // =============================================================================
 // CAPABILITIES / MONTHLY RECAP
@@ -1512,13 +1835,6 @@ function showCapabilitiesMenu(isMonthly = false) {
         <div class="recap-stat"><span class="recap-val" style="color:var(--accent)">+${monthXP}</span><span class="recap-lbl">XP EARNED</span></div>
       </div>
     </div>` : '';
-
-  // Reset monthly counters after showing the summary
-  if (isMonthly) {
-    G.monthOpsCompleted  = 0;
-    G.monthOpsSucceeded  = 0;
-    G.xpThisMonth        = 0;
-  }
 
   const renderUpgradeRows = () => {
     let html = '';
@@ -2302,6 +2618,16 @@ function renderStatusBar() {
   }
 }
 
+// Track previous values for targeted stat-flash animations
+let _prevConf = null, _prevBudget = null, _prevXp = null;
+
+function flashStat(el, direction) {
+  if (!el) return;
+  el.classList.remove('stat-flash-up', 'stat-flash-down');
+  void el.offsetWidth; // force reflow to restart animation
+  el.classList.add(direction > 0 ? 'stat-flash-up' : 'stat-flash-down');
+}
+
 function renderHeader() {
   const agencyEl = document.getElementById('hdr-agency');
   if (agencyEl) agencyEl.textContent = G.cfg ? `SECURE MAIL — ${G.cfg.acronym} DIRECTOR'S TERMINAL` : 'SHADOWNET';
@@ -2315,13 +2641,28 @@ function renderHeader() {
     bar.style.width      = `${confPct}%`;
     bar.style.background = confPct >= 60 ? 'var(--green)' : confPct >= 35 ? 'var(--amber)' : 'var(--red)';
   }
-  // Update both new and old stat elements
+  // Update both new and old stat elements, with flash on change
   const statConf = document.getElementById('stat-conf');
-  if (statConf) statConf.textContent = `${confPct}%`;
+  if (statConf) {
+    statConf.textContent = `${confPct}%`;
+    if (_prevConf !== null && confPct !== _prevConf) flashStat(statConf, confPct - _prevConf);
+  }
+  _prevConf = confPct;
+
   const statBudget = document.getElementById('stat-budget');
-  if (statBudget) statBudget.textContent = fmt(G.budget);
+  if (statBudget) {
+    statBudget.textContent = fmt(G.budget);
+    if (_prevBudget !== null && G.budget !== _prevBudget) flashStat(statBudget, G.budget - _prevBudget);
+  }
+  _prevBudget = G.budget;
+
   const statXp = document.getElementById('stat-xp');
-  if (statXp) statXp.textContent = `${G.xp}`;
+  if (statXp) {
+    statXp.textContent = `${G.xp}`;
+    if (_prevXp !== null && G.xp !== _prevXp) flashStat(statXp, G.xp - _prevXp);
+  }
+  _prevXp = G.xp;
+
   // Hidden compat elements
   const confEl = document.getElementById('res-conf');
   if (confEl) confEl.textContent = `${confPct}%`;
@@ -2600,8 +2941,8 @@ function renderReadingPane() {
         </div>
       `;
       replyHtml = buildReplySection([
-        { label: 'DECLINE — Archive without action', cls: 'reply-danger', onclick: `dismissMission('${m.id}')`,
-          tip: m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission carries a confidence penalty.' : 'Archive this mission.' }
+        { label: 'DECLINE — Archive without action', cls: 'reply-danger',
+          onclick: `confirmAction(this, '${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission will incur a confidence penalty.' : 'Archive this mission without taking action?'}', function(){ dismissMission('${m.id}') })` }
       ]);
     } else {
       const suspectSection = m.suspects && m.suspects.length > 0
@@ -2624,7 +2965,7 @@ function renderReadingPane() {
         return {
           label: `Assign ${dept.name} to investigate (${avail}/${total} avail, ${eff}% efficiency, ${m.invDays}d)`,
           cls: avail > 0 ? '' : '',
-          onclick: `assignInvestigation('${m.id}','${did}')`,
+          onclick: `confirmAction(this, 'Deploy 1 ${dept.short} unit to OP ${m.codename} for ${m.invDays} days?', function(){ assignInvestigation('${m.id}','${did}') })`,
           disabled: avail <= 0,
           tip: avail > 0 ? '' : 'No units available.'
         };
@@ -2632,8 +2973,7 @@ function renderReadingPane() {
       deptButtons.push({
         label: 'DECLINE — Archive without action',
         cls: 'reply-danger',
-        onclick: `dismissMission('${m.id}')`,
-        tip: m.threat >= 4 ? 'WARNING: confidence penalty.' : ''
+        onclick: `confirmAction(this, '${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission will incur a confidence penalty.' : 'Archive this mission without taking action?'}', function(){ dismissMission('${m.id}') })`,
       });
       replyHtml = buildReplySection(deptButtons);
     }
@@ -2726,8 +3066,7 @@ function renderReadingPane() {
 
       replyHtml = buildReplySection([
         { label: 'APPROVE OPERATION — Configure and execute', cls: 'reply-primary', onclick: `openOperationModal('${m.id}')` },
-        { label: 'ARCHIVE — Do not act', cls: 'reply-danger', onclick: `dismissMission('${m.id}')`,
-          tip: m.threat >= 4 ? 'WARNING: confidence penalty.' : '' }
+        { label: 'ARCHIVE — Do not act', cls: 'reply-danger', onclick: `confirmAction(this, '${m.threat >= 4 ? 'WARNING: Dismissing a high-threat mission will incur a confidence penalty.' : 'Archive this mission without taking action?'}', function(){ dismissMission('${m.id}') })` }
       ]);
     }
 
@@ -2740,7 +3079,7 @@ function renderReadingPane() {
     `;
     replyHtml = buildReplySection([
       { label: 'EXECUTE NOW (-25% penalty)', cls: 'reply-danger', onclick: `openOperationModal('${m.id}')` },
-      { label: 'ABORT — Archive', cls: '', onclick: `dismissMission('${m.id}')` }
+      { label: 'ABORT — Archive', cls: '', onclick: `confirmAction(this, 'Abort the operation and archive?', function(){ dismissMission('${m.id}') })` }
     ]);
 
   } else if (m.status === 'PHASE_COMPLETE') {
@@ -2832,8 +3171,8 @@ function renderReadingPane() {
       </div>
     `;
     replyHtml = buildReplySection([
-      { label: 'Reassign surveillance (-1 urgency day)', cls: '', onclick: `reassignSuspect('${m.id}')` },
-      { label: 'Dismiss this mission', cls: 'reply-danger', onclick: `dismissMission('${m.id}')` }
+      { label: 'Reassign surveillance (-1 urgency day)', cls: '', onclick: `confirmAction(this, 'Reassign surveillance? This will cost 1 urgency day.', function(){ reassignSuspect('${m.id}') })` },
+      { label: 'Dismiss this mission', cls: 'reply-danger', onclick: `confirmAction(this, 'Dismiss this mission permanently?', function(){ dismissMission('${m.id}') })` }
     ]);
 
   } else if (m.status === 'EXPIRED') {
@@ -2861,14 +3200,23 @@ function renderReadingPane() {
   // Build email signature
   const sigHtml = typeof buildEmailSignature === 'function' ? buildEmailSignature(sender) : '';
 
-  paneEl.innerHTML = `
+  paneEl.innerHTML = `<div class="email-wrap">
     ${emailHeader}
     <div class="email-body">
       ${bodyContent}
       ${sigHtml}
     </div>
     ${replyHtml}
-  `;
+  </div>`;
+
+  // Targeted animation: reveal result boxes on first view after resolution
+  if (m._resultNew && (m.status === 'SUCCESS' || m.status === 'FAILURE')) {
+    delete m._resultNew;
+    requestAnimationFrame(() => {
+      const box = paneEl.querySelector('.result-box');
+      if (box) box.classList.add('result-reveal');
+    });
+  }
 }
 
 // Render threats directly in the reading pane
@@ -3401,7 +3749,7 @@ function showHelp() {
 
       <div class="help-section">
         <div class="help-section-title">CONTROLS</div>
-        <div class="help-resource-row"><strong>→ / N</strong> — Advance day &nbsp; <strong>ESC</strong> — Close modal &nbsp; <strong>?</strong> — This handbook &nbsp; <strong>U</strong> — Upgrades &nbsp; <strong>S</strong> — Save/Load</div>
+        <div class="help-resource-row"><strong>N</strong> — Advance 1 day &nbsp; <strong>Shift+N / →</strong> — Check mail (skip to next event) &nbsp; <strong>ESC</strong> — Close modal &nbsp; <strong>?</strong> — This handbook &nbsp; <strong>U</strong> — Upgrades &nbsp; <strong>S</strong> — Save/Load</div>
       </div>
     </div>
   `;
@@ -3606,7 +3954,11 @@ window.selectProfile = function(countryCode) {
 
 document.addEventListener('keydown', e => {
   const clientActive = document.getElementById('screen-client')?.classList.contains('active');
-  if (e.key === 'ArrowRight' || e.key === 'n') {
+  if (e.key === 'n') {
+    if (clientActive && document.getElementById('modal-overlay')?.classList.contains('hidden'))
+      advanceDay();
+  }
+  if (e.key === 'N' || e.key === 'ArrowRight') {
     if (clientActive && document.getElementById('modal-overlay')?.classList.contains('hidden'))
       advanceToNextEvent();
   }

@@ -133,6 +133,18 @@
       }
     }
 
+    // Migrate new fields for old saves
+    if (!G.intelMessages) G.intelMessages = [];
+    if (!G.intelIdCounter) G.intelIdCounter = 0;
+    if (G.selectedType === undefined) G.selectedType = null;
+    if (!G.country) {
+      // Guess country from cfg
+      if (G.cfg?.acronym === 'SAA') G.country = 'USA';
+      else if (G.cfg?.acronym === 'JCOB') G.country = 'UK';
+      else if (G.cfg?.acronym === 'DSO') G.country = 'FRANCE';
+      else G.country = 'USA';
+    }
+
     showScreen('game');
     render();
     addLog('Game loaded.', 'log-info');
