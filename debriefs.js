@@ -1,7 +1,7 @@
 'use strict';
 // =============================================================================
-// SHADOW DIRECTIVE — After-Action Debrief System
-// Generates comprehensive operational debriefs for resolved missions.
+// SHADOW DIRECTIVE — After-Action Debrief System v2
+// Procedurally generates comprehensive operational debriefs with full timelines.
 // =============================================================================
 
 (function () {
@@ -10,386 +10,835 @@
   // HELPERS
   // ===========================================================================
 
-  const _pick = typeof pick === 'function' ? pick : function (a) { return a[Math.floor(Math.random() * a.length)]; };
-  const _randInt = typeof randInt === 'function' ? randInt : function (a, b) { return a + Math.floor(Math.random() * (b - a + 1)); };
+  const P = typeof pick === 'function' ? pick : function (a) { return a[Math.floor(Math.random() * a.length)]; };
+  const R = typeof randInt === 'function' ? randInt : function (a, b) { return a + Math.floor(Math.random() * (b - a + 1)); };
+  function zp(n) { return n < 10 ? '0' + n : '' + n; }
 
-  function zpad(n) { return n < 10 ? '0' + n : '' + n; }
-
-  // Game date helper — returns a date string for a given game day
+  // Game date from day number
   const GAME_START = new Date(2025, 0, 6);
-  const MONTHS_SHORT = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const MO = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 
-  function gameDate(day) {
+  function gdate(day) {
     const d = new Date(GAME_START);
     d.setDate(d.getDate() + (day - 1));
-    return zpad(d.getDate()) + ' ' + MONTHS_SHORT[d.getMonth()] + ' ' + d.getFullYear();
+    return zp(d.getDate()) + ' ' + MO[d.getMonth()] + ' ' + d.getFullYear();
   }
 
-  function zuluStamp(day, hour, minute) {
-    return gameDate(day) + ' ' + zpad(hour) + zpad(minute) + 'Z';
+  function stamp(day, h, m) {
+    return gdate(day) + ', ' + zp(h) + zp(m) + 'Z';
   }
 
-  function randomZulu(startH, endH, day) {
-    const h = _randInt(startH, endH);
-    const m = _pick([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]);
-    const d = day || ((typeof G !== 'undefined' && G.day) ? G.day : 1);
-    return zuluStamp(d, h, m);
+  function rtime() { return zp(R(0,23)) + zp(P([0,5,10,15,20,25,30,35,40,45,50,55])) + 'Z'; }
+
+  // Get deployed dept info
+  function getUnits(m) {
+    var out = [];
+    var depts = m.assignedExecDepts || [];
+    for (var i = 0; i < depts.length; i++) {
+      var cfg = DEPT_CONFIG.find(function(c){ return c.id === depts[i]; });
+      out.push({ id: depts[i], name: cfg ? cfg.name : depts[i], short: cfg ? cfg.short : depts[i], unit: cfg ? cfg.unitNameSingle : 'unit' });
+    }
+    return out;
   }
+
+  // Get attached elite units
+  function getElites(m) {
+    var out = [];
+    var ids = m.attachedEliteIds || [];
+    if (typeof G !== 'undefined' && G.eliteUnits) {
+      for (var i = 0; i < ids.length; i++) {
+        var eu = G.eliteUnits.find(function(u){ return u.id === ids[i]; });
+        if (eu) out.push(eu);
+      }
+    }
+    return out;
+  }
+
+  function unitList(units) {
+    if (!units.length) return 'assigned personnel';
+    return units.map(function(u){ return u.short + ' ' + u.unit; }).join(', ');
+  }
+
+  function unitShort(units) {
+    if (!units.length) return 'assigned teams';
+    return units.map(function(u){ return u.short; }).join('/');
+  }
+
+  function eliteStr(elites) {
+    if (!elites.length) return '';
+    return elites.map(function(e){ return e.fullName + ' (' + e.deptName + ')'; }).join(', ');
+  }
+
+  // ===========================================================================
+  // VOCABULARY POOLS
+  // ===========================================================================
+
+  var CALLSIGNS = ['VANGUARD','PHANTOM','RAPTOR','SENTINEL','SHADOW','CONDOR','REAPER','NOMAD','SPECTER','BRAVO','DELTA','ECHO','FOXTROT','ZULU','VALOR','APEX','KEYSTONE','STILETTO','HAMMER','TRIDENT','OVERWATCH','HARBINGER','FALCON','BLACKOUT','TEMPEST','WARDEN','GRYPHON','IRONSIDE','LANCE','ROGUE'];
+  var WEATHER = ['Clear skies, visibility unlimited','Overcast, ceiling at 800ft','Light rain, intermittent','Dense fog, visibility under 200m','High winds, 35kt gusting to 50kt','Scattered cloud cover, moonlit','Pre-dawn darkness, new moon','Heavy cloud cover, no moonlight','Drizzle, wet surfaces','Cold front moving through, variable conditions'];
+  var BREACH = ['dynamic entry through primary door','coordinated multi-point breach at three entry points','stealth infiltration through rear access','rooftop insertion via fast-rope','vehicle-mounted ram at front gate','underground tunnel approach to basement level','diversionary blast on east wall with primary entry from the west','ladder assault to second-floor windows','explosive breaching of reinforced door','silent lock-bypass entry'];
+  var RESIST_LIGHT = ['Targets offered no resistance. All subjects complied with verbal commands.','Minimal resistance. One subject attempted to flee on foot but was tackled by perimeter team.','No armed resistance. Two subjects were non-compliant but were subdued with non-lethal force.','Brief resistance from one individual who was quickly restrained.','Subjects appeared shocked by the speed of entry. Compliance was immediate.'];
+  var RESIST_HEAVY = ['Organized defensive fire from multiple positions. Two-way firefight lasting approximately '+R(45,180)+' seconds.','Heavy armed resistance from '+R(3,6)+' individuals using automatic weapons. Suppressive fire required.','Target security opened fire immediately upon breach. Extended room-by-room clearance under fire.','Ambush-style resistance from prepared positions. Team took cover and methodically cleared threats.','Intense initial contact with '+R(2,4)+' armed hostiles. Engagement required tactical withdrawal and re-approach.'];
+  var EXFIL = ['rotary-wing extraction via unmarked helicopter','ground vehicle convoy using three armored SUVs','relay through pre-positioned safe house network','commercial cover — targets moved via civilian transport under guard','maritime pickup at pre-arranged coastal rendezvous','overland border crossing using forged documentation','diplomatic vehicle with embassy plates','private aircraft from regional airstrip','underground railroad of agency safe houses across '+R(2,4)+' cities'];
+  var EVIDENCE = ['encrypted laptops and mobile phones','hard drives containing operational planning documents','financial ledgers and foreign currency totaling $'+R(50,500)+'K','weapons cache including '+R(2,8)+' firearms and ammunition','forged identity documents for '+R(3,8)+' aliases','surveillance photography of '+R(2,5)+' potential targets','chemical/explosive precursor materials','communications equipment including encrypted radios','maps, floor plans, and reconnaissance notes','USB drives with encrypted files and correspondence'];
+  var INTEL_SRC = ['HUMINT source within the target organization','SIGINT intercept of encrypted communications','pattern-of-life analysis over '+R(14,60)+' days','financial intelligence tracing suspicious transactions','partner agency intelligence sharing','satellite imagery analysis','open-source intelligence compilation','defector debriefing','technical surveillance device placement','cyber exploitation of target communications network'];
+  var COMPROMISE = ['Counter-surveillance by the target detected our approach team approximately '+R(10,30)+' minutes before H-hour.','An encrypted communication from an unknown source warned the target.','A local informant with ties to the target organization tipped them off.','Electronic jamming equipment failed to suppress the target\'s alert system.','An unplanned civilian encounter during the approach phase created noise that alerted sentries.','The target had pre-positioned early warning lookouts that our intelligence had not identified.','Weather conditions forced a change in approach route, adding '+R(15,40)+' minutes and closing the window.','Operational security was breached through an intercepted radio transmission during staging.'];
+  var AFTERMATH_F = ['Full forensic sanitization of all operational sites is underway.','Cover identities used in this operation are being evaluated for potential compromise.','Partner agencies have been notified at minimal-disclosure level per standing protocols.','A comprehensive damage assessment has been initiated.','Post-mortem review board has been convened and will report within 72 hours.','All personnel have been accounted for and extracted to secure locations.','Residual intelligence exploitation of recovered materials continues.','Medical treatment for injured personnel is ongoing; all are in stable condition.','Counter-intelligence sweep of the operational chain has been ordered.'];
+
+  // ===========================================================================
+  // TIMELINE BUILDER — Multi-day, detailed
+  // ===========================================================================
 
   /**
-   * Build a multi-day operation timeline.
-   * Events are spread across the execution period (m.execDays) ending on G.day.
-   * Each event gets a realistic date+time stamp.
+   * Build a detailed multi-day timeline. Each entry is { day, events[] }.
+   * Outputs formatted HTML lines.
    */
-  function buildTimeline(events, mission) {
-    if (!events.length) return '';
-    const currentDay = (typeof G !== 'undefined' && G.day) ? G.day : 1;
-    const execDays = (mission && mission.execDays) ? mission.execDays : _randInt(2, 4);
-    // Operation started execDays ago, ended today
-    const opStartDay = Math.max(1, currentDay - execDays);
-
-    const lines = [];
-    const totalEvents = events.length;
-
-    for (let i = 0; i < totalEvents; i++) {
-      // Spread events across the operation days
-      const progress = totalEvents === 1 ? 1 : i / (totalEvents - 1);
-      const eventDay = Math.round(opStartDay + progress * (currentDay - opStartDay));
-      const h = _randInt(0, 23);
-      const m = _pick([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]);
-      lines.push(zuluStamp(eventDay, h, m) + ' — ' + events[i]);
+  function timeline(entries) {
+    var lines = [];
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      var dayLabel = gdate(e.day);
+      lines.push('<div class="db-day">' + dayLabel + '</div>');
+      for (var j = 0; j < e.events.length; j++) {
+        var ev = e.events[j];
+        lines.push('<div class="db-event"><span class="db-time">' + ev.time + '</span> ' + ev.text + '</div>');
+      }
     }
     return lines.join('\n');
   }
 
-  // Get department display info for deployed depts
-  function getDeployedUnits(m) {
-    const depts = m.assignedExecDepts || [];
-    const units = [];
-    for (let i = 0; i < depts.length; i++) {
-      const did = depts[i];
-      const cfg = DEPT_CONFIG.find(function (c) { return c.id === did; });
-      units.push({
-        id: did,
-        name: cfg ? cfg.name : did,
-        short: cfg ? cfg.short : did,
-        unitName: cfg ? cfg.unitNameSingle : 'unit',
-      });
-    }
-    return units;
+  // Generate an event at a random time within a range
+  function evt(hMin, hMax, text) {
+    return { time: rtime(), text: text };
   }
 
-  // Get elite unit names attached to the mission
-  function getElites(m) {
-    const ids = m.attachedEliteIds || [];
-    const elites = [];
-    if (typeof G !== 'undefined' && G.eliteUnits) {
-      for (let i = 0; i < ids.length; i++) {
-        const eu = G.eliteUnits.find(function (u) { return u.id === ids[i]; });
-        if (eu) elites.push(eu);
+  // Generate a realistic time-ordered set of events for a day
+  function dayEvents(events) {
+    // Assign hours in ascending order
+    var hour = R(0, 4);
+    var out = [];
+    for (var i = 0; i < events.length; i++) {
+      var m = P([0,5,10,15,20,25,30,35,40,45,50,55]);
+      out.push({ time: zp(hour) + zp(m) + 'Z', text: events[i] });
+      hour += R(1, 3);
+      if (hour > 23) hour = 23;
+    }
+    return out;
+  }
+
+  // ===========================================================================
+  // SECTION BUILDERS
+  // ===========================================================================
+
+  function headerSection(m, success) {
+    var cls = P(['TOP SECRET // NOFORN','TOP SECRET // SCI','SECRET // REL FVEY','TOP SECRET // ORCON']);
+    var status = success ? 'OBJECTIVES ACHIEVED' : 'OBJECTIVES NOT ACHIEVED';
+    return '<div class="db-classification">' + cls + '</div>' +
+      '<div class="db-title">AFTER-ACTION REPORT</div>' +
+      '<div class="db-subtitle">OP ' + (m.codename || 'UNKNOWN') + ' — ' + status + '</div>';
+  }
+
+  function deployedSection(units, elites, m) {
+    var rows = '';
+    for (var i = 0; i < units.length; i++) {
+      rows += '<div class="db-asset-row"><span class="db-asset-dept">' + units[i].short + '</span><span class="db-asset-type">' + units[i].unit + '</span></div>';
+    }
+    for (var j = 0; j < elites.length; j++) {
+      rows += '<div class="db-asset-row db-asset-elite"><span class="db-asset-dept">' + elites[j].fullName + '</span><span class="db-asset-type">' + elites[j].deptName + ' — ELITE</span></div>';
+    }
+    var budget = m.assignedBudget ? '$' + m.assignedBudget + 'M' : 'CLASSIFIED';
+    var prob = m.successProb ? m.successProb + '%' : '—';
+    return '<div class="db-section-title">DEPLOYED ASSETS</div>' +
+      '<div class="db-assets">' + rows + '</div>' +
+      '<div class="db-meta">Budget committed: ' + budget + ' · Pre-operation success assessment: ' + prob + '</div>';
+  }
+
+  function assessmentSection(text) {
+    return '<div class="db-section-title">ASSESSMENT</div><div class="db-assessment">' + text + '</div>';
+  }
+
+  // ===========================================================================
+  // CATEGORY GENERATORS — each returns full HTML body
+  // ===========================================================================
+
+  function currentDay() { return (typeof G !== 'undefined' && G.day) ? G.day : 1; }
+
+  // ---- COUNTER-TERRORISM (DOMESTIC_TERROR) ----
+
+  function gen_DOMESTIC_TERROR(m, units, elites, success) {
+    var cd = currentDay();
+    var execDays = m.execDays || R(2,3);
+    var opStart = Math.max(1, cd - execDays);
+    var cs = P(CALLSIGNS);
+    var cs2 = P(CALLSIGNS.filter(function(c){ return c !== cs; }));
+    var fv = m.fillVars || {};
+    var alias = fv.alias || 'PRIMARY TARGET';
+    var target = fv.target || 'the target location';
+    var city = fv.city || 'the operational area';
+    var cellSize = fv.cell_size || R(3,6);
+    var attackType = fv.attack_type || 'planned attack';
+    var group = fv.group || 'the threat organization';
+    var weather = P(WEATHER);
+    var breachMethod = P(BREACH);
+    var evidence = P(EVIDENCE);
+    var evidence2 = P(EVIDENCE.filter(function(e){ return e !== evidence; }));
+
+    if (success) {
+      var entries = [];
+      // Day 1: Staging and surveillance
+      entries.push({ day: opStart, events: dayEvents([
+        cs + ' team assembled at forward staging area. Operational briefing conducted by ' + unitShort(units) + ' command element. Weather assessment: ' + weather + '.',
+        'Advance reconnaissance team deployed to ' + city + '. Confirmed target building visual. Building is a ' + P(['two-story residential structure','commercial warehouse','ground-floor apartment complex','mixed-use building in dense urban area','isolated farmhouse compound','row house in residential neighborhood']) + '.',
+        'SIGINT intercept team established electronic surveillance perimeter. All target communications monitored in real-time. ' + R(3,8) + ' active devices detected within the target structure.',
+        'Surveillance team (' + cs2 + ') reported ' + cellSize + ' individuals observed entering the building over a ' + R(2,5) + '-hour period. Pattern consistent with cell meeting.',
+        units.length > 1 ? units[1].short + ' element confirmed no counter-surveillance activity detected around the target area. Approach routes validated.' : 'Counter-surveillance sweep of approach routes completed. All clear.',
+      ])});
+      // Day 2 (or same day if 2-day op): The assault
+      var assaultDay = execDays > 1 ? opStart + Math.max(1, execDays - 1) : opStart;
+      entries.push({ day: assaultDay, events: dayEvents([
+        'Final intelligence update received. All ' + cellSize + ' subjects confirmed present at target location. GO authorization received from Director.',
+        cs + ' assault element departed staging area. ' + R(3,6) + ' vehicles in convoy. Radio silence enforced. ETA to target: ' + R(8,25) + ' minutes.',
+        'Outer cordon established by ' + (units[0] ? units[0].short : 'support') + ' team. ' + R(4,8) + ' positions covering all egress points. Local law enforcement discreetly diverted from the area of operations.',
+        elites.length ? elites[0].fullName + ' led the primary assault element to breach point. Final equipment check completed. Weapons status confirmed.' : cs + ' team leader confirmed all elements in position. Final equipment check. Weapons hot.',
+        'H-HOUR. Breach initiated via ' + breachMethod + '. ' + P(RESIST_LIGHT) + ' Entry to target achieved in under ' + R(8,30) + ' seconds.',
+        'Ground floor cleared. ' + R(1,3) + ' subjects detained in the main room. ' + (elites.length ? elites[0].fullName + ' personally secured "' + alias + '" who was found ' + P(['attempting to reach a weapon','destroying documents','hiding in a back room','on a phone call','asleep','sitting at a table with maps spread out']) + '.' : 'Primary target "' + alias + '" located and detained on the ' + P(['ground floor','second floor','in the basement','in a rear bedroom']) + '.'),
+        'Building fully cleared room by room. Total subjects detained: ' + cellSize + '. ' + P(['One subject required medical treatment for a minor laceration.','No injuries to any personnel or subjects.','One assault team member sustained a minor bruise during entry — no medical treatment required.',R(1,2) + ' subjects were non-compliant and required physical restraint.']) ,
+        'Sensitive site exploitation team entered the building. Evidence recovery initiated. Items catalogued on-site include: ' + evidence + '. Additionally recovered: ' + evidence2 + '.',
+        'All ' + cellSize + ' detainees processed, photographed, and biometrically registered. "' + alias + '" positively identified via facial recognition database match. Transport to secure holding facility arranged.',
+        'Area of operations fully sanitized. No forensic evidence of agency involvement left on-site. ' + cs + ' team and all support elements returned to base. Operation concluded.',
+      ])});
+      var assess = 'The operation against the ' + group + ' cell in ' + city + ' achieved all objectives. The planned ' + attackType + ' against ' + target + ' has been permanently disrupted. ' + cellSize + ' operatives are in custody, including cell leader "' + alias + '". ' +
+        'Intelligence exploitation of seized materials is the immediate priority — ' + evidence + ' are expected to yield significant insights into the wider network. ' +
+        (elites.length ? elites[0].fullName + ' performance during the breach phase was exemplary and directly contributed to the rapid, non-lethal subduing of the primary target. ' : '') +
+        'Operational security was maintained throughout. No media or public awareness of the operation has been detected. ' +
+        unitShort(units) + ' coordination rated EXCELLENT. Recommend commendation for ' + cs + ' team leader.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) +
+        assessmentSection(assess);
+    } else {
+      var entries = [];
+      var compromiseReason = P(COMPROMISE);
+      entries.push({ day: opStart, events: dayEvents([
+        cs + ' team assembled at forward staging area. Final operational briefing conducted. Weather: ' + weather + '.',
+        'Advance team deployed for final reconnaissance of target building in ' + city + '. Initial visual confirmed — building appears occupied.',
+        'SIGINT monitoring initiated. Target communications active. No indication of target awareness.',
+        units.length > 1 ? units[1].short + ' counter-surveillance team completed sweep of approach routes. Routes assessed as clear.' : 'Counter-surveillance sweep completed. Approach routes assessed as viable.',
+      ])});
+      var failDay = execDays > 1 ? opStart + Math.max(1, execDays - 1) : opStart;
+      entries.push({ day: failDay, events: dayEvents([
+        'GO authorization received. ' + cs + ' assault element departed staging area. Radio silence enforced.',
+        'SIGINT FLASH: Target communications went dark approximately ' + R(15,40) + ' minutes before planned H-hour. All monitored devices simultaneously deactivated. This is a critical indicator of compromise.',
+        cs + ' arrived at target location. Outer cordon established. Immediate observation revealed: ' + P(['lights extinguished in the building','a vehicle departing the rear of the property at speed','the front door standing open','no signs of occupancy','evidence of hasty evacuation visible through windows']) + '.',
+        'Breach executed as planned via ' + breachMethod + '. Building entered. RESULT: Target structure is EMPTY. Signs of rapid, organized evacuation throughout. ' + P(['Food still warm on the table.','Personal effects abandoned.','Documents partially burned in a metal container.','Electronics wiped and left behind.','Mattresses and bedding present but no clothing.']),
+        elites.length ? elites[0].fullName + ' conducted rapid search of the entire structure. Confirmed: all ' + cellSize + ' subjects have fled. No subjects found on premises.' : 'Full building search completed. All ' + cellSize + ' subjects have evacuated. Building is empty.',
+        'Forensic exploitation team entered. Limited evidence recovered: ' + P(['a single discarded phone (being analyzed)','partial fingerprints on door handles','residual chemical traces','a few scraps of burned paper','nothing of intelligence value — the site was thoroughly sanitized']) + '.',
+        'SIGINT attempted to reacquire target communications. Negative contact. All known numbers and devices are offline.',
+        'All teams recalled to staging area. Area of operations abandoned. ' + P(AFTERMATH_F),
+      ])});
+      var assess = 'The operation failed to achieve its objectives. ' + compromiseReason + ' The cell led by "' + alias + '" evacuated the target location before the assault element could arrive. ' +
+        'The planned ' + attackType + ' against ' + target + ' remains a credible and active threat. All ' + cellSize + ' subjects are unlocated and should be considered mobile and aware. ' +
+        (elites.length ? elites[0].fullName + ' was deployed but had no opportunity to engage. ' : '') +
+        'An immediate counter-intelligence review of the operational chain has been ordered. ' +
+        'The source of the compromise must be identified before any re-attempt. ' + P(AFTERMATH_F) + ' ' +
+        unitShort(units) + ' performance was professional despite the outcome — the failure originated in the intelligence chain, not execution.';
+
+      return headerSection(m, false) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) +
+        assessmentSection(assess);
+    }
+  }
+
+  // ---- HVT OPERATIONS (FOREIGN_HVT, DOMESTIC_HVT, LONG_HUNT, ABDUCTION) ----
+
+  function gen_HVT(m, units, elites, success) {
+    var cd = currentDay();
+    var execDays = m.execDays || R(2,4);
+    var opStart = Math.max(1, cd - execDays);
+    var cs = P(CALLSIGNS);
+    var fv = m.fillVars || {};
+    var target = fv.target_name || fv.alias || fv.hvt_name || 'the high-value target';
+    var city = fv.city || fv.location || 'the target area';
+    var weather = P(WEATHER);
+    var isAbduction = (m.typeId || '').indexOf('ABDUCTION') >= 0;
+
+    if (success) {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Intelligence package finalized. Target identity and location confirmed via ' + P(INTEL_SRC) + '. Confidence level: HIGH.',
+        unitShort(units) + ' operational planning session. Assault plan developed based on site reconnaissance and target pattern-of-life data collected over the preceding ' + R(7,30) + ' days.',
+        'Equipment staging and loadout. Specialized equipment for ' + (isAbduction ? 'covert acquisition and transport' : 'direct-action capture') + ' prepared and inspected.',
+        elites.length ? elites[0].fullName + ' briefed on primary role: ' + P(['tactical breach lead','target acquisition and handling','overwatch and sniper support','close protection during extraction','technical exploitation on-site']) + '.' : cs + ' team leader assigned tactical roles and confirmed contingency procedures.',
+        'Forward staging area established ' + R(3,12) + 'km from target location. Communications check completed. All elements confirmed operational.',
+      ])});
+      if (execDays > 2) {
+        entries.push({ day: opStart + 1, events: dayEvents([
+          'Final surveillance pass of target location. Target confirmed present. Security detail observed: ' + R(1,5) + ' armed individuals in a ' + P(['fixed perimeter pattern','rotating patrol','static guard posts at entrance','mobile escort configuration']) + '.',
+          'SIGINT confirmed target\'s phone active at location. Voice identification positive. Target is conducting ' + P(['routine business calls','encrypted communications with unknown parties','personal calls — appears relaxed','no calls — device on standby']) + '.',
+          'Approach route finalized. Primary: ' + P(['vehicle approach via main road','foot infiltration through adjacent property','approach from elevated terrain to the north','maritime approach along the coastline','helicopter insertion to a nearby clearing']) + '. Alternate route briefed in case of compromise.',
+          'Weather forecast for execution window: ' + weather + '. Assessment: ' + P(['FAVORABLE','ACCEPTABLE','CHALLENGING BUT VIABLE','OPTIMAL FOR COVERT OPERATIONS']) + '.',
+        ])});
       }
+      entries.push({ day: cd, events: dayEvents([
+        'H-HOUR MINUS 60. Final intelligence update: target confirmed at location. No unusual activity detected. GO authorization confirmed.',
+        cs + ' assault element departed staging area. ' + weather + '. All teams moving to assigned positions.',
+        'Outer security perimeter established. ' + R(2,4) + ' escape routes blocked by ' + (units.length > 1 ? units[units.length-1].short : 'support') + ' elements.',
+        elites.length ? 'H-HOUR. ' + elites[0].fullName + ' led breach element. Entry via ' + P(BREACH) + '. Security detail ' + P(['neutralized within seconds','overwhelmed before they could react','engaged and suppressed — '+R(1,3)+' hostiles down','bypassed entirely through stealth approach']) + '.' :
+          'H-HOUR. Breach initiated via ' + P(BREACH) + '. Security detail ' + P(['neutralized within seconds','overwhelmed before they could react','engaged and suppressed','bypassed through stealth']) + '.',
+        'Target located in ' + P(['the main bedroom on the second floor','a ground-floor office','the basement','a reinforced safe room','the kitchen area','a meeting room with associates']) + '. ' + P(RESIST_LIGHT),
+        'Target positively identified via ' + P(['biometric facial recognition','fingerprint match','voice comparison','identifying physical characteristics','document verification']) + '. Identity confirmed: ' + target + '.',
+        isAbduction ? 'Target sedated per medical protocol and transferred to prepared transport vehicle. Cover story for disappearance will be ' + P(['a reported vehicle accident','a staged domestic dispute','a business trip abroad','no cover — clean disappearance']) + '.' :
+          'Target detained and processed. ' + P(['Hands zip-tied, hood applied for transport.','Target was compliant. Moved under escort.','Target initially resistant — subdued with non-lethal holds.','Target surrendered without incident.']) + ' Personal effects and all electronics seized.',
+        'Site exploitation team entered. ' + R(10,25) + ' minutes of rapid evidence collection. Items recovered: ' + P(EVIDENCE) + '.',
+        'Extraction commenced via ' + P(EXFIL) + '. All teams departed area of operations. No pursuit detected. ' + cs + ' confirmed clean extraction.',
+        'Target delivered to ' + P(['secure holding facility','forward operating base for initial interrogation','designated transfer point for onward movement','agency black site','partner nation detention facility']) + '. Chain of custody documented. All ' + unitShort(units) + ' elements accounted for and RTB.',
+      ])});
+
+      var assess = 'High-value target ' + target + ' has been successfully ' + (isAbduction ? 'acquired' : 'captured') + ' in ' + city + '. The operation was executed by ' + unitList(units) +
+        (elites.length ? ' with elite asset ' + elites[0].fullName + ' attached' : '') + '. Total operation time from breach to extraction: approximately ' + R(25,90) + ' minutes. ' +
+        'The target is now in secure custody and ' + P(['initial tactical questioning has begun','is being prepared for extended debriefing','has indicated willingness to cooperate on certain topics','is refusing to communicate — enhanced rapport-building techniques authorized','is providing limited but potentially valuable information']) + '. ' +
+        'Seized materials from the target location are undergoing exploitation by the Analysis Bureau. Early assessment suggests ' + P(['significant intelligence value','connections to '+R(2,5)+' previously unknown associates','financial records that may map the target\'s support network','communications that could compromise additional operatives','limited additional intelligence — the target maintained strict operational security']) + '. ' +
+        'Operational security was maintained. No attribution to ' + (G.cfg ? G.cfg.acronym : 'our agency') + ' is expected. ' + unitShort(units) + ' performance rated OUTSTANDING.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    } else {
+      var entries = [];
+      var compReason = P(COMPROMISE);
+      entries.push({ day: opStart, events: dayEvents([
+        'Intelligence package reviewed. Target location assessed as confirmed. ' + unitShort(units) + ' operation plan approved.',
+        'Staging area established. Equipment and personnel pre-positioned. Communications checks completed.',
+        elites.length ? elites[0].fullName + ' attached to assault element. Final coordination with ' + cs + ' team leader.' : cs + ' team leader conducted final rehearsal with assault element.',
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        'GO authorization received. Assault element departed staging. ' + weather + '.',
+        'Approach to target area. ' + P(['All clear on primary route.','Minor delay — civilian vehicle on approach road required waiting.','Route clear, team making good time.','Counter-surveillance team reported all clear.']) ,
+        P(['On arrival at target compound, immediately apparent that the location has been abandoned. Front door standing open, no vehicles present, no lights.','SIGINT reports: target\'s phone last pinged at this location '+R(4,18)+' hours ago. Currently offline. Probable departure.','Breach executed as planned. Building entered. Target NOT PRESENT. '+R(1,3)+' individuals found on-site — none matching target description.','Surveillance team reports target departed the location by vehicle approximately '+R(1,6)+' hours before assault element arrival. Pursuit attempted — vehicle lost in traffic.']),
+        'Full search of premises conducted. ' + P(['Building shows signs of recent, hasty departure. Some personal effects remain.','Location was thoroughly sanitized. Nothing of value left behind.','Found evidence of counter-surveillance equipment — the target knew they were being watched.','A few items recovered but likely of limited intelligence value.','The building appears to be a decoy location. Intelligence was manipulated.']),
+        elites.length ? elites[0].fullName + ' confirmed: target has departed. No trail to follow from this location.' : 'Assault team leader confirmed: target is not here. All rooms, outbuildings, and concealment areas checked.',
+        'Operation called. All elements withdrawing. ' + P(AFTERMATH_F),
+      ])});
+
+      var assess = 'The operation to ' + (isAbduction ? 'acquire' : 'capture') + ' ' + target + ' in ' + city + ' has failed. ' + compReason + ' The target departed the location before the assault could be executed. ' +
+        target + ' is now operating with heightened security awareness and will be significantly harder to locate and approach. ' +
+        (elites.length ? elites[0].fullName + ' was deployed but had no opportunity to engage the target. ' : '') +
+        'Immediate actions: counter-intelligence review of the intelligence chain, reactivation of all HUMINT and SIGINT collection assets in the target area, and assessment of whether the target\'s network has been alerted. ' +
+        P(AFTERMATH_F) + ' ' + unitShort(units) + ' execution was professional — the failure lies in the intelligence timeline, not operational performance.';
+
+      return headerSection(m, false) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
     }
-    return elites;
   }
 
-  // Format deployed units as narrative string
-  function deptNarrative(units) {
-    if (!units.length) return 'assigned personnel';
-    if (units.length === 1) return units[0].short + ' ' + units[0].unitName;
-    return units.slice(0, -1).map(function (u) { return u.short; }).join(', ') + ' and ' + units[units.length - 1].short;
+  // ---- RESCUE (ASSET_RESCUE, HOSTILE_RESCUE) ----
+
+  function gen_RESCUE(m, units, elites, success) {
+    var cd = currentDay();
+    var execDays = m.execDays || R(2,3);
+    var opStart = Math.max(1, cd - execDays);
+    var cs = P(CALLSIGNS);
+    var fv = m.fillVars || {};
+    var city = fv.city || fv.location || 'the target area';
+    var weather = P(WEATHER);
+    var isHostile = (m.typeId || '').indexOf('HOSTILE') >= 0;
+    var rescueTarget = isHostile ? P(['the hostage','the captured operative','the detained national','the kidnapped individual']) : P(['the compromised asset','the burned agent','the endangered operative','the at-risk source']);
+    var holdingDesc = P(['a fortified compound','an underground facility','a remote rural building','a commercial warehouse','a residential safe house','an abandoned factory']);
+
+    if (success) {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Intelligence confirmed: ' + rescueTarget + ' is being held at ' + holdingDesc + ' in ' + city + '. Location identified via ' + P(INTEL_SRC) + '.',
+        'Tactical planning session. ' + unitShort(units) + ' developed rescue plan. Primary concern: ' + P(['hostage survival during breach','guard force size and armament','proximity to civilian population','extraction route security','time sensitivity — captors may move the hostage']) + '.',
+        'Rehearsal conducted at staging area using improvised mockup of the holding location. ' + (elites.length ? elites[0].fullName + ' designated as rescue team lead.' : cs + ' designated as assault element leader.'),
+        'Medical team pre-staged with ' + P(['trauma kit and stretcher','full field surgical capability','sedation and stabilization equipment','emergency medical evacuation helicopter on standby']) + '.',
+        'Support asset deployed: ' + P(['ISR drone providing continuous overhead coverage','SIGINT intercept team monitoring all communications in the target area','sniper/observer team established on elevated terrain '+R(200,600)+'m from target','quick reaction force pre-positioned '+R(3,8)+'km from target for contingency']) + '.',
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        'Final intelligence update: ' + R(3,8) + ' armed guards observed at the holding location. ' + rescueTarget + P([' confirmed alive — visual confirmation through window.',' last heard via intercepted communication '+R(2,6)+' hours ago. Status: believed alive.',' status unknown but no evidence of harm detected.',' confirmed alive by HUMINT source inside the guard force.']) ,
+        'H-HOUR MINUS 30. ' + cs + ' team departed staging. ' + weather + '. All elements moving.',
+        'Outer cordon established. Escape routes blocked. ' + (units.length > 1 ? units[units.length-1].short + ' team covering rear and flanks.' : 'Support element covering rear.'),
+        'H-HOUR. Breach via ' + P(BREACH) + '. ' + (elites.length ? elites[0].fullName + ' first through the door. ' : '') + P(['Flashbang deployed. Guards disoriented.','Simultaneous entry from two points. Guards caught in crossfire.','Stealth approach achieved — first guard neutralized silently.','Explosive breach stunned all occupants.']) ,
+        R(2,5) + ' guards engaged. ' + P(['All neutralized within '+R(30,90)+' seconds. No survivors among the guard force.',''+R(1,3)+' killed, remainder surrendered.','All guards suppressed and detained alive.','Brief firefight — all threats eliminated. One guard wounded and detained for questioning.']) + (elites.length ? ' ' + elites[0].fullName + ' cleared the holding area.' : ''),
+        rescueTarget.charAt(0).toUpperCase() + rescueTarget.slice(1) + ' located in ' + P(['a locked basement room','a reinforced cell on the ground floor','a second-floor room with barred windows','a shipping container behind the main building','a crude cage in the garage area']) + '. Condition: ' + P(['dehydrated and disoriented but ambulatory','minor injuries consistent with rough handling — able to walk','physically weak but conscious and alert','uninjured — the captors had not harmed the subject','showing signs of stress but no serious physical injuries']) + '.',
+        'Medical team moved in immediately. ' + P(['IV fluids administered.','Vital signs stable.','Minor wounds cleaned and dressed.','Subject able to communicate and confirmed identity.','Psychological assessment: shaken but coherent.']) + ' Cleared for transport.',
+        'Extraction via ' + P(EXFIL) + '. ' + rescueTarget + ' moved under protective escort. All ' + unitShort(units) + ' teams extracted. No pursuit encountered.',
+        rescueTarget.charAt(0).toUpperCase() + rescueTarget.slice(1) + ' delivered to ' + P(['a secure medical facility','the nearest agency installation','a partner nation safe house','an embassy compound','a military base hospital']) + '. Full medical evaluation and debriefing initiated.',
+      ])});
+
+      var assess = rescueTarget.charAt(0).toUpperCase() + rescueTarget.slice(1) + ' has been successfully recovered from captivity in ' + city + '. ' +
+        unitList(units) + ' executed the rescue in approximately ' + R(15,45) + ' minutes from breach to extraction. ' + R(2,6) + ' hostiles were neutralized. ' +
+        (elites.length ? elites[0].fullName + ' led the rescue element with distinction, personally locating and extracting ' + rescueTarget + '. ' : '') +
+        'The subject is receiving medical care and will undergo a full debriefing over the coming days. ' +
+        'Operational security maintained — no media awareness. Site exploitation recovered ' + P(EVIDENCE) + ' which may provide intelligence on the captor network. ' +
+        unitShort(units) + ' performance rated EXCEPTIONAL.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    } else {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Intelligence placed ' + rescueTarget + ' at ' + holdingDesc + ' in ' + city + '. Source: ' + P(INTEL_SRC) + '.',
+        unitShort(units) + ' developed rescue plan. ' + (elites.length ? elites[0].fullName + ' designated as rescue lead.' : cs + ' assigned as team leader.'),
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        'Assault element deployed. ' + weather + '.',
+        P(['On approach, guards detected the team. Alarm raised. Sound of vehicles — captors moving '+rescueTarget+' to a vehicle.','Breach executed. Building searched thoroughly. '+rescueTarget+' NOT at this location. Intelligence was '+P(['outdated','deliberately falsified','based on a misidentified building','accurate but the captors relocated '+R(6,24)+' hours ago'])+'.','Entry achieved. Intense firefight with '+R(4,8)+' guards. During the engagement, captors executed '+P(['an escape through a pre-prepared tunnel','a vehicle breakout through a back gate','a transfer of '+rescueTarget+' via an underground passage'])+'.','Rescue team reached the holding cell. '+rescueTarget+' '+P(['had been moved within the last few hours — cell empty, still warm','was found deceased — cause of death appears to be '+P(['gunshot wound','blunt force trauma','unknown — autopsy required'])+'. Time of death estimated '+R(6,36)+' hours prior.','had already been relocated to an unknown secondary site.'])] ),
+        'Operation called. All elements withdrawing. ' + (elites.length ? elites[0].fullName + ' confirmed no trace of ' + rescueTarget + ' at the location. ' : '') + P(AFTERMATH_F),
+        unitShort(units) + ' teams extracted safely. ' + P(['No friendly casualties.', R(1,2) + ' team members sustained minor injuries during the firefight.','All personnel accounted for.']),
+      ])});
+
+      var assess = 'The rescue operation for ' + rescueTarget + ' in ' + city + ' has failed. ' +
+        P(['The subject was not at the target location.','The captors were alerted and moved the subject before the assault.','Intelligence was faulty — the location was incorrect.','The subject had already been relocated.']) + ' ' +
+        rescueTarget.charAt(0).toUpperCase() + rescueTarget.slice(1) + ' remains in captivity at an unknown location. ' +
+        (elites.length ? elites[0].fullName + ' was deployed but the situation did not permit a successful rescue. ' : '') +
+        'Immediate priority: re-establishing intelligence on ' + rescueTarget + '\'s location. Every hour increases the risk to the subject. ' + P(AFTERMATH_F);
+
+      return headerSection(m, false) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    }
   }
 
-  // Format elite names as narrative
-  function eliteNarrative(elites) {
-    if (!elites.length) return '';
-    if (elites.length === 1) return elites[0].fullName + ' (' + elites[0].deptName + ')';
-    return elites.map(function (e) { return e.fullName; }).join(', ');
+  // ---- COUNTER-INTELLIGENCE / MOLE HUNT ----
+
+  function gen_COUNTERINTEL(m, units, elites, success) {
+    var cd = currentDay();
+    var execDays = m.execDays || R(3,5);
+    var opStart = Math.max(1, cd - execDays);
+    var cs = P(CALLSIGNS);
+    var fv = m.fillVars || {};
+    var city = fv.city || 'headquarters area';
+
+    if (success) {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Counter-intelligence investigation entered decisive phase. ' + unitShort(units) + ' compiled findings from the preceding investigation period.',
+        'Canary trap methodology deployed: ' + R(3,6) + ' unique documents seeded through the suspect pool. Each variant contained traceable modifications invisible to the reader.',
+        'Physical surveillance authorized on primary suspect. ' + (elites.length ? elites[0].fullName + ' assigned to the surveillance detail.' : 'Two-person surveillance teams established rotating coverage.'),
+        'Digital forensics team initiated covert monitoring of suspect\'s workstation access patterns, email traffic, and file transfers.',
+      ])});
+      if (execDays > 2) {
+        entries.push({ day: opStart + 1, events: dayEvents([
+          'Canary trap result: leaked document matched the variant provided to the primary suspect. Correlation confidence: ' + R(90,99) + '%.',
+          'Surveillance observed suspect making an unscheduled stop at ' + P(['a public park','a coffee shop','a hotel lobby','a parking garage','a bookstore','a mall food court']) + '. Duration: ' + R(8,25) + ' minutes. Possible meeting.',
+          'Financial review completed. Suspect\'s accounts show ' + P(['unexplained deposits totaling $'+R(30,200)+'K over '+R(6,18)+' months','a lifestyle inconsistent with declared income','transfers to offshore accounts through multiple shell entities','large cash withdrawals on dates that correlate with known leak incidents','no obvious financial anomalies — suspect may be ideologically motivated']) + '.',
+          'SIGINT intercept: suspect\'s personal phone placed a call to a number associated with ' + P(['a known foreign intelligence front organization','an individual under existing counter-intelligence investigation','a diplomatic mission of a hostile nation','an encrypted messaging service frequently used by foreign intelligence','a previously unidentified number — now flagged for monitoring']) + '.',
+        ])});
+      }
+      entries.push({ day: cd, events: dayEvents([
+        'Decision made to move to arrest. Evidence package reviewed by internal legal counsel: assessed as SUFFICIENT for prosecution and internal action.',
+        'Arrest team assembled. ' + cs + ' designated as lead. Location: suspect is currently at ' + P(['their desk in the operations center','a meeting in the conference room','the parking garage about to leave for the day','the cafeteria','their personal vehicle in the parking lot']) + '.',
+        'Suspect approached by ' + cs + ' team. ' + P(['Suspect immediately requested legal counsel. Declined to make any statement.','Suspect appeared shocked. Made spontaneous admissions before being advised of rights.','Suspect attempted to destroy their phone by smashing it — device partially recovered.','Suspect was calm and cooperative. Stated: "I knew this day would come."','Suspect became agitated and attempted to flee — restrained by security.']) ,
+        'Suspect\'s workspace secured and sealed. Digital forensics team began imaging all devices. Personal effects catalogued. ' + P(['A one-time pad was found in the suspect\'s desk drawer.','An unauthorized encrypted USB drive was recovered from the suspect\'s bag.','A burner phone with foreign SIM card was found in the suspect\'s coat pocket.','Hidden notes with meeting locations and dates were found in a hollowed-out book.','No additional incriminating materials found at the workspace — suspect maintained strict discipline.']) ,
+        'Suspect\'s residence searched under judicial authority. Recovery included: ' + P(EVIDENCE) + '.',
+        'Suspect transferred to secure detention facility. Formal interrogation scheduled. Damage assessment team mobilized to review all programs and operations the suspect had access to.',
+        'Full access audit initiated: suspect held ' + P(['TS/SCI clearance with access to '+R(5,15)+' compartmented programs','SECRET clearance with broad access to operational databases','TS clearance with access to source identities and agent networks','clearance to personnel files, travel records, and internal communications']) + '. Scope of potential compromise: ' + P(['SEVERE','SIGNIFICANT','MODERATE — access was somewhat limited','UNDER ASSESSMENT — full scope not yet determined']) + '.',
+      ])});
+
+      var assess = 'The counter-intelligence investigation has successfully identified and neutralized an insider threat. The suspect had been passing classified information to ' + P(['a hostile foreign intelligence service','an adversary nation\'s intelligence apparatus','a non-state actor with intelligence capabilities','a foreign government via an intermediary network']) + ' for an estimated ' + R(3,24) + ' months. ' +
+        unitList(units) + ' conducted the investigation with appropriate discretion, preventing the suspect from learning of the inquiry until the arrest. ' +
+        (elites.length ? elites[0].fullName + ' was instrumental during the surveillance phase, documenting critical meetings that established the suspect\'s guilt. ' : '') +
+        'Damage assessment is the immediate priority. All operations and sources the suspect had access to must be evaluated for compromise. Preliminary estimates suggest ' + R(5,40) + ' intelligence products may have been passed to the adversary. ' +
+        'The suspect is in custody and formal interrogation will commence within 24 hours.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    } else {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Investigation focused on primary suspect. ' + unitShort(units) + ' initiated surveillance and canary trap protocols.',
+        'Canary documents distributed through suspect pool.',
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        P(['Canary trap produced inconclusive results — no leaked document matched a single variant.','Surveillance detected that the suspect has become aware of scrutiny. Suspect altered daily patterns and began counter-surveillance runs.','Investigation stalled. Digital forensics found no unauthorized access from monitored accounts. Suspect appears to be using methods outside our monitoring scope.','Suspect abruptly resigned citing "personal reasons." Submitted resignation effective immediately and departed the building before arrest authority could be obtained.','Suspect was found to have destroyed personal devices and sanitized their workspace overnight. Evidence preservation failed.']),
+        (elites.length ? elites[0].fullName + ' reported the suspect\'s evasive behavior indicates professional counter-intelligence training.' : 'Assessment: suspect demonstrates counter-intelligence awareness beyond what was anticipated.'),
+        'Investigation suspended. ' + P(AFTERMATH_F),
+      ])});
+
+      var assess = 'The counter-intelligence investigation has failed to conclusively identify and neutralize the insider threat. ' +
+        P(['The suspect detected the investigation and took evasive action before sufficient evidence could be gathered.','The canary trap methodology failed to produce definitive results, suggesting the leak may operate through channels we have not identified.','The suspect fled before an arrest could be executed.','Insufficient evidence was gathered for prosecution or internal action.']) + ' ' +
+        'The leak may still be active. Intelligence damage continues to accumulate. ' +
+        (elites.length ? elites[0].fullName + ' notes the suspect\'s tradecraft suggests professional intelligence training. ' : '') +
+        'A fundamental reassessment of investigative approach is required. ' + P(AFTERMATH_F);
+
+      return headerSection(m, false) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    }
   }
 
-  // Callsigns for team leads / operators
-  const CALLSIGNS = ['VANGUARD', 'PHANTOM', 'RAPTOR', 'SENTINEL', 'SHADOW', 'CONDOR', 'REAPER', 'NOMAD', 'SPECTER', 'BRAVO', 'DELTA', 'ECHO', 'FOXTROT', 'ZULU', 'VALOR', 'APEX', 'KEYSTONE', 'STILETTO', 'HAMMER', 'TRIDENT', 'OVERWATCH', 'HARBINGER', 'FALCON', 'BLACKOUT'];
-  const SUPPORT_ASSETS = ['ISR drone', 'signals relay', 'ELINT aircraft', 'ground surveillance radar', 'SATCOM uplink', 'tactical UAV', 'SIGINT intercept platform'];
-  const EXFIL_METHODS = ['rotary-wing extraction', 'ground vehicle convoy', 'safe house relay', 'commercial cover exfiltration', 'maritime pickup', 'overland border crossing', 'diplomatic cover vehicle'];
-  const WEATHER = ['clear skies', 'overcast conditions', 'light rain', 'heavy fog', 'high winds', 'scattered cloud cover', 'pre-dawn darkness'];
-  const RESISTANCE = ['minimal resistance', 'light armed resistance', 'heavy armed resistance', 'organized defensive fire', 'sporadic small-arms fire', 'no resistance encountered', 'brief but intense resistance'];
-  const INTEL_QUALITY = ['corroborated by multiple sources', 'single-source but high-confidence', 'SIGINT-confirmed', 'HUMINT-verified', 'partially verified', 'cross-referenced with partner holdings'];
-  const BREACH_METHODS = ['dynamic entry', 'stealth infiltration', 'coordinated multi-point breach', 'rooftop insertion', 'vehicle-mounted approach', 'underground approach', 'diversionary assault'];
-  const COMPROMISE_REASONS = ['counter-surveillance detected approach', 'encrypted communications were compromised', 'a local informant tipped off targets', 'electronic jamming failed to suppress alerts', 'operational timing was off by critical minutes', 'target had pre-positioned early warning assets', 'weather conditions degraded tactical advantage'];
-  const FAILURE_AFTERMATH = ['forensic sanitization of the site is underway', 'cover identities are being evaluated for compromise', 'partner agencies have been notified at minimal-disclosure level', 'damage assessment continues', 'post-mortem review has been initiated', 'all personnel have been accounted for and extracted', 'residual intelligence exploitation is ongoing'];
+  // ---- RENDITION ----
 
-  // Build a random debrief header
-  function debriefHeader(m, success) {
-    const classification = _pick(['TOP SECRET // NOFORN', 'TOP SECRET // SCI', 'SECRET // REL FVEY', 'TOP SECRET // ORCON']);
-    const status = success ? 'MISSION COMPLETE — OBJECTIVES ACHIEVED' : 'MISSION COMPLETE — OBJECTIVES NOT ACHIEVED';
-    return classification + '\n\nAFTER-ACTION REPORT — OP ' + (m.codename || 'UNKNOWN') + '\nSTATUS: ' + status + '\n';
+  function gen_RENDITION(m, units, elites, success) {
+    var cd = currentDay();
+    var execDays = m.execDays || R(2,3);
+    var opStart = Math.max(1, cd - execDays);
+    var cs = P(CALLSIGNS);
+    var fv = m.fillVars || {};
+    var target = fv.target_name || fv.alias || 'the subject';
+    var city = fv.city || 'the operational area';
+
+    if (success) {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Target pattern of life established over preceding ' + R(7,21) + ' days. Target follows a ' + P(['predictable daily routine','semi-regular pattern with some variation','highly irregular schedule requiring adaptive planning']) + '.',
+        'Rendition plan approved by Director. Legal authorities confirmed under ' + P(['covert action finding','executive order','bilateral intelligence agreement','standing rendition authority']) + '.',
+        unitShort(units) + ' acquisition team assembled. Specialized equipment: ' + P(['sedation kit with medical supervision','covert transport vehicle with concealed compartment','false identity documents for target\'s cover story','biometric spoofing equipment for border controls']) + '.',
+        'Transfer logistics confirmed. Route: ' + city + ' → ' + P(['regional airstrip ('+R(30,120)+'km)','safe house network ('+R(3,5)+' waypoints)','maritime extraction point','border crossing with pre-arranged passage','embassy vehicle to diplomatic compound']) + ' → final destination.',
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        'Final confirmation: target at expected location following predicted routine. ' + cs + ' team deployed.',
+        'Acquisition point selected: ' + P(['a quiet side street during target\'s morning walk','the parking structure beneath target\'s office building','a gas station on target\'s commute route','target\'s apartment building entrance at '+rtime(),'a restaurant where target dines regularly']) + '.',
+        cs + ' approach team made contact. Target ' + P(['was approached by two operatives posing as local police. Complied with instructions.','was intercepted exiting a vehicle. Sedated within '+R(5,15)+' seconds. No witnesses.','was invited into a vehicle by an operative posing as an associate. Once inside, secured.','struggled briefly before being subdued with a sedative injection. Duration of resistance: under '+R(10,30)+' seconds.']) ,
+        (elites.length ? elites[0].fullName + ' supervised target handling and medical monitoring during initial transport phase.' : 'Target transferred to prepared vehicle. Medical monitoring initiated.'),
+        'Counter-surveillance team confirmed: acquisition was clean. No witnesses. No CCTV in the area. ' + P(['Dummy vehicle staged at scene to delay discovery.','Target\'s phone powered down and placed in Faraday bag.','Target\'s vehicle moved to a different location.','Scene sanitized within '+R(3,8)+' minutes of acquisition.']),
+        'Target transported to transfer point. In transit: target ' + P(['remained sedated and stable.','regained consciousness but was controlled.','was conscious and compliant throughout.','required additional sedation during transport.']) ,
+        'Arrival at ' + P(['designated airstrip. Target loaded onto chartered aircraft.','safe house #1. Target held for '+R(2,6)+' hours before onward movement.','maritime rendezvous point. Target transferred to vessel.','embassy compound. Documentation prepared for next phase.']) ,
+        'Target delivered to final destination: ' + P(['secure interrogation facility','partner nation detention center','agency black site','military detention facility']) + '. Handoff documented. Chain of custody complete.',
+        'All ' + unitShort(units) + ' elements have returned to base. Operational sites sanitized. Cover story for target\'s disappearance: ' + P(['staged vehicle accident','reported missing by "concerned friend" (agency asset)','business trip abroad','no cover story — clean disappearance preferred','target\'s phone will send automated messages for '+R(2,5)+' days']) + '.',
+      ])});
+
+      var assess = 'Target has been successfully rendered from ' + city + ' to a secure facility. The acquisition was clean with no witnesses, no public exposure, and no law enforcement involvement. ' +
+        unitList(units) + ' executed the operation precisely. ' +
+        (elites.length ? elites[0].fullName + ' provided critical medical supervision and target handling expertise. ' : '') +
+        'Target is now available for interrogation. ' +
+        'The cover story for the target\'s disappearance is in place. Monitoring of target\'s associates and family has been initiated to detect any suspicion or inquiries. As of this report, no anomalies detected.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    } else {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Rendition plan approved. ' + unitShort(units) + ' acquisition team staged.',
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        cs + ' team deployed to acquisition point. ' + P(WEATHER) + '.',
+        P(['Target arrived at acquisition point but accompanied by '+R(2,4)+' unexpected associates. Acquisition in presence of witnesses was assessed as non-viable.','Target deviated from established routine. Did not appear at the acquisition point. Alternate locations checked — negative.','Acquisition initiated but target resisted loudly. A passerby intervened. Local police were called. Team forced to disengage and withdraw.','Target\'s vehicle was intercepted but a second vehicle with unknown occupants was following. Possible security detail or counter-surveillance. Operation aborted to protect the rendition network.','On approach, team identified what appeared to be a surveillance camera not present in previous reconnaissance. Risk of identification forced abort.']),
+        'Emergency withdrawal executed. All team members extracted via ' + P(['pre-planned exfiltration route','emergency vehicle swap','on-foot dispersal to safe houses','diplomatic vehicle']) + '. ' + P(AFTERMATH_F),
+      ])});
+
+      var assess = 'The rendition operation has failed. Target ' + target + ' remains free and is now likely aware that an acquisition attempt was made. ' +
+        'The target will be extremely difficult to reacquire — expect enhanced personal security, altered routines, and possible relocation. ' +
+        (elites.length ? elites[0].fullName + ' managed the emergency withdrawal professionally. ' : '') +
+        P(AFTERMATH_F) + ' ' + unitShort(units) + ' team was not compromised — identities remain secure.';
+
+      return headerSection(m, false) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    }
+  }
+
+  // ---- REGIME OP ----
+
+  function gen_REGIME(m, units, elites, success) {
+    var cd = currentDay();
+    var execDays = m.execDays || R(3,5);
+    var opStart = Math.max(1, cd - execDays);
+    var fv = m.fillVars || {};
+    var city = fv.city || fv.location || 'the theater of operations';
+
+    if (success) {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Covert operations network activated in-country. Ground team confirmed ' + R(5,15) + ' local assets operational and ready.',
+        unitShort(units) + ' elements infiltrated the area of operations over the preceding ' + R(24,72) + ' hours using ' + P(['commercial cover','diplomatic credentials','NGO cover','military liaison cover','journalist credentials']) + '.',
+        'Communications established with local opposition leadership. Coordination plan confirmed. Opposition elements will execute their actions on signal.',
+      ])});
+      if (execDays > 2) {
+        entries.push({ day: opStart + Math.floor(execDays/2), events: dayEvents([
+          'Phase 1 initiated: ' + P(['information operation launched — regime communications disrupted via cyber intrusion','key infrastructure target disabled through sabotage','financial disruption — regime accounts frozen through partner banking channels','media operation — leaked documents undermining regime credibility distributed','key regime official approached and turned — defection agreement secured']) + '.',
+          'Regime security forces responded to Phase 1. Assessment: ' + P(['confused and disorganized','reactive but unfocused','effective in some areas but spread thin','paralyzed by contradictory orders from competing factions within the regime']) + '.',
+          (elites.length ? elites[0].fullName + ' coordinated directly with local opposition forces, providing ' + P(['tactical guidance','communications support','weapons training','intelligence on regime force positions']) + '.' : 'Agency liaison maintained coordination with opposition elements.'),
+        ])});
+      }
+      entries.push({ day: cd, events: dayEvents([
+        'Phase 2: Local opposition elements executed coordinated actions across ' + R(2,5) + ' locations. ' + P(['Government buildings occupied','Key transportation routes blocked','Regime military units defected and joined opposition','Broadcasting facilities seized — opposition message now on national media','Border crossings taken by opposition forces']) + '.',
+        'Regime control in the target area ' + P(['collapsed','degraded significantly','weakened to the point of non-functionality','fractured along ethnic/tribal lines as predicted']) + '.',
+        'All agency personnel commenced withdrawal per exfiltration plan. ' + P(['All foreign operatives extracted via '+P(['helicopter','overland route','maritime pickup'])+'.','Two operatives delayed at checkpoint — resolved through bribery. All eventually extracted.','Extraction clean. No agency personnel remain in-country.']) ,
+        'Post-operation assessment transmitted. Regime stability in the target area degraded by an estimated ' + R(20,50) + '%. Mission objectives achieved.',
+      ])});
+
+      var assess = 'The covert operation to destabilize the regime in ' + city + ' has achieved its primary objectives. ' + unitList(units) + ' maintained deniability throughout. ' +
+        (elites.length ? elites[0].fullName + ' provided exceptional on-the-ground coordination with local forces. ' : '') +
+        'No attribution to ' + (G.cfg ? G.cfg.acronym : 'our agency') + ' is expected. The strategic effects will compound over the coming weeks as the regime struggles to respond. ' +
+        'All agency personnel and assets have been extracted. Local opposition elements are operating independently as planned.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    } else {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        unitShort(units) + ' initiated the operation. Ground assets activated.',
+        'Local opposition elements notified. Coordination commenced.',
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        P(['Local assets failed to execute coordinated actions — the network was penetrated by regime counter-intelligence.','Opposition elements were arrested before they could act. '+R(3,8)+' local assets are now in regime custody.','Regime security forces preemptively deployed to all planned target locations. Intelligence leaked.','An agency operative was identified by regime security. Emergency extraction triggered for all foreign personnel.']),
+        (elites.length ? elites[0].fullName + ' organized the emergency withdrawal, ensuring all agency personnel reached extraction points.' : 'Emergency extraction initiated for all foreign personnel.'),
+        'All agency elements extracted via ' + P(EXFIL) + '. ' + P([R(1,2)+' team members sustained minor injuries during the withdrawal.','No friendly casualties.','All personnel accounted for.']) ,
+        P(AFTERMATH_F),
+      ])});
+
+      var assess = 'The regime operation has failed. The local network was compromised, likely through regime counter-intelligence penetration. ' +
+        R(2,8) + ' local assets are unaccounted for and presumed detained. All agency personnel have been extracted. ' +
+        (elites.length ? elites[0].fullName + ' ensured safe extraction despite the compromise. ' : '') +
+        'The regime is now aware of external interference and will harden its defenses accordingly. ' + P(AFTERMATH_F);
+
+      return headerSection(m, false) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    }
+  }
+
+  // ---- SURVEILLANCE (HVT_SURVEILLANCE_DOM/FOR) ----
+
+  function gen_SURVEILLANCE(m, units, elites, success) {
+    var cd = currentDay();
+    var execDays = m.execDays || R(3,5);
+    var opStart = Math.max(1, cd - execDays);
+    var fv = m.fillVars || {};
+    var target = fv.target_name || fv.alias || 'the target';
+    var city = fv.city || 'the operational area';
+
+    if (success) {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Surveillance operation initiated. ' + unitShort(units) + ' deployed observation teams to ' + city + '.',
+        'Primary observation post established at ' + P(['an elevated position '+R(150,400)+'m from target\'s known location','a rented apartment with direct line of sight','a commercial vehicle parked on the target\'s street','a cooperating business adjacent to the target\'s routine path']) + '.',
+        'SIGINT coverage initiated: ' + P(['target phone IMSI captured and monitored','email and messaging accounts under passive collection','all communications within '+R(200,500)+'m radius intercepted and filtered','known associate communications also brought under coverage']) + '.',
+        'Technical surveillance device emplaced: ' + P(['audio device in target\'s vehicle','tracking beacon on target\'s primary vehicle','covert camera covering building entrance','network tap on target\'s WiFi router']) + '.',
+      ])});
+      for (var d = 1; d < Math.min(execDays, 4); d++) {
+        var dayNum = opStart + d;
+        if (dayNum >= cd) break;
+        entries.push({ day: dayNum, events: dayEvents([
+          'Day ' + (d+1) + ' surveillance log: Target ' + P(['followed routine pattern. Departed residence at '+rtime()+', arrived at known location at '+rtime()+'.','deviated from routine — visited an unfamiliar address for '+R(30,120)+' minutes. Address logged for investigation.','met with '+R(1,3)+' previously unknown individual(s) at '+P(['a café','a park bench','a vehicle in a parking lot','a restaurant','an office building lobby'])+'. Photos captured.','remained at primary location all day. '+R(5,15)+' phone calls intercepted.','traveled to '+R(2,3)+' locations. All documented with photo/video evidence.']),
+          P(['SIGINT captured '+R(3,12)+' communications of intelligence value.','Financial transaction detected: target made a '+P(['cash deposit','wire transfer','cryptocurrency transaction','cash withdrawal'])+' of approximately $'+R(1,50)+'K.','Target conducted what appears to be a counter-surveillance run — drove an evasive route for '+R(15,40)+' minutes before returning to routine. Our team was NOT detected.','Associate identified: '+P(['a known member of the target organization','a previously unknown contact — now flagged for investigation','a diplomatic figure from a '+P(['hostile','neutral','allied'])+' nation','a financial intermediary'])+'.','No significant activity this period. Target appears to be in a holding pattern.']),
+        ])});
+      }
+      entries.push({ day: cd, events: dayEvents([
+        'Final collection day. All remaining intelligence gaps addressed.',
+        'Surveillance package withdrawn. ' + P(['All technical devices recovered.','Audio device left in place for continued collection.','Observation posts sanitized — no forensic evidence of our presence.','All teams extracted sequentially to avoid pattern recognition.']) ,
+        'Final intelligence package compiled: ' + R(15,50) + ' pages of analysis, ' + R(50,200) + ' photographs, ' + R(10,100) + ' communications intercepts, and complete pattern-of-life documentation.',
+      ])});
+
+      var assess = 'Extended surveillance of ' + target + ' in ' + city + ' has been completed. ' + unitList(units) + ' maintained covert observation for ' + execDays + ' days without detection. ' +
+        (elites.length ? elites[0].fullName + ' identified critical patterns and contacts that were not previously known. ' : '') +
+        'Key products: complete pattern of life, ' + R(2,5) + ' safe house locations, ' + R(3,8) + ' associate identities, communications patterns mapped, and security detail assessment (' + R(1,5) + ' personnel). ' +
+        'This intelligence package enables high-confidence direct-action planning against the target.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    } else {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Surveillance teams deployed to ' + city + '. Observation positions established.',
+        'Initial collection began. Target sighted at known location.',
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        P(['Target conducted aggressive counter-surveillance and identified our observation team. Target made eye contact with surveillance operative and immediately altered behavior.','Target\'s security detail detected our technical surveillance device. Device removed and destroyed. Target is now aware of monitoring.','Target departed the area entirely. SIGINT indicates relocation to unknown location. All collection lost.','Local security services questioned our surveillance team, compromising the operation. Team extracted using cover identities.']),
+        'Surveillance operation terminated. ' + P(AFTERMATH_F),
+        (elites.length ? elites[0].fullName + ' recommended immediate suspension to prevent further compromise.' : 'Assessment: continuing surveillance would risk further compromise.'),
+      ])});
+
+      var assess = 'The surveillance operation against ' + target + ' has failed. The target became aware of our monitoring, rendering all further collection at this location non-viable. ' +
+        (elites.length ? elites[0].fullName + ' assessed that the target\'s counter-surveillance training is at a professional level. ' : '') +
+        'Intelligence collected before compromise has partial value but the target has now changed patterns, locations, and communications. Reestablishing surveillance will require a fundamentally different approach and significant time investment. ' + P(AFTERMATH_F);
+
+      return headerSection(m, false) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    }
+  }
+
+  // ---- ORG INFILTRATION / ORG TAKEDOWN / SURVEILLANCE_TAKEDOWN ----
+
+  function gen_ORG(m, units, elites, success) {
+    var cd = currentDay();
+    var execDays = m.execDays || R(2,4);
+    var opStart = Math.max(1, cd - execDays);
+    var fv = m.fillVars || {};
+    var city = fv.city || fv.location || 'the target area';
+    var isTakedown = (m.typeId || '').indexOf('TAKEDOWN') >= 0;
+
+    if (success && isTakedown) {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Coordinated takedown operation authorized. Intelligence package confirmed: ' + R(3,7) + ' target locations identified across ' + city + ' area.',
+        unitShort(units) + ' assembled ' + R(3,6) + ' simultaneous assault teams. Each team briefed on their specific target location, expected occupants, and rules of engagement.',
+        'Synchronization plan established. All teams will execute simultaneously at H-hour to prevent targets from warning each other.',
+        (elites.length ? elites[0].fullName + ' assigned to lead the raid on the primary target — the organization\'s leadership location.' : 'Senior team leader assigned to the primary target location.'),
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        'H-HOUR. Simultaneous raids commenced at ' + R(3,7) + ' locations across ' + city + '.',
+        'Location 1 (primary — leadership): ' + P(BREACH) + '. ' + R(2,5) + ' senior organization members detained. ' + P(RESIST_LIGHT),
+        'Location 2 (logistics): ' + R(3,8) + ' individuals detained. ' + P(EVIDENCE) + ' recovered. Significant financial records seized.',
+        'Location 3 (communications): ' + P(['Organization\'s communications hub dismantled. '+R(5,12)+' devices seized.','Encrypted radio equipment and code books recovered.','Server equipment imaged and seized.']) ,
+        R(1,3) + ' additional locations raided. Combined detainees: ' + R(12,30) + ' individuals in first wave.',
+        'Second wave operations over the following ' + R(6,18) + ' hours: ' + R(5,12) + ' additional arrests based on intelligence from first-wave interrogations and seized communications.',
+        'Organization financial assets frozen through ' + P(['partner banking channels','judicial orders','bilateral agreements']) + '. Estimated value: $' + R(500, 5000) + 'K.',
+        'All raid locations turned over to forensic exploitation teams. ' + unitShort(units) + ' teams returning to base.',
+      ])});
+
+      var assess = 'The coordinated takedown has effectively destroyed the target organization\'s operational capability in ' + city + '. ' +
+        R(15,35) + ' individuals detained including ' + R(2,5) + ' senior leaders. Financial networks disrupted. Communications infrastructure dismantled. ' +
+        (elites.length ? elites[0].fullName + ' led the critical leadership raid and personally secured the organization\'s top commander. ' : '') +
+        'The organization\'s ability to reconstitute is assessed as LOW. Ongoing exploitation of seized materials is expected to yield intelligence on partner organizations and external support networks. ' +
+        unitShort(units) + ' coordination across ' + R(3,7) + ' simultaneous operations was exceptional.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    } else if (success) {
+      // Infiltration success
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Infiltration operation concluded. Agent successfully extracted from within the target organization without compromise.',
+        'Agent debriefing commenced. ' + (elites.length ? elites[0].fullName + ' conducted the primary debrief sessions.' : unitShort(units) + ' debrief team assigned.'),
+        'Initial intelligence product reviewed: organization structure, membership, finances, and operational plans documented in detail.',
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        'Debriefing session ' + R(3,6) + ' completed. Agent provided comprehensive information on: ' + P(['the organization\'s cell structure ('+R(3,8)+' cells identified)','leadership hierarchy and decision-making processes','financial flows including '+R(2,5)+' funding sources','communications architecture and encryption methods','planned operations for the next '+R(1,6)+' months','recruitment pipeline and radicalization methods']),
+        'Agent confirmed safe. Cover identity ' + P(['remains intact — potential for re-insertion','is partially burned — re-insertion not recommended','was deliberately terminated as part of the extraction plan','assessed as still viable for limited future use']) + '.',
+        'Final intelligence package compiled and distributed to relevant departments.',
+      ])});
+
+      var assess = 'The infiltration produced exceptional intelligence on the target organization. The agent penetrated the inner circle and maintained position for ' + R(2,8) + ' months. ' +
+        (elites.length ? elites[0].fullName + ' served as primary handler and extracted critical details during debriefing. ' : '') +
+        'Intelligence products include: complete organizational chart (' + R(10,40) + ' identified members), financial network mapping, operational planning documents, and safe house locations (' + R(3,7) + ' sites). ' +
+        'This intelligence enables high-confidence takedown planning.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    } else {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        (isTakedown ? 'Takedown operation planning finalized. Teams assembled.' : 'Agent reported possible compromise within the organization.'),
+        unitShort(units) + ' ' + (isTakedown ? 'prepared simultaneous raid packages.' : 'activated emergency extraction protocols.'),
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        isTakedown ?
+          'Raids executed at ' + R(3,6) + ' locations. PRIMARY TARGET LOCATION: key leadership ABSENT. ' + P(['Organization received advance warning.','Only low-level members found on-site.','The location had been evacuated within the last '+R(6,24)+' hours.']) :
+          'Agent extraction attempted. ' + P(['Agent reached safe house but was followed by organization security.','Agent missed the extraction window. Communications lost.','Agent was detained by the organization before reaching the rendezvous.','Agent extracted under fire — QRF deployed to assist.']),
+        R(2,6) + ' individuals detained but ' + P(['none are senior leadership.','the most valuable targets escaped.','those captured have limited intelligence value.','interrogation suggests they were left behind deliberately as decoys.']),
+        (elites.length ? elites[0].fullName + ' ' + P(['led the QRF that secured the extraction','assisted with managing the withdrawal','confirmed that primary objectives were not achievable']) + '.' : 'Assessment: primary objectives not achieved.'),
+        P(AFTERMATH_F),
+      ])});
+
+      var assess = (isTakedown ? 'The takedown operation failed to capture the organization\'s leadership.' : 'The infiltration operation was compromised.') + ' ' +
+        P(COMPROMISE) + ' ' +
+        (elites.length ? elites[0].fullName + ' managed the situation professionally but the overall mission was not recoverable. ' : '') +
+        'The organization is now fully alert and has likely dispersed and restructured. Intelligence gathered before the compromise has partial value. ' + P(AFTERMATH_F);
+
+      return headerSection(m, false) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    }
+  }
+
+  // ---- FAVOR MISSIONS (all FAVOR_ types) ----
+
+  function gen_FAVOR(m, units, elites, success) {
+    var cd = currentDay();
+    var execDays = m.execDays || R(2,3);
+    var opStart = Math.max(1, cd - execDays);
+    var fv = m.fillVars || {};
+    var city = fv.city || fv.location || 'the area of operations';
+    var agencyName = m.favorAgencyName || 'the requesting agency';
+
+    if (success) {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        'Inter-agency coordination established. ' + agencyName + ' provided detailed briefing on the requested operation.',
+        unitShort(units) + ' assigned to execute. Mission parameters reviewed and accepted.',
+        'Joint planning session with ' + agencyName + ' liaison. Rules of engagement and information-sharing protocols established.',
+        (elites.length ? elites[0].fullName + ' designated as primary liaison and operational lead.' : 'Senior officer designated as agency representative for the joint operation.'),
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        unitShort(units) + ' deployed to ' + city + '. ' + P(WEATHER) + '.',
+        'Primary objective engaged. ' + P(['Target located and secured as requested.','Surveillance package delivered to partner agency specifications.','Extraction completed per partner requirements.','Direct action executed per joint operational plan.','Intelligence collection completed — products transferred to requesting agency.']),
+        P(RESIST_LIGHT),
+        'Objective achieved. Results package compiled and ' + P(['transmitted securely to '+agencyName+'.','handed over to '+agencyName+' liaison on-site.','uploaded to shared intelligence database.']) ,
+        'All ' + unitShort(units) + ' personnel extracted. Operation closed. ' + agencyName + ' expressed satisfaction with the result.',
+      ])});
+
+      var assess = 'The inter-agency operation requested by ' + agencyName + ' has been completed successfully. ' + unitList(units) + ' executed all requested tasks within the specified parameters. ' +
+        (elites.length ? elites[0].fullName + ' served effectively as operational liaison, ensuring smooth coordination between agencies. ' : '') +
+        'This successful favor strengthens our relationship with ' + agencyName + ' and builds operational capital for future reciprocal support. ' +
+        unitShort(units) + ' demonstrated excellent interoperability with partner requirements.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    } else {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        agencyName + ' request received and accepted. ' + unitShort(units) + ' assigned.',
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        unitShort(units) + ' deployed. ' + P(WEATHER) + '.',
+        P(['Objective could not be achieved — '+P(['target was not at the specified location','operational conditions were non-viable','the intelligence provided by '+agencyName+' was inaccurate','unexpected opposition rendered the approach unsafe','equipment failure at a critical moment'])+'.','Operation was compromised during execution. Teams withdrew.','Partially completed before conditions forced abort.']),
+        (elites.length ? elites[0].fullName + ' managed the withdrawal. ' : '') + P(AFTERMATH_F),
+      ])});
+
+      var assess = 'The inter-agency operation requested by ' + agencyName + ' has failed. ' + unitShort(units) + ' were unable to achieve the stated objectives. ' +
+        (elites.length ? elites[0].fullName + ' was deployed but mission parameters made success impossible. ' : '') +
+        'This failure will negatively impact the relationship with ' + agencyName + '. Diplomatic remediation is recommended. ' + P(AFTERMATH_F);
+
+      return headerSection(m, false) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    }
   }
 
   // ===========================================================================
-  // CATEGORY: COUNTER-TERRORISM (DOMESTIC_TERROR)
+  // TYPE MAPPING
   // ===========================================================================
 
-  const DEBRIEF_DOMESTIC_TERROR = {
-    success: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Staging area established. ' + _pick(WEATHER) + '.', u[0] ? u[0].short + ' team confirmed target building visual.' : 'Forward element confirmed target building.', 'SIGINT reports all target communications active — no indication of awareness.', _pick(BREACH_METHODS).charAt(0).toUpperCase() + _pick(BREACH_METHODS).slice(1) + ' initiated. ' + _pick(RESISTANCE) + '.', 'Primary target "{alias}" detained. Compound secured.', 'Evidence collection initiated. ' + _pick(['Explosive precursors', 'Weapons cache', 'Communications equipment', 'Planning documents', 'Encrypted devices']) + ' recovered.', 'All suspects transferred to secure holding. Site sanitized.', 'Operation concluded. All teams RTB.'], m) + '\n\nASSESSMENT: Cell neutralized with ' + _pick(RESISTANCE) + '. ' + (e.length ? e[0].fullName + ' provided critical tactical advantage during breach. ' : '') + 'All evidence secured for exploitation.'; },
-      function (m, u, e) { var cs = _pick(CALLSIGNS); return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([cs + ' lead element departed staging. Conditions: ' + _pick(WEATHER) + '.', 'Outer cordon established. Local law enforcement diverted from AO.', cs + ' confirmed ' + (m.fillVars?.cell_size || 'multiple') + ' individuals inside target structure.', 'Breach executed via ' + _pick(BREACH_METHODS) + '. Flash-bangs deployed.', 'All occupants subdued within 90 seconds. Zero friendly casualties.', '"{alias}" identified and isolated for field interrogation.', _pick(['Bomb-making materials', 'Surveillance photos of {target}', 'Operational planning notes', 'Foreign currency and forged documents']) + ' seized.', 'Detainees transported under guard. Scene turned over to forensic team.'], m) + '\n\nASSESSMENT: Textbook counter-terrorism operation. The cell was within days of executing their planned {attack_type}. Intelligence chain from initial tip to resolution performed as designed.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Pre-dawn deployment. ' + _pick(WEATHER) + '. All units acknowledged green.', 'HUMINT asset confirmed target location — high confidence.', (u.find(function(x){return x.id==='SIGINT';}) ? 'SIGINT intercept team' : 'Electronic surveillance') + ' detected target phone activity. All suspects accounted for.', 'Assault element moved to breach point. ' + (e.length ? e[0].fullName + ' took point.' : 'Team leader took point.'), 'Entry achieved. ' + _pick(RESISTANCE) + '.', 'All {cell_size} suspects secured. One minor injury to assault team — non-critical.', 'Exploitation team entered. Materials catalogued on-site.', 'AO cleared. All assets extracted without public exposure.'], m) + '\n\nASSESSMENT: Operation executed within acceptable risk parameters. {attack_type} threat against {target} eliminated. Recommend continued monitoring of associated networks.'; },
-      function (m, u, e) { var cs = _pick(CALLSIGNS); return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Alert status elevated. ' + cs + ' team activated from standby.', 'Target vehicle tracked to final location in {city}.', 'SIGINT confirms active threat communications — attack imminent.', 'Emergency authorization granted. ' + cs + ' launched rapid interdiction.', _pick(BREACH_METHODS).charAt(0).toUpperCase() + _pick(BREACH_METHODS).slice(1) + '. ' + _pick(RESISTANCE) + '.', '"{alias}" neutralized during engagement. Remaining suspects surrendered.', 'EOD team cleared the site. ' + _pick(['IED components', 'VBIED materials', 'Chemical precursors', 'Small arms cache']) + ' rendered safe.', 'Operation closed. Full forensic exploitation initiated.'], m) + '\n\nASSESSMENT: Rapid response prevented imminent {attack_type}. The threat was more advanced than initial intelligence suggested. ' + (e.length ? e[0].fullName + '\'s expertise was decisive in the engagement. ' : '') + 'Post-operation exploitation expected to yield actionable intelligence on wider networks.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Surveillance team established observation post. ' + _pick(WEATHER) + '.', 'Pattern of life analysis confirmed: {cell_size} subjects maintaining routine.', 'HUMINT handler signaled asset extraction — source safely removed from AO.', 'Green light confirmed. Assault teams moved from holding positions.', 'Simultaneous entry at front and rear. ' + _pick(RESISTANCE) + '.', 'All targets detained. "{alias}" attempted to destroy communications equipment — prevented.', 'Sensitive site exploitation uncovered attack timeline: execution was planned within 72 hours.', 'All detainees and evidence transported to secure facility.'], m) + '\n\nASSESSMENT: Clean operation with minimal collateral indicators. The 72-hour window validates the urgency assessment. ' + deptNarrative(u) + ' coordination was exemplary.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Tactical operations center established at forward staging base.', u[0] ? u[0].short + ' team finalized approach routes.' : 'Lead element finalized approach routes.', 'SIGINT confirmed no counter-surveillance activity from targets.', 'Weather: ' + _pick(WEATHER) + '. GO signal transmitted.', 'Primary assault via ' + _pick(BREACH_METHODS) + '. Secondary team blocked escape routes.', 'Engagement lasted ' + _randInt(45, 180) + ' seconds. ' + _pick(RESISTANCE) + '.', '"{alias}" taken alive. All {cell_size} suspects accounted for.', 'Tactical debrief initiated. Preliminary intelligence shows connections to {group}.'], m) + '\n\nASSESSMENT: Objective achieved. Cell leadership captured intact, enabling follow-on intelligence exploitation. No operational exposure to media or public.'; },
-      function (m, u, e) { var cs = _pick(CALLSIGNS); return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([cs + ' departed FOB. Night conditions optimal for covert approach.', 'Perimeter security neutralized silently.', 'Entry team breached primary structure. Flash-and-clear protocol.', 'Ground floor secured in under 60 seconds. ' + _pick(RESISTANCE) + '.', 'Upper floor: "{alias}" located and detained without incident.', _pick(['Laptop', 'Multiple phones', 'USB drives', 'Coded documents', 'Maps of {target}']) + ' seized from target\'s room.', 'All {cell_size} subjects in custody. Medical screening completed.', 'AO sanitized. ' + cs + ' RTB with all detainees.'], m) + '\n\nASSESSMENT: Night operation exploited element of surprise effectively. {attack_type} plot disrupted at planning stage. ' + (e.length ? 'Elite asset ' + e[0].fullName + ' ensured zero casualties on our side. ' : '') + 'Intelligence exploitation priority: communications devices.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Multi-agency coordination complete. Lead authority: ' + (G.cfg ? G.cfg.acronym : 'agency') + '.', 'Surveillance confirmed all targets present at primary location.', 'Support assets: ' + _pick(SUPPORT_ASSETS) + ' on station.', 'Assault element executed ' + _pick(BREACH_METHODS) + '.', _pick(RESISTANCE).charAt(0).toUpperCase() + _pick(RESISTANCE).slice(1) + '. Engagement duration: ' + _randInt(30, 120) + ' seconds.', '"{alias}" captured. Identity confirmed via biometrics.', 'Evidence inventory: ' + _randInt(3, 12) + ' items of intelligence value recovered.', 'Operation secured. Debrief scheduled.'], m) + '\n\nASSESSMENT: Successful interdiction of {group} cell. The planned {attack_type} against {target} has been permanently disrupted. All deployed ' + deptNarrative(u) + ' performed within expected parameters.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Intelligence package finalized. All gaps resolved.', 'Staging at secure location ' + _randInt(3, 8) + 'km from target.', 'Final coordination with ' + deptNarrative(u) + '.', 'Approach under ' + _pick(WEATHER) + '. No incidents.', 'Target building isolated. Communications jammed.', 'Entry team achieved surprise. ' + _pick(RESISTANCE) + '.', 'All {cell_size} operatives detained within ' + _randInt(2, 6) + ' minutes of initial breach.', '"{alias}" provided immediate tactical intelligence under field interrogation.', 'Evidence chain secured. All personnel withdrawn.'], m) + '\n\nASSESSMENT: Intelligence-driven operation with excellent preparation-to-execution ratio. Cell dismantled. {target} threat eliminated.'; },
-      function (m, u, e) { var cs = _pick(CALLSIGNS); return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([cs + ' acknowledged weapons-free authorization.', 'Target compound under continuous surveillance for ' + _randInt(6, 48) + ' hours prior.', 'HUMINT asset confirmed no civilians in target building.', cs + ' initiated assault. Method: ' + _pick(BREACH_METHODS) + '.', 'Engagement: ' + _pick(RESISTANCE) + '. ' + _randInt(1, 3) + ' suspects engaged with lethal force.', '"{alias}" surrendered after being cornered. Taken into custody.', 'Remaining ' + (m.fillVars?.cell_size ? (parseInt(m.fillVars.cell_size) - 1) : 'other') + ' suspects detained without further incident.', 'Post-action: site exploited. ' + _pick(['Chemical materials', 'Explosive precursors', 'Forged identification documents', 'Operational funds', 'Communication encryption hardware']) + ' recovered.'], m) + '\n\nASSESSMENT: Decisive action prevented {attack_type} at an advanced stage. One engagement with lethal force documented and justified under rules of engagement. ' + (e.length ? e[0].fullName + ' commended for tactical leadership. ' : '');  },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\n' + deptNarrative(u) + ' conducted a coordinated raid on the {group} cell operating in the {city} area. ' + (e.length ? 'Elite asset ' + e[0].fullName + ' was attached to the assault element. ' : '') + 'The operation achieved all primary objectives: "{alias}" was captured, {cell_size} associates were detained, and {attack_type} materials were seized.\n\nThe cell had been under investigation for ' + m.invDays + ' days. Intelligence confidence at time of execution was ' + (m.successProb || 'HIGH') + '%. The operation was completed in under ' + _randInt(2, 8) + ' hours from initial deployment to full site exploitation.\n\nAll evidence has been transferred to analytical teams for exploitation. Preliminary assessment suggests potential links to additional domestic networks.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Command post activated. ' + deptNarrative(u) + ' on standby.', 'Final intelligence update confirmed target disposition.', 'Asset: ' + _pick(SUPPORT_ASSETS) + ' deployed for overwatch.', 'Teams moved to assault positions. ' + _pick(WEATHER) + '.', 'Breach initiated. ' + _pick(BREACH_METHODS) + '.', 'First floor cleared. Three suspects detained.', 'Second floor: "{alias}" attempted to flee via rear exit — intercepted by containment team.', 'Building cleared. All {cell_size} targets in custody.', 'Tactical site exploitation complete. Materials secured.'], m) + '\n\nASSESSMENT: The attempted escape by "{alias}" was anticipated and contained. ' + (e.length ? e[0].fullName + ' led the containment element effectively. ' : '') + 'Zero operational casualties. {attack_type} materials confirmed for forensic analysis.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Operational security protocols initiated.', 'Counter-surveillance sweep of approach routes — clear.', deptNarrative(u) + ' in final staging.', 'Target building power supply isolated.', 'Entry via ' + _pick(BREACH_METHODS) + '. NVG-equipped teams entered.', _pick(RESISTANCE) + '. Engagement lasted ' + _randInt(20, 90) + ' seconds.', 'All {cell_size} subjects secured. "{alias}" identified.', 'Emergency medical treatment provided to one suspect — non-life-threatening injury.', 'Full site exploitation yielded ' + _randInt(4, 15) + ' items of intelligence value.'], m) + '\n\nASSESSMENT: Power isolation tactic disoriented targets and contributed to rapid submission. ' + deptNarrative(u) + ' performance rated excellent. {attack_type} threat to {target} permanently eliminated.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION SUMMARY:\nFollowing ' + m.invDays + ' days of investigation, ' + deptNarrative(u) + ' executed a direct-action mission against a {group} cell in {city}.' + (e.length ? ' Elite operator ' + e[0].fullName + ' accompanied the primary assault team.' : '') + '\n\nKey events:\n• Target compound identified and confirmed via multiple intelligence streams (' + _pick(INTEL_QUALITY) + ')\n• Approach and breach achieved complete tactical surprise\n• ' + _pick(RESISTANCE).charAt(0).toUpperCase() + _pick(RESISTANCE).slice(1) + '\n• Cell leader "{alias}" detained along with {cell_size} associates\n• {attack_type} materials recovered, including ' + _pick(['detonators', 'precursor chemicals', 'surveillance equipment', 'encrypted communications gear', 'targeting packages']) + '\n\nNo friendly casualties. No civilian exposure. Operational security maintained.'; },
-      function (m, u, e) { var cs = _pick(CALLSIGNS); return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([cs + ' team leader confirmed all elements in position.', 'Sniper/observer team established overwatch.', 'SIGINT: target communications indicate normal activity.', 'GO. ' + _pick(BREACH_METHODS) + ' executed.', 'Ground floor: ' + _randInt(1, 3) + ' suspects detained without resistance.', 'Upper levels: ' + _pick(RESISTANCE) + '. ' + cs + ' team cleared room by room.', '"{alias}" found in concealed position — extracted and identified.', 'All weapons and materials secured. EOD cleared one suspicious package.', 'Full accountability achieved. Operation concluded at ' + randomZulu(6, 12) + '.'], m) + '\n\nASSESSMENT: Operation succeeded with complete tactical surprise. The concealment of "{alias}" suggests awareness of potential law enforcement interest. Intelligence exploitation of seized devices is the top priority for follow-on analysis.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Intelligence freeze declared — all collection assets focused on target.', deptNarrative(u) + ' assembled at staging.', 'HUMINT handler confirmed asset safely extracted from target environment.', 'Authorization to proceed received from Director.', 'Assault commenced. ' + _pick(WEATHER) + '. Method: ' + _pick(BREACH_METHODS) + '.', 'Resistance: ' + _pick(RESISTANCE) + '.', 'All {cell_size} targets secured in ' + _randInt(3, 10) + ' minutes.', '"{alias}" processed and transferred.', 'Intelligence haul: significant. Exploitation ongoing.'], m) + '\n\nASSESSMENT: Director-authorized action executed within mandate. Cell dismantled before {attack_type} could proceed. Source protection protocols maintained — HUMINT asset remains viable for future operations.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe {group} cell targeting {target} has been neutralized. ' + deptNarrative(u) + ' executed a precision raid at ' + randomZulu(1, 5) + ' under ' + _pick(WEATHER) + '.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' led the primary assault element. ' : '') + 'The assault encountered ' + _pick(RESISTANCE) + '. All {cell_size} cell members, including leader "{alias}", are in custody.\n\nCritical materials recovered include ' + _pick(['a functional explosive device', 'surveillance footage of {target}', 'encrypted planning documents', 'a weapons cache', 'financial records linking to foreign sponsors']) + '.\n\nNo friendly casualties. No collateral damage. Operational security intact.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Pre-mission brief completed. Rules of engagement confirmed.', 'All teams departed staging. ETA to target: ' + _randInt(15, 45) + ' minutes.', 'Approach route clear. No counter-surveillance detected.', 'Outer security bypassed. Inner perimeter established.', 'Breach. ' + _pick(RESISTANCE) + '.', '"{alias}" detained on ground floor. ' + _randInt(1, 3) + ' additional suspects upstairs.', 'Building cleared floor by floor. Final suspect found hiding in basement.', 'Evidence teams entered. Chain of custody protocols activated.', 'Complete. All teams RTB by ' + randomZulu(8, 14) + '.'], m) + '\n\nASSESSMENT: Methodical clearance ensured no suspects escaped. The basement discovery suggests the cell maintained a secondary cache site. Recommend follow-on investigation.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Received updated intelligence — target confirmed present.', 'Mobile command post established ' + _randInt(2, 5) + 'km from target.', deptNarrative(u) + ' executed final equipment checks.', 'Convoy departed staging. Radio silence enforced.', 'Arrived target location. Perimeter secured.', 'Breach via ' + _pick(BREACH_METHODS) + '. ' + _pick(RESISTANCE) + '.', 'All {cell_size} subjects detained. "{alias}" resisted briefly — subdued with non-lethal force.', 'Exploitation team recovered ' + _randInt(2, 8) + ' digital devices and paper documents.', 'Operation concluded. No media or civilian awareness.'], m) + '\n\nASSESSMENT: Clean execution. Non-lethal subduing of "{alias}" preserved interrogation value. Digital exploitation expected to provide network mapping for related cells.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nSITUATION REPORT:\nAt ' + randomZulu(0, 4) + ', ' + deptNarrative(u) + ' conducted a surprise raid on a {group} safehouse in {city}. The operation had been planned for ' + _randInt(24, 96) + ' hours following confirmation of the target\'s presence.' + (e.length ? ' ' + e[0].fullName + ' was embedded with the lead assault team for technical exploitation support.' : '') + '\n\nThe raid achieved complete surprise. {cell_size} subjects were detained including primary target "{alias}". ' + _pick(RESISTANCE).charAt(0).toUpperCase() + _pick(RESISTANCE).slice(1) + '. No friendly casualties.\n\nSeized materials include communications equipment, ' + _pick(['financial records', 'reconnaissance photos', 'operational planning documents', 'weapons components', 'forged identity documents']) + ', and personal effects for forensic analysis.\n\nThe planned {attack_type} against {target} is assessed as permanently disrupted.'; },
-    ],
-    failure: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Teams deployed from staging area. ' + _pick(WEATHER) + '.', deptNarrative(u) + ' approached target building.', 'SIGINT reports: target communications went dark 20 minutes prior to breach.', 'Entry executed — building empty. Evidence of rapid evacuation.', 'Site exploitation yielded minimal intelligence. Targets had sanitized effectively.', '"{alias}" and {cell_size} associates remain at large.', 'Pursuit operations initiated. Local assets alerted.', 'Operation suspended. ' + _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: ' + _pick(COMPROMISE_REASONS).charAt(0).toUpperCase() + _pick(COMPROMISE_REASONS).slice(1) + '. The cell received advance warning and evacuated. ' + (e.length ? e[0].fullName + ' was unable to engage.' : 'No engagement occurred.') + ' Counter-intelligence review recommended.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Launch authorization received. Teams departed staging.', 'Approach compromised — ' + _pick(COMPROMISE_REASONS) + '.', 'Assault element arrived at target location. Signs of recent occupation but no targets present.', 'SIGINT detected burst transmission from target phone — location: ' + _randInt(5, 20) + 'km from original target.', 'Rapid pursuit authorized. Teams redeployed.', 'Secondary location reached — also abandoned. Trail gone cold.', 'Operation called. All units recalled.'], m) + '\n\nASSESSMENT: Cell was tipped off and executed a pre-planned evacuation. {attack_type} threat against {target} remains active. "{alias}" is in the wind. Operational security review mandatory. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([deptNarrative(u) + ' arrived at target compound.', 'Breach initiated via ' + _pick(BREACH_METHODS) + '.', 'Heavy armed resistance encountered. Team pinned at entry point.', _randInt(1, 2) + ' friendly casualt' + (_randInt(1,2) === 1 ? 'y' : 'ies') + ' sustained. Team withdrew to cover.', 'Reinforcements requested. QRF deployed.', 'By the time QRF arrived, targets had escaped via prepared tunnel/exit.', '"{alias}" fled the scene. ' + _pick(FAILURE_AFTERMATH) + '.', 'AO secured but objectives not achieved.'], m) + '\n\nASSESSMENT: Intelligence underestimated the cell\'s defensive preparations. The prepared escape route suggests long-term planning. ' + (e.length ? e[0].fullName + ' sustained no injuries but was unable to prevent target escape. ' : '') + 'Medical evacuation completed. All personnel accounted for.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Teams deployed to target location in {city}.', 'On approach, observed significant civilian presence — school event within 200m.', 'Operation paused pending ROE assessment.', 'During hold, SIGINT detected target communications — cell aware of surveillance.', 'Targets began dispersing. Decision made to abort rather than risk civilian exposure.', '"{alias}" escaped in vehicle. License plate captured but vehicle later found abandoned.', 'Cell dispersed across multiple locations. Tracking capability lost.'], m) + '\n\nASSESSMENT: Rules of engagement correctly prevented action near civilian concentration. However, the delay allowed the cell to scatter. {attack_type} threat remains active. Intelligence suggests the cell will attempt to reconstitute elsewhere. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Assault teams moved to target building at ' + randomZulu(1, 4) + '.', 'Entry achieved but intelligence was outdated — cell had relocated ' + _randInt(24, 72) + ' hours prior.', 'Forensic sweep of vacated premises.', 'HUMINT source re-contacted — source had provided disinformation, possibly under duress.', 'All deployed assets recalled. ' + _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: Source compromise is the most likely explanation. HUMINT handler is conducting urgent reassessment of the asset. "{alias}" and {cell_size} associates are unlocated. The {attack_type} threat against {target} remains credible and active. Source vetting procedures under review.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Teams staged. Final intelligence briefing conducted.', 'Assault initiated. ' + _pick(BREACH_METHODS) + '.', 'Initial entry successful. Ground floor cleared.', 'Upper floor: booby-trapped doorway triggered. ' + _randInt(1, 2) + ' team members injured.', 'Medical evacuation prioritized. Assault momentum lost.', 'Remaining suspects used distraction to flee via rooftop.', '"{alias}" escaped. Building secured but empty.', 'EOD sweep found additional devices. Site declared hazardous.'], m) + '\n\nASSESSMENT: The cell had prepared defensive countermeasures including booby traps, indicating awareness of potential raid. ' + (e.length ? e[0].fullName + ' assisted with casualty evacuation. ' : '') + 'Injured personnel are in stable condition. ' + _pick(FAILURE_AFTERMATH) + '. "{alias}" remains the primary pursuit target.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe operation against the {group} cell in {city} failed to achieve its objectives. ' + deptNarrative(u) + ' executed the planned assault but ' + _pick(COMPROMISE_REASONS) + '. The cell had evacuated the target location before the assault element arrived.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' was deployed but did not engage.' : 'No engagement occurred.') + '\n\nPrimary target "{alias}" and {cell_size} associates are unlocated. The planned {attack_type} against {target} remains a viable threat.\n\n' + _pick(FAILURE_AFTERMATH).charAt(0).toUpperCase() + _pick(FAILURE_AFTERMATH).slice(1) + '. Recommend immediate reassessment of intelligence chain security and activation of contingency tracking assets.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Deployment commenced. Weather: ' + _pick(WEATHER) + '.', 'Approach to target area. Traffic delay — ' + _randInt(8, 20) + ' minute slippage from planned H-hour.', 'SIGINT: target phone activated briefly. Voice analysis: "{alias}" sounded agitated.', 'Assault element arrived at target — partial evacuation in progress.', _randInt(1, 2) + ' suspects detained at scene. "{alias}" not among them.', 'Vehicle pursuit initiated. Lost contact in urban environment after ' + _randInt(5, 15) + ' minutes.', 'Operation concluded without primary objective achieved.'], m) + '\n\nASSESSMENT: Timing slippage proved critical. The cell began evacuation during the approach delay. Detaining ' + _randInt(1, 2) + ' associates may yield intelligence but the core threat remains. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Mission launched. All elements confirmed ready.', 'Target building approached from multiple vectors.', 'Breach executed simultaneously at three entry points.', 'Building occupied by civilians — wrong address. Cell had moved to adjacent structure.', 'Targets in adjacent building observed team and fled on foot.', 'Foot pursuit through dense urban area. Contact lost after ' + _randInt(3, 10) + ' blocks.', 'All units recalled. Wrong-address civilians handled per protocol.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: Intelligence indicated incorrect unit number within the building complex. This error of ' + _randInt(1, 3) + ' digits allowed the cell to observe our assault on the wrong target and flee. "{alias}" and associates are in the wind. Imagery intelligence procedures under urgent review.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([deptNarrative(u) + ' staged at forward location.', 'Received FLASH traffic: {attack_type} already in progress at {target}.', 'All teams immediately redeployed to {target} for consequence management.', 'Arrived on scene. Emergency services already active.', '{casualties} casualties confirmed. Cell had accelerated timeline.', 'Post-incident sweep located no suspects at scene.', '"{alias}" believed to have departed area prior to attack execution.', 'Forensic teams collecting evidence. Investigation transitioned to post-incident phase.'], m) + '\n\nASSESSMENT: The cell accelerated their timeline — possibly in response to awareness of our investigation. The {attack_type} was executed before our operation could prevent it. ' + (e.length ? e[0].fullName + ' assisted with scene security. ' : '') + 'This is a critical intelligence failure requiring full review. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-    ],
-  };
-
-  // ===========================================================================
-  // CATEGORY: FOREIGN HVT / DOMESTIC HVT
-  // ===========================================================================
-
-  const DEBRIEF_HVT = {
-    success: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Target positively identified via ' + _pick(INTEL_QUALITY) + '.', deptNarrative(u) + ' deployed to area of operations.', 'Surveillance confirmed target at location. Pattern of life validated.', 'Assault team moved to contact. Method: ' + _pick(BREACH_METHODS) + '.', _pick(RESISTANCE) + '. Engagement duration: ' + _randInt(30, 180) + ' seconds.', 'Target secured. Identity confirmed via biometric verification.', (e.length ? e[0].fullName + ' oversaw target processing and initial tactical questioning.' : 'Target processed and prepared for transport.'), 'Exfiltration via ' + _pick(EXFIL_METHODS) + '. All teams extracted cleanly.'], m) + '\n\nASSESSMENT: High-value target acquired as planned. Biometric confirmation eliminates misidentification risk. ' + deptNarrative(u) + ' executed the capture without operational exposure. Initial tactical questioning yielded time-sensitive intelligence now being processed.'; },
-      function (m, u, e) { var cs = _pick(CALLSIGNS); return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([cs + ' team inserted via ' + _pick(EXFIL_METHODS) + '.', 'Established observation point. Target sighted at ' + randomZulu(6, 18) + '.', 'Pattern confirmed: target moves between ' + _randInt(2, 4) + ' locations daily.', 'Interdiction window identified. ' + cs + ' moved to ambush position.', 'Target vehicle stopped. Occupants secured. ' + _pick(RESISTANCE) + '.', 'Target identified: positive match. ' + _randInt(1, 3) + ' bodyguards detained.', 'Rapid exfiltration. ' + _pick(EXFIL_METHODS) + '.', cs + ' and target arrived at secure location.'], m) + '\n\nASSESSMENT: Vehicle interdiction was the lowest-risk approach given the target\'s compound security.' + (e.length ? ' ' + e[0].fullName + ' executed the vehicle stop with precision.' : '') + ' Target is now in custody for extended interrogation. Bodyguard detention prevents immediate alerting of target\'s network.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Intelligence finalized. Target location confirmed to ' + _randInt(10, 50) + 'm accuracy.', 'Staging complete. Support asset: ' + _pick(SUPPORT_ASSETS) + '.', 'Teams moved to positions. ' + _pick(WEATHER) + '.', 'Target emerged from compound at ' + randomZulu(5, 20) + '.', 'Approach team closed distance. Target did not detect until too late.', 'Target apprehended. ' + _pick(RESISTANCE) + '.', 'Security detail overwhelmed. ' + _randInt(0, 2) + ' casualties to target\'s protection.', 'Target verified and extracted. All teams RTB within ' + _randInt(30, 90) + ' minutes.'], m) + '\n\nASSESSMENT: Timing was critical — the target\'s emergence created a narrow window that was exploited effectively. ' + deptNarrative(u) + ' coordination between surveillance and assault elements was exemplary.' + (e.length ? ' ' + e[0].fullName + ' provided specialist capabilities during the detention phase.' : ''); },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe target was located, identified, and captured at ' + randomZulu(0, 6) + ' following ' + m.invDays + ' days of investigation. ' + deptNarrative(u) + ' executed a direct-action capture mission against the target\'s position.' + (e.length ? ' Elite asset ' + e[0].fullName + ' was integrated into the assault element.' : '') + '\n\nThe capture operation encountered ' + _pick(RESISTANCE) + '. The target was positively identified through biometric verification and is now in custody at a secure facility.\n\nExfiltration was accomplished via ' + _pick(EXFIL_METHODS) + ' with no pursuit or compromise. Intelligence exploitation of the target and captured materials is underway. Early indicators suggest the target possesses significant knowledge of network operations.'; },
-      function (m, u, e) { var cs = _pick(CALLSIGNS); return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([cs + ' team briefed and equipped. Night operation authorized.', 'Infiltration route confirmed clear by advance party.', 'Target compound reached. ' + _pick(WEATHER) + '.', 'SIGINT confirmed target phone present and active.', cs + ' breached perimeter. ' + _pick(BREACH_METHODS) + '.', 'Target located in ' + _pick(['bedroom', 'main room', 'basement', 'second floor office']) + '. ' + _pick(RESISTANCE) + '.', 'Target detained. All communications equipment seized.', 'Extraction completed via ' + _pick(EXFIL_METHODS) + '. Zero friendly casualties.'], m) + '\n\nASSESSMENT: Night raid achieved complete surprise. Target was unable to destroy communications equipment or alert network. Seized devices are being exploited by technical teams. ' + (e.length ? e[0].fullName + ' ensured clean extraction.' : '') + ' Target is cooperating at initial level.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Target tracked to current location via HUMINT network.', 'Covert reconnaissance established target\'s security posture: ' + _randInt(1, 4) + ' armed guards.', deptNarrative(u) + ' developed assault plan tailored to site layout.', 'Execution commenced at ' + randomZulu(2, 5) + '.', 'Security personnel neutralized with non-lethal methods.', 'Target found attempting to flee. Intercepted at ' + _pick(['rear exit', 'vehicle', 'rooftop', 'perimeter fence']) + '.', 'Target confirmed and secured. All documents and devices collected.', 'Area sanitized. No evidence of operation left for forensic discovery.'], m) + '\n\nASSESSMENT: Target\'s attempted escape was anticipated in planning. Non-lethal engagement with security personnel reduces political risk. ' + (e.length ? 'Elite asset ' + e[0].fullName + ' played key role in intercept.' : 'All teams performed within parameters.') + ' Mission complete.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['HUMINT tip: target meeting associates at specific location. Window: ' + _randInt(2, 6) + ' hours.', deptNarrative(u) + ' scrambled from staging.', 'Arrived at location. Target vehicle identified.', 'Quick reaction force positioned. Surrounding area cleared of civilians.', 'Target exited building. Apprehended on the street. ' + _pick(RESISTANCE) + '.', _randInt(2, 5) + ' associates also detained during the operation.', 'All subjects transported to secure location.', 'Crime scene processed by exploitation team.'], m) + '\n\nASSESSMENT: Opportunistic capture based on time-sensitive HUMINT. The meeting allowed us to capture not just the target but ' + _randInt(2, 5) + ' associates, significantly damaging the network. ' + (e.length ? e[0].fullName + ' led the street apprehension team. ' : '') + 'Tactical flexibility was the key factor in success.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Target under continuous surveillance for ' + _randInt(24, 168) + ' hours.', 'SIGINT intercepted communication revealing target\'s travel plans.', 'Decision: interdict during transit — lower security, higher surprise.', 'Checkpoint established on target\'s route.', 'Target vehicle stopped. ' + _pick(RESISTANCE) + '.', 'Target identified via biometrics in-field.', 'Rapid extraction. ' + _pick(EXFIL_METHODS) + '.', 'All surveillance evidence compiled for prosecution/intelligence file.'], m) + '\n\nASSESSMENT: Transit interdiction avoided the hardened compound entirely. ' + deptNarrative(u) + ' demonstrated excellent planning adaptation. Target is in custody. ' + (e.length ? e[0].fullName + ' coordinated the checkpoint operation.' : ''); },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Intelligence package confirmed. Multiple source corroboration achieved.', 'Target positively located at ' + _pick(['residential compound', 'commercial building', 'rural safehouse', 'urban apartment', 'hotel']) + '.', 'Tactical plan finalized. ' + deptNarrative(u) + ' issued execute order.', 'Approach via ' + _pick(BREACH_METHODS) + '. ' + _pick(WEATHER) + '.', 'Entry achieved. Target located within ' + _randInt(30, 120) + ' seconds of breach.', _pick(RESISTANCE) + '. One security guard disarmed.', 'Target secured and verified. Extraction commenced immediately.', 'All teams clean. RTB via ' + _pick(EXFIL_METHODS) + '.'], m) + '\n\nASSESSMENT: Rapid target acquisition after breach minimized exposure time. The single security guard suggests the target felt secure at this location — intelligence was not compromised prior to execution.' + (e.length ? ' ' + e[0].fullName + ' served as tactical advisor throughout.' : ''); },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nTarget captured alive at ' + randomZulu(1, 6) + ' in a clean operation by ' + deptNarrative(u) + '. The target was located through a combination of ' + _pick(['HUMINT and SIGINT convergence', 'pattern-of-life analysis', 'financial tracking', 'communications intercept', 'partner intelligence sharing']) + '.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' was attached to the mission and provided ' + _pick(['tactical leadership', 'specialist technical support', 'critical breach expertise', 'interrogation capability']) + '. ' : '') + 'The operation lasted ' + _randInt(20, 90) + ' minutes from breach to full extraction.\n\nTarget is now in secure custody. Preliminary questioning indicates willingness to cooperate on specific topics. Full interrogation plan is being developed by the Analysis Bureau.'; },
-    ],
-    failure: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([deptNarrative(u) + ' deployed to target area.', 'On arrival, surveillance detected unusual activity — target compound appeared abandoned.', 'Breach executed as planned. Compound empty.', 'Evidence of rapid departure within last ' + _randInt(2, 12) + ' hours.', 'SIGINT sweep — no electronic emissions from compound.', 'Forensic exploitation of abandoned materials yielded minimal intelligence.', 'All teams extracted. ' + _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: Target received warning and evacuated. ' + _pick(COMPROMISE_REASONS).charAt(0).toUpperCase() + _pick(COMPROMISE_REASONS).slice(1) + '. Target is now alert and will be significantly harder to locate. ' + (e.length ? e[0].fullName + ' was deployed but unable to engage. ' : '') + 'Intelligence chain review initiated.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Assault element reached target location.', 'Breach executed. ' + _pick(BREACH_METHODS) + '.', 'Heavy armed resistance from ' + _randInt(3, 8) + ' security personnel.', 'Extended firefight. ' + _randInt(1, 3) + ' friendly casualties sustained.', 'Target used chaos to escape via prepared route.', 'Pursuit attempted but contact lost at ' + randomZulu(8, 16) + '.', 'Medical evacuation of wounded. AO secured.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: Target\'s security detail was more substantial than intelligence indicated. The prepared escape route suggests the target maintained contingency plans.' + (e.length ? ' ' + e[0].fullName + ' led the assault but was unable to prevent target escape during the firefight.' : '') + ' Wounded personnel are in stable condition. Target is now alerted and mobile.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Target location approached under ' + _pick(WEATHER) + '.', 'Positive identification attempted — failed. Individual at location is NOT the target.', 'Operation immediately aborted per misidentification protocols.', 'False lead traced back to ' + _pick(['outdated HUMINT', 'intercepted disinformation', 'mistaken surveillance identification', 'deliberately planted intelligence']) + '.', 'All teams recalled. No engagement. No exposure.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: The operation was correctly aborted when identification could not be confirmed. Target\'s actual location remains unknown. The false lead suggests ' + _pick(['active counter-intelligence by the target', 'degradation of our source network', 'possible deception operation', 'compartmentalization failures in our intelligence chain']) + '. ' + (e.length ? e[0].fullName + ' made the correct call to abort. ' : '') + 'Source reassessment is the immediate priority.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([deptNarrative(u) + ' staged and ready. Awaiting final authorization.', 'Authorization delayed by ' + _randInt(2, 6) + ' hours due to political considerations.', 'During delay, target departed location.', 'Teams deployed to secondary locations — all negative.', 'SIGINT tracking lost when target switched to new communications.', 'Operation called at ' + randomZulu(12, 22) + '. Target unlocated.'], m) + '\n\nASSESSMENT: Authorization delay was the critical failure point. The target moved during the wait and is now unlocated with new communications protocols. ' + (e.length ? e[0].fullName + ' and team remained on standby throughout but the window closed. ' : '') + 'Recommend pre-authorization protocols for time-sensitive targets. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Teams infiltrated to target area.', 'Target compound breached at ' + randomZulu(1, 5) + '.', 'Target located and engaged. ' + _pick(RESISTANCE) + '.', 'During extraction, local security forces responded to disturbance.', 'Confrontation with local forces. Forced to release target to avoid international incident.', 'Teams extracted under diplomatic cover. No casualties.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: Local security force intervention was not anticipated in the planning phase. The target was physically in custody for approximately ' + _randInt(3, 15) + ' minutes before being released. ' + (e.length ? e[0].fullName + ' managed the confrontation with local forces professionally. ' : '') + 'Target is now fully alert and has likely relocated. Diplomatic channels are being monitored for fallout.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe capture operation failed. ' + deptNarrative(u) + ' reached the target location but ' + _pick(COMPROMISE_REASONS) + '. The target had departed approximately ' + _randInt(1, 8) + ' hours before the assault element arrived.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' was deployed but had no opportunity to engage. ' : '') + 'Site exploitation recovered limited materials but the primary objective — target capture — was not achieved.\n\nThe target is now operating with heightened security awareness. Reacquisition will require a new intelligence approach. ' + _pick(FAILURE_AFTERMATH).charAt(0).toUpperCase() + _pick(FAILURE_AFTERMATH).slice(1) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Infiltration commenced. ' + _pick(WEATHER) + '.', 'Teams approached target via ' + _pick(['overland route', 'urban approach', 'maritime insertion', 'helicopter']) + '.', 'At H-hour, mechanical failure of primary ' + _pick(['vehicle', 'communications gear', 'surveillance equipment', 'breaching equipment']) + '.', 'Contingency equipment deployed — ' + _randInt(15, 45) + ' minute delay.', 'By the time assault was ready, window had closed. Target began moving.', 'Attempted mobile interdiction — target eluded capture in traffic.', 'Operation called. All assets recovered.'], m) + '\n\nASSESSMENT: Equipment failure at the critical moment caused an unrecoverable delay. ' + (e.length ? e[0].fullName + ' attempted to improvise but the tactical advantage was lost. ' : '') + 'Equipment maintenance protocols under review. Target remains at large. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([deptNarrative(u) + ' deployed to target area.', 'Target compound under observation. Confirmed: target present with ' + _randInt(4, 10) + ' armed guards.', 'Assessment: guard force significantly exceeds intelligence estimate.', 'Assault launched despite numerical disadvantage.', 'Entry team met organized resistance. Sustained engagement.', _randInt(1, 3) + ' team members wounded. Fire superiority not achieved.', 'Withdrawal ordered. Target not captured.', 'All personnel extracted. Medical treatment provided.'], m) + '\n\nASSESSMENT: Intelligence underestimated the target\'s security apparatus by a factor of ' + _randInt(2, 4) + '. The assault force was insufficient for the actual defensive capability encountered. ' + (e.length ? e[0].fullName + ' was instrumental in the orderly withdrawal that prevented further casualties. ' : '') + 'Target is now on maximum alert. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-    ],
-  };
-
-  // ===========================================================================
-  // CATEGORY: ASSET RESCUE / HOSTILE RESCUE
-  // ===========================================================================
-
-  const DEBRIEF_RESCUE = {
-    success: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Intelligence confirmed asset/hostage location. ' + _pick(INTEL_QUALITY) + '.', deptNarrative(u) + ' staged at forward operating base.', 'Infiltration route secured. ' + _pick(WEATHER) + '.', 'Assault element moved to target. Method: ' + _pick(BREACH_METHODS) + '.', _pick(RESISTANCE) + '. Guard force engaged.', 'Asset/hostage located alive. ' + _pick(['Condition: stable', 'Condition: injured but ambulatory', 'Condition: shaken but unharmed', 'Condition: malnourished but alert']) + '.', 'Extraction commenced. ' + _pick(EXFIL_METHODS) + '.', 'All teams RTB. Asset/hostage receiving medical attention.'], m) + '\n\nASSESSMENT: Rescue mission successful. ' + (e.length ? e[0].fullName + ' led the rescue element with distinction. ' : '') + 'The asset/hostage is alive and being debriefed. ' + deptNarrative(u) + ' performance was outstanding under difficult conditions.'; },
-      function (m, u, e) { var cs = _pick(CALLSIGNS); return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([cs + ' team received final briefing. Hostage survival probability assessed at ' + _randInt(40, 80) + '%.', 'Insertion via ' + _pick(EXFIL_METHODS) + '. Undetected.', 'Approach to holding location. ' + _pick(WEATHER) + '.', cs + ' initiated breach. Simultaneous distraction on far side of compound.', 'Guards engaged. ' + _randInt(2, 5) + ' hostiles neutralized.', 'Hostage/asset found in ' + _pick(['basement room', 'locked storage area', 'guarded bedroom', 'underground cell']) + '.', 'Immediate extraction. Guards attempted pursuit — suppressed by rear security.', 'Extraction complete. Hostage confirmed alive. ' + cs + ' RTB.'], m) + '\n\nASSESSMENT: Distraction tactic was key to achieving surprise at the holding location. The hostage/asset was held in ' + _pick(['harsh', 'primitive', 'cramped', 'isolated']) + ' conditions but is expected to make full recovery. ' + (e.length ? e[0].fullName + ' personally extracted the hostage from the holding location.' : ''); },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\n' + deptNarrative(u) + ' conducted a rescue operation at ' + randomZulu(0, 5) + ', successfully extracting the asset/hostage from captivity. The operation lasted ' + _randInt(15, 60) + ' minutes from breach to extraction.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' provided critical capability during the rescue phase. ' : '') + 'The holding location was guarded by ' + _randInt(3, 8) + ' armed personnel, all of whom were neutralized. The asset/hostage sustained ' + _pick(['no injuries', 'minor injuries', 'moderate injuries consistent with captivity']) + '.\n\nExtraction was via ' + _pick(EXFIL_METHODS) + '. No pursuit was encountered. Operational security was maintained throughout. The asset/hostage is now receiving medical and psychological support at a secure facility.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['HUMINT network pinpointed hostage location with high confidence.', deptNarrative(u) + ' launched from staging area.', 'Support: ' + _pick(SUPPORT_ASSETS) + ' providing overwatch.', 'Assault team inserted. ' + _pick(BREACH_METHODS) + '.', 'Resistance encountered from ' + _randInt(2, 6) + ' guards. All neutralized within ' + _randInt(60, 180) + ' seconds.', 'Hostage/asset located. Alive. Identity confirmed.', 'Hostage secured and evacuated under protective escort.', 'Site exploited for ' + _randInt(5, 15) + ' minutes. Documents and devices recovered.', 'Full extraction complete. No friendly casualties.'], m) + '\n\nASSESSMENT: Textbook rescue operation. The HUMINT source was critical — without precise location data, a search operation in the target area would have been infeasible. ' + (e.length ? e[0].fullName + ' handled the hostage transfer with care and professionalism.' : ''); },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Target building blueprints obtained from local sources.', 'Rehearsal conducted at staging area using mockup.', 'Teams deployed at ' + randomZulu(0, 3) + '. ' + _pick(WEATHER) + '.', 'Perimeter established. Escape routes blocked.', 'Breach executed per rehearsed plan. ' + _pick(RESISTANCE) + '.', 'Hostage/asset found in expected location. Conscious and responsive.', 'Medical assessment: dehydrated but stable. Able to move unassisted.', 'Exfiltration via pre-positioned ' + _pick(EXFIL_METHODS) + '.', 'Operation concluded at ' + randomZulu(4, 8) + '. All objectives met.'], m) + '\n\nASSESSMENT: Pre-operation rehearsal was a decisive factor. The actual execution closely matched the rehearsed timeline. ' + deptNarrative(u) + ' coordination was excellent.' + (e.length ? ' ' + e[0].fullName + ' contributed specialist skills during the breach phase.' : ''); },
-    ],
-    failure: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([deptNarrative(u) + ' deployed to target location.', 'Breach initiated. Immediate heavy resistance.', 'Guards triggered dead-man switch — building partially collapsed.', 'Rescue team entered rubble. Hostage/asset not found.', 'Extended search of site. Evidence suggests hostage was moved prior to assault.', 'All teams withdrawn. ' + _randInt(1, 2) + ' team members injured from blast.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: The dead-man switch was not anticipated by intelligence. ' + (e.length ? e[0].fullName + ' assisted with casualty management after the blast. ' : '') + 'The hostage/asset was likely moved before the operation. Current location unknown. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Teams reached target area.', 'On approach, guards detected movement. Alert raised.', 'Sound of vehicle engines — captors are moving the hostage/asset.', 'Attempted vehicle pursuit initiated.', 'Captors evaded through ' + _pick(['urban traffic', 'rough terrain', 'narrow alleys', 'rural roads']) + '.', 'Contact lost after ' + _randInt(10, 30) + ' minutes.', 'Secondary SIGINT intercept placed captors heading ' + _pick(['north', 'south', 'east', 'west', 'toward the border']) + '.', 'Pursuit terminated. Trail cold.'], m) + '\n\nASSESSMENT: The captors were alerted during approach and executed a pre-planned evacuation with the hostage. ' + deptNarrative(u) + ' were unable to intercept. ' + (e.length ? e[0].fullName + ' participated in the pursuit element. ' : '') + 'The hostage/asset remains in captivity. New intelligence collection efforts are being initiated. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([deptNarrative(u) + ' infiltrated to target compound.', 'Breach executed. ' + _pick(RESISTANCE) + '.', 'Building cleared room by room. ' + _randInt(3, 6) + ' captors neutralized.', 'Hostage/asset located — deceased. Time of death estimated ' + _randInt(6, 48) + ' hours prior to operation.', 'Evidence suggests captors executed hostage when they became aware of intelligence activity.', 'All remaining captors detained for interrogation.', 'Remains recovered. Site exploited.'], m) + '\n\nASSESSMENT: The hostage/asset was killed before the rescue operation could be executed. This is a critical failure with the most severe possible outcome. ' + (e.length ? e[0].fullName + ' confirmed identification of the remains. ' : '') + 'Evidence suggests the captors detected our intelligence activity and killed the hostage as a precaution. Intelligence security review is mandatory. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Rescue team deployed. ' + _pick(WEATHER) + '.', 'Arrived at target location — intelligence was wrong. Location is a civilian residence.', 'Immediate abort. No engagement.', 'Source re-checked — information was either fabricated or outdated.', 'Hostage/asset location remains unknown.', 'All teams withdrawn without incident.'], m) + '\n\nASSESSMENT: Bad intelligence led the rescue team to the wrong location. No harm was done but the operation achieved nothing. The hostage/asset remains in captivity at an unknown location. ' + (e.length ? e[0].fullName + ' correctly called the abort. ' : '') + 'Intelligence reassessment is the immediate priority. Every hour increases risk to the hostage. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe rescue operation failed. ' + deptNarrative(u) + ' breached the target compound but encountered resistance beyond what was anticipated. During the engagement, the captors moved the hostage/asset through a tunnel system that had not been identified in pre-operation intelligence.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' was engaged throughout the assault and sustained no injuries but could not prevent the hostage transfer. ' : '') + _randInt(2, 4) + ' friendly casualties were sustained. All are in stable condition.\n\nThe tunnel system suggests long-term preparation by the captors. The hostage/asset has been moved to an unknown secondary location. Tracking efforts are being re-initiated. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-    ],
-  };
-
-  // ===========================================================================
-  // CATEGORY: COUNTER-INTEL / MOLE HUNT
-  // ===========================================================================
-
-  const DEBRIEF_COUNTERINTEL = {
-    success: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Counter-intelligence investigation entered final phase.', deptNarrative(u) + ' confirmed target identity through canary trap methodology.', 'Suspect placed under physical and electronic surveillance.', 'Suspect observed making dead-drop at ' + randomZulu(10, 22) + '.', 'Dead-drop recovered. Contents: classified documents matching known leak pattern.', 'Suspect confronted at ' + _pick(['workplace', 'residence', 'during commute', 'at a meeting']) + '. Taken into custody.', 'Initial interview: suspect ' + _pick(['confessed immediately', 'denied all allegations', 'requested legal counsel', 'attempted to negotiate']) + '.', 'Suspect\'s workspace and residence secured for exploitation.'], m) + '\n\nASSESSMENT: The counter-intelligence investigation successfully identified and neutralized the insider threat. ' + (e.length ? e[0].fullName + ' was instrumental in the surveillance phase. ' : '') + 'Damage assessment is underway to determine the scope of compromised intelligence. Preliminary indicators suggest the leak has been active for ' + _randInt(3, 18) + ' months.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Anomalous access patterns flagged by internal security systems.', 'Investigation narrowed suspects to ' + _randInt(3, 8) + ' individuals.', 'Unique documents seeded through suspect pool (canary trap).', 'Leaked document traced to specific individual.', 'Surveillance authorized. Target observed ' + _pick(['photographing documents', 'copying files to personal device', 'meeting known foreign intelligence contact', 'using unauthorized communications equipment']) + '.', 'Target detained under internal security protocols.', 'Digital forensics initiated on target\'s devices. ' + _randInt(2, 10) + ' unauthorized transmissions identified.', 'Case referred for prosecution.'], m) + '\n\nASSESSMENT: The canary trap methodology proved decisive. ' + deptNarrative(u) + ' executed the investigation with appropriate discretion. ' + (e.length ? e[0].fullName + ' provided technical expertise during the digital forensics phase. ' : '') + 'The mole had been providing intelligence to a ' + _pick(['foreign intelligence service', 'hostile state actor', 'non-state adversary', 'competitor organization']) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe counter-intelligence operation identified and neutralized an insider threat that had been active within the organization. ' + deptNarrative(u) + ' conducted the investigation over ' + m.invDays + ' days, culminating in the detention of the compromised individual.\n\n' + (e.length ? 'Elite asset ' + e[0].fullName + ' participated in the final apprehension. ' : '') + 'Key findings:\n• The individual had been passing classified information for approximately ' + _randInt(2, 24) + ' months\n• A total of ' + _randInt(5, 50) + ' documents are confirmed or suspected compromised\n• The handler was a ' + _pick(['known foreign intelligence officer', 'previously unidentified contact', 'diplomatic cover operative', 'online intermediary']) + '\n\nDamage assessment and remediation are the immediate priorities.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Behavioral analysis flagged anomalies in target\'s pattern.', 'Financial investigation revealed unexplained deposits totaling $' + (_randInt(20, 200) * 1000).toLocaleString() + '.', 'Physical surveillance authorized. Target observed living beyond means.', 'SIGINT deployed on target\'s personal communications.', 'Intercepted communication confirming relationship with hostile handler.', 'Arrest operation planned and executed. Target taken at ' + _pick(['office', 'home', 'restaurant meeting', 'parking structure']) + '.', 'Target\'s residence searched. ' + _pick(['Hidden safe discovered', 'Encrypted laptop seized', 'Burn bag with partial documents recovered', 'One-time pad recovered']) + '.', 'Full damage assessment team mobilized.'], m) + '\n\nASSESSMENT: Financial indicators were the first concrete evidence. ' + (e.length ? e[0].fullName + ' led the physical surveillance team that documented critical meetings. ' : '') + 'The scope of compromise appears significant. All operations the target had access to are being reviewed.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Internal review identified access inconsistencies.', deptNarrative(u) + ' opened formal investigation under compartmented authority.', 'Suspect pool established: ' + _randInt(5, 15) + ' individuals with relevant access.', 'Digital forensics identified suspect\'s personal device connecting to classified systems after hours.', 'Physical surveillance confirmed suspect meeting unidentified individual in ' + _pick(['a park', 'a café', 'a parking garage', 'a hotel lobby']) + '.', 'Meeting partner identified as ' + _pick(['known intelligence operative', 'suspected intermediary', 'diplomatic staff member', 'commercial cover officer']) + '.', 'Arrest executed simultaneously at suspect\'s location and handler\'s location.', 'Both individuals in custody. Exploitation of devices underway.'], m) + '\n\nASSESSMENT: Dual arrest prevented the handler from alerting the hostile service. ' + deptNarrative(u) + ' coordination between digital forensics and physical surveillance was excellent. ' + (e.length ? e[0].fullName + ' led the handler apprehension team.' : ''); },
-    ],
-    failure: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Investigation focused on primary suspect.', 'Canary trap documents seeded.', 'No leaks detected — suspect may not be the source.', 'Investigation widened. Additional suspects screened.', 'During investigation, suspect became aware of scrutiny.', 'Suspect " + _pick(["destroyed evidence", "fled the country", "contacted a lawyer pre-emptively", "went to ground"]) + ".', 'Investigation suspended. Insufficient evidence for prosecution.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: The investigation was detected by the suspect, who took evasive action. ' + (e.length ? e[0].fullName + ' was unable to gather sufficient evidence before the suspect reacted. ' : '') + 'The mole may still be active or may have been warned by a second insider. The scope of the problem may be larger than initially assessed. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Investigation converged on suspect.', 'Surveillance authorized and initiated.', 'Suspect appeared to cease all suspicious activity during surveillance period.', 'Investigation stalled — no actionable evidence obtained.', 'Surveillance resources reallocated after ' + _randInt(14, 60) + ' days with no results.', 'Within ' + _randInt(3, 14) + ' days of surveillance end, new leak detected.', 'Assessment: suspect detected surveillance and waited it out.'], m) + '\n\nASSESSMENT: The suspect demonstrated counter-surveillance awareness that exceeded our expectations. ' + deptNarrative(u) + ' surveillance was professional but the subject is clearly trained. ' + (e.length ? e[0].fullName + ' notes the suspect\'s tradecraft suggests professional intelligence training.' : '') + ' The leak continues. Alternative investigative approaches must be developed.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe counter-intelligence investigation failed to identify the source of the leak. ' + deptNarrative(u) + ' conducted an extensive investigation over ' + m.invDays + ' days but were unable to develop sufficient evidence against any suspect.\n\n' + (e.length ? 'Elite asset ' + e[0].fullName + ' contributed to the investigation but the target\'s counter-measures were effective. ' : '') + 'Key failures:\n• Canary trap produced inconclusive results\n• Physical surveillance detected by suspect\n• Digital forensics found no unauthorized access from monitored accounts\n\nThe leak remains active. Intelligence damage continues to accumulate. A fundamental reassessment of investigative approach is required.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Investigation identified three potential suspects.', 'Resources committed to monitoring all three simultaneously.', 'Suspect A cleared — legitimate explanation for anomalies.', 'Suspect B cleared — access patterns explained by authorized work.', 'Suspect C: investigation ongoing when leaks accelerated.', 'Emergency containment measures implemented. Access restricted.', 'Suspect C resigned and left the country within 48 hours.', 'By the time arrest order was issued, suspect had reached non-extradition jurisdiction.'], m) + '\n\nASSESSMENT: The suspect escaped before the investigation could conclude. The timing of the resignation strongly suggests the suspect was aware of the investigation. ' + (e.length ? e[0].fullName + ' attempted to accelerate the evidence gathering but the suspect moved faster. ' : '') + 'Diplomatic options for rendition are being explored. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-    ],
-  };
-
-  // ===========================================================================
-  // CATEGORY: RENDITION
-  // ===========================================================================
-
-  const DEBRIEF_RENDITION = {
-    success: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Target located and pattern of life established.', deptNarrative(u) + ' positioned along primary route.', 'Interdiction point selected: ' + _pick(['quiet intersection', 'parking structure', 'isolated road section', 'gas station']) + '.', 'Target vehicle stopped. Occupants secured in under 90 seconds.', 'Target identified via biometrics. Transfer to prepared vehicle.', 'Dummy vehicle staged at scene. Evidence sanitized.', _pick(EXFIL_METHODS) + ' to transfer point.', 'Target delivered to receiving facility. Documentation transferred.'], m) + '\n\nASSESSMENT: Clean rendition with no witnesses and no evidence trail. ' + deptNarrative(u) + ' execution was precise. ' + (e.length ? e[0].fullName + ' managed the target during transit.' : '') + ' Target is now at the designated facility for interrogation. Cover story for target\'s disappearance is being seeded through appropriate channels.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Pre-positioned assets confirmed target routine.', 'Rendition plan approved. Legal authorities confirmed.', 'Target approached at ' + _pick(['residence', 'workplace exit', 'regular meeting location', 'morning commute']) + '.', 'Covert acquisition: target sedated and loaded into prepared vehicle.', 'No witnesses. Counter-surveillance team confirmed clean operation.', 'Transit to airstrip. Target transferred to ' + _pick(['chartered aircraft', 'military transport', 'commercial cover flight']) + '.', 'Target arrived at designated facility at ' + randomZulu(6, 18) + '.', 'Handoff to interrogation team completed.'], m) + '\n\nASSESSMENT: Rendition executed with full deniability. ' + (e.length ? e[0].fullName + ' supervised target care during transit to ensure arrival in interrogation-ready condition. ' : '') + 'No media or public awareness. Cover legend for target\'s absence is in place.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nTarget successfully rendered from operating environment to designated secure facility. ' + deptNarrative(u) + ' executed the acquisition at ' + randomZulu(1, 5) + ' using a ' + _pick(['vehicle interdiction', 'foot approach', 'staged encounter', 'hotel room entry']) + ' methodology.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' provided tactical oversight throughout. ' : '') + 'The target was transported via ' + _pick(EXFIL_METHODS) + ' and arrived at the receiving facility ' + _randInt(4, 18) + ' hours after acquisition.\n\nThe operation left no forensic evidence. The cover story for the target\'s disappearance is consistent with their known activities. No family or associate inquiries have been received as of this report.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Surveillance team confirmed target\'s daily pattern.', 'Rendition team staged at acquisition point.', 'Target arrived at predicted time. Solo, no security.', 'Approach team moved. Target acquired within ' + _randInt(15, 45) + ' seconds.', 'Target transported to safe house for initial processing.', 'Documents, phone, and personal effects catalogued and secured.', 'Secondary transport via ' + _pick(EXFIL_METHODS) + ' to final facility.', 'Target delivered. Chain of custody documented.'], m) + '\n\nASSESSMENT: Solo target with no security made acquisition straightforward. ' + deptNarrative(u) + ' adapted well to the opportunity. ' + (e.length ? e[0].fullName + ' conducted initial processing at the safe house. ' : '') + 'Target\'s phone is being exploited for contacts and communications history.'; },
-    ],
-    failure: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Rendition team positioned at acquisition point.', 'Target arrived but accompanied by ' + _randInt(2, 4) + ' unexpected associates.', 'Acquisition attempted — associates resisted. Public scene developed.', 'Local police responded within ' + _randInt(3, 8) + ' minutes.', 'Team forced to abort. Target fled during confusion.', 'Team extracted using emergency protocols.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: Target was not alone as intelligence predicted. The public confrontation compromised operational security. ' + (e.length ? e[0].fullName + ' managed the emergency extraction effectively. ' : '') + 'Target is now aware of the rendition attempt and will be extremely difficult to reacquire. Local law enforcement may have descriptions of team members. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Target acquired successfully.', 'During transport, target\'s vehicle tracked by unknown surveillance team.', 'Counter-surveillance detected ' + _randInt(1, 3) + ' follow vehicles.', 'Evasive driving initiated. Pursuit continued.', 'Decision made to release target to avoid compromise of transport network.', 'Target released at ' + _pick(['urban location', 'roadside', 'populated area']) + '. All identifying materials recovered.', 'Team executed emergency extraction via alternate route.'], m) + '\n\nASSESSMENT: An unknown surveillance entity was tracking the target independently. This could be a ' + _pick(['hostile intelligence service', 'local law enforcement investigation', 'private security detail', 'rival organization']) + '. The rendition was correctly aborted to protect the transport network. ' + (e.length ? e[0].fullName + ' made the release decision, which is endorsed. ' : '') + 'Target is now fully alert. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Rendition team deployed to target location.', 'Target not present at expected location.', 'SIGINT indicates target departed the area ' + _randInt(12, 48) + ' hours ago.', 'Secondary locations checked — all negative.', 'Target appears to have left the country.', 'Border crossing records being requested through liaison channels.', 'Operation terminated. Target unlocated.'], m) + '\n\nASSESSMENT: Target departed before the rendition team was in position. ' + _pick(COMPROMISE_REASONS) + '. ' + (e.length ? e[0].fullName + ' led the secondary location searches but found nothing. ' : '') + 'The target is now in a non-accessible location. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-    ],
-  };
-
-  // ===========================================================================
-  // CATEGORY: REGIME OP
-  // ===========================================================================
-
-  const DEBRIEF_REGIME = {
-    success: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Destabilization assets activated. Ground network confirmed operational.', deptNarrative(u) + ' initiated primary operation phase.', 'Key infrastructure target ' + _pick(['disabled', 'neutralized', 'disrupted', 'compromised']) + '.', 'Local opposition elements executed coordinated actions on schedule.', 'Target regime security forces responded but were ' + _pick(['overwhelmed', 'divided', 'confused by contradictory orders', 'unable to coordinate']) + '.', 'Primary objective achieved. Regime control weakened in target area.', 'All foreign personnel extracted via ' + _pick(EXFIL_METHODS) + '.', 'Post-operation assessment: regime stability degraded by estimated ' + _randInt(15, 40) + '%.'], m) + '\n\nASSESSMENT: Covert regime operation achieved primary objectives. ' + deptNarrative(u) + ' maintained deniability throughout. ' + (e.length ? e[0].fullName + ' coordinated with local opposition forces effectively. ' : '') + 'No attribution to our agency is expected. The destabilization effect will compound over the coming weeks.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\n' + deptNarrative(u) + ' conducted a covert operation to ' + _pick(['undermine regime authority', 'support opposition forces', 'disrupt regime command and control', 'neutralize key regime capabilities']) + '. The operation lasted ' + _randInt(3, 14) + ' days from initiation to withdrawal.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' was embedded with local forces and provided ' + _pick(['tactical training', 'communications support', 'intelligence coordination', 'direct-action capability']) + '. ' : '') + 'All objectives were met:\n• Primary target ' + _pick(['neutralized', 'compromised', 'disrupted']) + '\n• Local assets performed as trained\n• All foreign personnel extracted without incident\n• No attribution to sponsoring agency\n\nStrategic assessment: the operation has significantly advanced policy objectives in the region.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Ground team confirmed local network readiness.', 'Phase 1: Information operation launched — regime communications disrupted.', 'Phase 2: Key regime official defected with assistance from our assets.', 'Phase 3: Opposition elements seized control of ' + _pick(['media facilities', 'government building', 'military installation', 'border crossing']) + '.', 'Regime response was disorganized. Our SIGINT monitored their confusion in real-time.', 'All agency personnel pulled back to safe locations.', 'Defected official extracted via ' + _pick(EXFIL_METHODS) + '.', 'Operation concluded. All assets accounted for.'], m) + '\n\nASSESSMENT: Multi-phase operation executed on schedule. The defection of the regime official was the decisive moment.' + (e.length ? ' ' + e[0].fullName + ' handled the defector extraction personally.' : '') + ' Strategic impact will unfold over weeks. Our fingerprints are not on this.'; },
-    ],
-    failure: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([deptNarrative(u) + ' initiated operation.', 'Local assets failed to execute coordinated actions — possible infiltration of network.', 'Regime security forces responded faster than anticipated.', 'Key opposition contact arrested. Network partially compromised.', 'Agency personnel detected and pursued. Emergency extraction initiated.', 'Extraction via ' + _pick(EXFIL_METHODS) + '. ' + _randInt(0, 1) + ' team member(s) sustained injuries.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: The local network was likely penetrated by regime counter-intelligence. ' + (e.length ? e[0].fullName + ' ensured all agency personnel were extracted despite the compromise. ' : '') + 'The regime is now aware of external interference and will harden its defenses. Local assets in detention face serious risk. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe regime operation failed. ' + deptNarrative(u) + ' were unable to achieve primary objectives due to ' + _pick(['regime counter-intelligence penetration of our local network', 'unexpected military reinforcement of the target area', 'failure of local opposition elements to act', 'compromise of communications security']) + '.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' managed the emergency withdrawal effectively. ' : '') + 'All agency personnel have been extracted. However, ' + _randInt(2, 6) + ' local assets are unaccounted for and presumed detained.\n\nThe regime will likely use this incident for propaganda purposes. Diplomatic cover stories are being prepared. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-    ],
-  };
-
-  // ===========================================================================
-  // CATEGORY: SURVEILLANCE / LONG HUNT / ABDUCTION (HVT phases)
-  // ===========================================================================
-
-  const DEBRIEF_SURVEILLANCE = {
-    success: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Surveillance package deployed. ' + _pick(SUPPORT_ASSETS) + ' tasked.', deptNarrative(u) + ' established observation positions.', 'Target movements mapped over ' + _randInt(3, 14) + ' day period.', 'SIGINT collected ' + _randInt(20, 200) + ' communications intercepts.', 'Key meeting observed with ' + _randInt(1, 4) + ' previously unknown associates.', 'Pattern of life fully established. Safe houses identified.', 'Surveillance package withdrawn without detection.', 'Final intelligence package compiled and delivered.'], m) + '\n\nASSESSMENT: Surveillance operation achieved all intelligence objectives without alerting the target. ' + deptNarrative(u) + ' maintained covert posture throughout. ' + (e.length ? e[0].fullName + ' identified key associate that was previously unknown. ' : '') + 'The intelligence product enables direct-action planning.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nExtended surveillance of the target has been completed. ' + deptNarrative(u) + ' collected comprehensive intelligence on the target\'s movements, security, communications, and associates over a ' + _randInt(5, 21) + ' day operation.\n\n' + (e.length ? 'Elite asset ' + e[0].fullName + ' provided specialized collection capability. ' : '') + 'Key products:\n• Complete pattern of life\n• ' + _randInt(2, 5) + ' safe house locations confirmed\n• ' + _randInt(3, 8) + ' associates identified\n• Communications patterns mapped\n• Security detail composition: ' + _randInt(2, 6) + ' personnel\n\nThe target remains unaware of the surveillance. All collection positions have been sanitized.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['HUMINT source provided initial target location.', 'Technical surveillance package emplaced: ' + _pick(SUPPORT_ASSETS) + '.', 'Day ' + _randInt(1, 3) + ': Target confirmed at location. Baseline established.', 'Day ' + _randInt(4, 7) + ': Target traveled to secondary site. Both locations now monitored.', 'Day ' + _randInt(8, 12) + ': Critical meeting observed. Target met with ' + _pick(['weapons supplier', 'financial courier', 'senior network leader', 'foreign liaison']) + '.', 'Final collection period. All gaps in intelligence closed.', 'Surveillance withdrawn. Sites sanitized.'], m) + '\n\nASSESSMENT: The critical meeting observation was the highest-value product of the entire surveillance period. ' + (e.length ? e[0].fullName + ' was responsible for documenting this meeting. ' : '') + deptNarrative(u) + ' rotation schedule prevented detection throughout the extended operation.'; },
-    ],
-    failure: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([deptNarrative(u) + ' established surveillance positions.', 'Day ' + _randInt(1, 3) + ': Initial collection successful. Target observed.', 'Day ' + _randInt(4, 6) + ': Target conducted counter-surveillance run. Our team detected.', 'Target altered behavior immediately. Communications switched to new protocols.', 'Surveillance value degraded to zero. Operation terminated.', 'All positions withdrawn. ' + _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: Target detected our surveillance. ' + (e.length ? e[0].fullName + ' noted the target\'s counter-surveillance was sophisticated. ' : '') + 'The intelligence already collected has partial value but the target is now aware and has changed patterns. Reestablishing surveillance will require a fundamentally different approach. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Surveillance team deployed to target area.', 'Target not present at reported location.', 'Extended search of surrounding area — no trace.', 'SIGINT unable to locate target\'s communications.', 'HUMINT sources re-tasked but unable to reacquire.', 'After ' + _randInt(5, 14) + ' days with no contact, operation suspended.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: The target has gone to ground or relocated. Intelligence was stale by the time the surveillance team was in position. ' + deptNarrative(u) + ' conducted thorough area searches without success. ' + (e.length ? e[0].fullName + ' recommends fresh intelligence sourcing before re-attempting. ' : '') + 'The target remains a priority but cannot currently be located.'; },
-    ],
-  };
-
-  // ===========================================================================
-  // CATEGORY: ORG INFILTRATION / ORG TAKEDOWN
-  // ===========================================================================
-
-  const DEBRIEF_ORG = {
-    success: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Infiltration operation concluded. Agent extracted safely.', deptNarrative(u) + ' compiled final intelligence product.', 'Organization structure mapped: ' + _randInt(3, 8) + ' cells identified.', 'Key leadership identified and documented.', 'Financial flows traced to ' + _randInt(2, 5) + ' funding sources.', 'Communications architecture fully compromised.', 'Agent debriefed over ' + _randInt(2, 5) + ' sessions.', 'Final report delivered. Organization is now vulnerable to direct action.'], m) + '\n\nASSESSMENT: The infiltration produced exceptional intelligence. ' + deptNarrative(u) + ' managed the agent throughout with no compromise. ' + (e.length ? e[0].fullName + ' conducted the debriefing sessions and extracted critical details. ' : '') + 'The organization can now be targeted with high confidence. Recommend transitioning to takedown phase.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe infiltration operation against the target organization was successful. Our agent penetrated the organization\'s inner circle and maintained position for ' + _randInt(2, 8) + ' months.\n\n' + (e.length ? 'Elite asset ' + e[0].fullName + ' served as the primary handler for the infiltration agent. ' : '') + 'Intelligence collected includes:\n• Complete organizational chart with ' + _randInt(10, 40) + ' identified members\n• Financial network mapping\n• Operational planning documents\n• Communications encryption keys\n• Safe house locations (' + _randInt(3, 7) + ' sites)\n\nThe agent was extracted without compromise. Cover identity remains intact for potential re-insertion.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Coordinated takedown initiated at ' + randomZulu(2, 5) + '.', 'Simultaneous raids at ' + _randInt(3, 7) + ' locations.', deptNarrative(u) + ' teams executed primary targets.', _randInt(8, 25) + ' individuals detained in first wave.', 'Organization leadership captured: ' + _randInt(2, 5) + ' senior members.', 'Financial assets frozen via partner agency coordination.', 'Communications infrastructure dismantled.', 'Second wave arrests over following ' + _randInt(12, 48) + ' hours: ' + _randInt(5, 15) + ' additional detentions.', 'Organization assessed as operationally destroyed.'], m) + '\n\nASSESSMENT: Coordinated takedown destroyed the organization\'s operational capability. ' + (e.length ? e[0].fullName + ' led the primary target raid. ' : '') + deptNarrative(u) + ' executed simultaneous actions with precision. The organization\'s ability to reconstitute is assessed as LOW. Intelligence exploitation of seized materials is ongoing.'; },
-    ],
-    failure: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Infiltration agent reported compromise suspected.', 'Emergency extraction protocol activated.', 'Agent reached safe house but was followed.', 'Organization security elements surrounded safe house.', 'QRF deployed. Agent extracted under fire.', _randInt(0, 1) + ' casualt' + (_randInt(0,1) === 1 ? 'y' : 'ies') + ' sustained.', 'Organization has gone dark. All known locations abandoned.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: The agent was compromised within the organization. ' + (e.length ? e[0].fullName + ' led the QRF extraction and saved the agent\'s life. ' : '') + 'Intelligence collected before compromise has partial value but the organization is now fully alert and has relocated. Rebuilding an infiltration capability will take months. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Takedown operation launched at ' + randomZulu(2, 5) + '.', 'Primary target location raided — key leadership absent.', 'Intelligence indicates organization received advance warning.', _randInt(3, 8) + ' low-level members detained but leadership escaped.', 'Secondary and tertiary locations also largely empty.', 'Organization communications went dark ' + _randInt(4, 12) + ' hours before the operation.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: The organization was warned. ' + _pick(COMPROMISE_REASONS).charAt(0).toUpperCase() + _pick(COMPROMISE_REASONS).slice(1) + '. Only low-level personnel were captured. Leadership and core capabilities have dispersed. ' + (e.length ? e[0].fullName + ' notes the evacuated sites showed evidence of pre-planned emergency procedures. ' : '') + 'The organization will likely reconstitute under new operational security measures. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-    ],
-  };
-
-  // ===========================================================================
-  // CATEGORY: FAVOR MISSIONS (all types)
-  // ===========================================================================
-
-  const DEBRIEF_FAVOR = {
-    success: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Inter-agency coordination established. Requesting agency briefed our team.', deptNarrative(u) + ' deployed to area of operations.', 'Mission parameters confirmed with partner agency liaison.', 'Primary objective executed. ' + _pick(RESISTANCE) + '.', 'Objective achieved. Evidence/intelligence secured.', 'Results package compiled and delivered to requesting agency.', 'All agency personnel extracted. Operation closed.'], m) + '\n\nASSESSMENT: Inter-agency favor completed successfully. ' + deptNarrative(u) + ' demonstrated interoperability with partner requirements. ' + (e.length ? e[0].fullName + ' served as primary liaison during the operation. ' : '') + 'Relationship with requesting agency strengthened. The favor is expected to yield reciprocal cooperation in future operations.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe requested inter-agency operation has been completed. ' + deptNarrative(u) + ' executed the mission on behalf of the partner agency, achieving all stated objectives.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' was deployed and contributed to mission success. ' : '') + 'Key results:\n• Primary objective: ACHIEVED\n• Collateral considerations: WITHIN PARAMETERS\n• Operational security: MAINTAINED\n• Partner agency assessment: SATISFIED\n\nThe successful completion of this favor strengthens our inter-agency relationship and builds operational capital for future requests.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline(['Partner agency request received and authorized.', 'Joint planning session established operational framework.', deptNarrative(u) + ' commenced execution.', 'Phase 1 complete: ' + _pick(['target located', 'area secured', 'surveillance established', 'assets positioned']) + '.', 'Phase 2 complete: ' + _pick(['objective neutralized', 'target acquired', 'intelligence collected', 'extraction accomplished']) + '.', 'Results confirmed and documented for partner agency.', 'Formal handover of results to requesting agency.', 'All personnel returned. Debrief complete.'], m) + '\n\nASSESSMENT: Efficient execution of partner request. ' + deptNarrative(u) + ' adapted to unfamiliar operational requirements smoothly. ' + (e.length ? e[0].fullName + ' provided capabilities beyond what the partner agency expected. ' : '') + 'Favor documented for future reciprocal use.'; },
-    ],
-    failure: [
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nOPERATION TIMELINE:\n' + buildTimeline([deptNarrative(u) + ' deployed for inter-agency operation.', 'Initial approach to objective encountered unexpected complications.', _pick(COMPROMISE_REASONS).charAt(0).toUpperCase() + _pick(COMPROMISE_REASONS).slice(1) + '.', 'Objective not achieved. Teams withdrawn.', 'Partner agency notified of failure.', _pick(FAILURE_AFTERMATH) + '.'], m) + '\n\nASSESSMENT: The inter-agency favor failed. ' + deptNarrative(u) + ' were unable to complete the requested operation. ' + (e.length ? e[0].fullName + ' managed the withdrawal professionally. ' : '') + 'This failure will negatively impact the relationship with the requesting agency. They may be less willing to support our future requests. ' + _pick(FAILURE_AFTERMATH) + '.'; },
-      function (m, u, e) { return 'DEPLOYED ASSETS: ' + deptNarrative(u) + (e.length ? ' · Elite: ' + eliteNarrative(e) : '') + '\n\nEXECUTIVE SUMMARY:\nThe requested inter-agency operation has failed. ' + deptNarrative(u) + ' deployed but were unable to achieve the stated objectives due to ' + _pick(['inadequate intelligence from the requesting agency', 'unexpected opposition at the target location', 'timing failures that closed the operational window', 'equipment malfunctions at a critical moment', 'target awareness that rendered the approach non-viable']) + '.\n\n' + (e.length ? 'Elite operator ' + e[0].fullName + ' was deployed but the overall mission parameters made success impossible. ' : '') + 'The partner agency has been briefed on the outcome. Relationship impact is assessed as negative. Remedial diplomatic engagement recommended.'; },
-    ],
-  };
-
-  // ===========================================================================
-  // MISSION TYPE → DEBRIEF CATEGORY MAPPING
-  // ===========================================================================
-
-  const TYPE_MAP = {
-    DOMESTIC_TERROR: DEBRIEF_DOMESTIC_TERROR,
-    FOREIGN_HVT: DEBRIEF_HVT,
-    DOMESTIC_HVT: DEBRIEF_HVT,
-    ASSET_RESCUE: DEBRIEF_RESCUE,
-    HOSTILE_RESCUE: DEBRIEF_RESCUE,
-    COUNTER_INTEL: DEBRIEF_COUNTERINTEL,
-    MOLE_HUNT: DEBRIEF_COUNTERINTEL,
-    RENDITION: DEBRIEF_RENDITION,
-    REGIME_OP: DEBRIEF_REGIME,
-    SURVEILLANCE_TAKEDOWN: DEBRIEF_ORG,
-    LONG_HUNT_HVT: DEBRIEF_HVT,
-    HVT_SURVEILLANCE_DOM: DEBRIEF_SURVEILLANCE,
-    HVT_SURVEILLANCE_FOR: DEBRIEF_SURVEILLANCE,
-    HVT_ABDUCTION_DOM: DEBRIEF_HVT,
-    HVT_ABDUCTION_FOR: DEBRIEF_HVT,
-    ORG_INFILTRATION: DEBRIEF_ORG,
-    ORG_TAKEDOWN: DEBRIEF_ORG,
-    FAVOR_BUREAU_SURVEILLANCE: DEBRIEF_FAVOR,
-    FAVOR_BUREAU_DISRUPTION: DEBRIEF_FAVOR,
-    FAVOR_BUREAU_DETENTION: DEBRIEF_FAVOR,
-    FAVOR_AGENCY_RENDITION: DEBRIEF_FAVOR,
-    FAVOR_AGENCY_EXTRACTION: DEBRIEF_FAVOR,
-    FAVOR_AGENCY_COVER: DEBRIEF_FAVOR,
-    FAVOR_MIL_RESCUE: DEBRIEF_FAVOR,
-    FAVOR_MIL_SIGINT: DEBRIEF_FAVOR,
-    FAVOR_MIL_STRIKE: DEBRIEF_FAVOR,
+  var GENERATORS = {
+    DOMESTIC_TERROR: gen_DOMESTIC_TERROR,
+    FOREIGN_HVT: gen_HVT,
+    DOMESTIC_HVT: gen_HVT,
+    LONG_HUNT_HVT: gen_HVT,
+    HVT_ABDUCTION_DOM: gen_HVT,
+    HVT_ABDUCTION_FOR: gen_HVT,
+    ASSET_RESCUE: gen_RESCUE,
+    HOSTILE_RESCUE: gen_RESCUE,
+    COUNTER_INTEL: gen_COUNTERINTEL,
+    MOLE_HUNT: gen_COUNTERINTEL,
+    RENDITION: gen_RENDITION,
+    REGIME_OP: gen_REGIME,
+    HVT_SURVEILLANCE_DOM: gen_SURVEILLANCE,
+    HVT_SURVEILLANCE_FOR: gen_SURVEILLANCE,
+    SURVEILLANCE_TAKEDOWN: gen_ORG,
+    ORG_INFILTRATION: gen_ORG,
+    ORG_TAKEDOWN: gen_ORG,
+    FAVOR_BUREAU_SURVEILLANCE: gen_FAVOR,
+    FAVOR_BUREAU_DISRUPTION: gen_FAVOR,
+    FAVOR_BUREAU_DETENTION: gen_FAVOR,
+    FAVOR_AGENCY_RENDITION: gen_FAVOR,
+    FAVOR_AGENCY_EXTRACTION: gen_FAVOR,
+    FAVOR_AGENCY_COVER: gen_FAVOR,
+    FAVOR_MIL_RESCUE: gen_FAVOR,
+    FAVOR_MIL_SIGINT: gen_FAVOR,
+    FAVOR_MIL_STRIKE: gen_FAVOR,
   };
 
   // ===========================================================================
   // MAIN ENTRY POINT
   // ===========================================================================
 
-  /**
-   * Generate an after-action debrief for a resolved mission.
-   * @param {object} m - The mission object
-   * @param {boolean} success - Whether the operation succeeded
-   * @returns {string} HTML-formatted debrief text
-   */
   window.generateDebrief = function (m, success) {
-    const mtype = m.typeId || m.missionType || m.type;
-    const pool = TYPE_MAP[mtype];
-    if (!pool) return '';
+    var mtype = m.typeId || m.missionType || m.type;
+    var gen = GENERATORS[mtype];
+    if (!gen) return '';
 
-    const variants = success ? pool.success : pool.failure;
-    if (!variants || !variants.length) return '';
+    var units = getUnits(m);
+    var elites = getElites(m);
+    var html = gen(m, units, elites, success);
 
-    const units = getDeployedUnits(m);
-    const elites = getElites(m);
-
-    // Pick a random debrief template and execute it
-    const template = _pick(variants);
-    let text = template(m, units, elites);
-
-    // Fill any remaining template vars from mission fillVars
-    const fillV = m.isMultiPhase ? (m.currentPhaseFillVars || m.fillVars) : m.fillVars;
+    // Fill remaining template vars
+    var fillV = m.isMultiPhase ? (m.currentPhaseFillVars || m.fillVars) : m.fillVars;
     if (fillV && typeof fillTemplate === 'function') {
-      text = fillTemplate(text, fillV);
+      html = fillTemplate(html, fillV);
     }
 
-    // Build the full debrief with header
-    const header = debriefHeader(m, success);
-    const cls = success ? 'success' : 'failure';
-    return '<div class="debrief-section ' + cls + '">' +
-      '<div class="debrief-toggle" onclick="this.parentElement.classList.toggle(\'debrief-open\')">' +
-      '<span class="debrief-toggle-icon">&#9654;</span> FULL AFTER-ACTION REPORT' +
+    return '<div class="db-wrap ' + (success ? 'db-success' : 'db-failure') + '">' +
+      '<div class="db-toggle" onclick="this.parentElement.classList.toggle(\'db-open\')">' +
+        '<span class="db-toggle-arrow">&#9654;</span>' +
+        '<span class="db-toggle-label">FULL OPERATIONAL DEBRIEF</span>' +
       '</div>' +
-      '<pre class="debrief-content">' + header + '\n' + text + '</pre>' +
-      '</div>';
+      '<div class="db-body">' + html + '</div>' +
+    '</div>';
   };
 
 })();
