@@ -1385,24 +1385,36 @@ function openOperationModal(missionId) {
   const initProb = calcOpProb(m, defBudget, selectedDepts, []);
 
   // Build department rows: recommended first, then others
+  // Restrict incompatible departments: FOREIGN_OPS can't do domestic, FIELD_OPS can't do foreign
+  const restrictedDepts = m.location === 'DOMESTIC' ? ['FOREIGN_OPS'] : m.location === 'FOREIGN' ? ['FIELD_OPS', 'COUNTER_INTEL'] : [];
+
+  // Fix stale execDepts from geopolitics relocation (safety net for old saves)
+  if (m.location === 'FOREIGN' && m.execDepts.includes('FIELD_OPS')) {
+    m.execDepts = m.execDepts.map(d => d === 'FIELD_OPS' ? 'FOREIGN_OPS' : d).filter(d => d !== 'COUNTER_INTEL');
+  } else if (m.location === 'DOMESTIC' && m.execDepts.includes('FOREIGN_OPS')) {
+    m.execDepts = m.execDepts.map(d => d === 'FOREIGN_OPS' ? 'FIELD_OPS' : d);
+  }
+
   const buildDeptRow = (did, isRec) => {
     const dept  = G.depts[did];
     const cfg   = DEPT_CONFIG.find(d => d.id === did);
     const avail = deptAvail(did);
     const total = dept.capacity;
-    const canSelect = avail > 0;
+    const restricted = restrictedDepts.includes(did);
+    const canSelect = avail > 0 && !restricted;
     const sel       = selectedDepts.includes(did);
-    return `<div class="modal-dept-check ${sel ? 'selected' : ''} ${canSelect ? '' : 'unavail'}"
+    const restrictTip = restricted ? (did === 'FOREIGN_OPS' ? 'Foreign Operations cannot be deployed on domestic soil.' : did === 'COUNTER_INTEL' ? 'Counter-Intelligence operates exclusively within domestic jurisdiction.' : 'Domestic field teams have no jurisdiction abroad.') : '';
+    return `<div class="modal-dept-check ${sel ? 'selected' : ''} ${canSelect ? '' : 'unavail'} ${restricted ? 'restricted' : ''}"
       data-dept="${did}" onclick="toggleExecDept('${did}','${missionId}')"
-      data-tip="${cfg?.tip || ''}">
+      data-tip="${restricted ? restrictTip : (cfg?.tip || '')}">
       <span class="modal-dept-check-name">${dept.short}</span>
       <span class="modal-dept-avail">${avail}/${total}</span>
       <span class="modal-dept-check-status" style="color:${isRec ? 'var(--accent)' : 'var(--text-dim)'};font-size:9px">${isRec ? 'REC' : 'OPT'}</span>
-      <span class="modal-dept-check-status" style="color:${avail > 0 ? 'var(--green)' : 'var(--red)'}">${avail > 0 ? 'AVAIL' : 'FULL'}</span>
+      <span class="modal-dept-check-status" style="color:${restricted ? 'var(--text-dim)' : avail > 0 ? 'var(--green)' : 'var(--red)'}">${restricted ? 'N/A' : avail > 0 ? 'AVAIL' : 'FULL'}</span>
     </div>`;
   };
 
-  const recRows   = m.execDepts.map(did => buildDeptRow(did, true)).join('');
+  const recRows   = m.execDepts.filter(did => !restrictedDepts.includes(did)).map(did => buildDeptRow(did, true)).join('');
   const otherRows = DEPT_CONFIG.filter(d => !m.execDepts.includes(d.id))
                                .map(d => buildDeptRow(d.id, false)).join('');
 
@@ -1500,6 +1512,12 @@ function openOperationModal(missionId) {
 }
 
 window.toggleExecDept = function(deptId, missionId) {
+  const m = getMission(missionId);
+  // Enforce location restrictions
+  if (m) {
+    if (m.location === 'DOMESTIC' && deptId === 'FOREIGN_OPS') return;
+    if (m.location === 'FOREIGN' && (deptId === 'FIELD_OPS' || deptId === 'COUNTER_INTEL')) return;
+  }
   const arr = window._currentOpSelectedDepts;
   const idx = arr.indexOf(deptId);
   if (idx >= 0) {
@@ -2961,9 +2979,9 @@ function renderReadingPane() {
         <div class="dc-section">
           <div class="dc-report">${im.body}</div>
         </div>
+        ${sig}
       </div>
       ${replyHtml}
-      ${sig}
     </div>`;
     return;
   }

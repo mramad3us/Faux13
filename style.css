@@ -1249,6 +1249,8 @@ input[type="range"] { accent-color: var(--accent); }
 .modal-dept-check:hover { border-color: var(--border-light); }
 .modal-dept-check.selected { border-color: var(--accent); background: rgba(0,201,167,0.06); }
 .modal-dept-check.unavail { opacity: 0.35; cursor: not-allowed; }
+.modal-dept-check.restricted { opacity: 0.25; cursor: not-allowed; border-color: var(--red); border-style: dashed; }
+.modal-dept-check.restricted:hover { border-color: var(--red); }
 .modal-dept-check-name { color: var(--text); }
 .modal-dept-avail { color: var(--text-dim); font-size: 9px; }
 .modal-dept-check-status { font-size: 8px; }

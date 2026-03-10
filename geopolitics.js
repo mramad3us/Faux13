@@ -776,6 +776,14 @@ function spawnGeoOrg(evt, theater, tmpl) {
   // Fix location tag if mission was domestic but theater is foreign
   var isDomestic = G.cfg && loc.country === G.cfg.name;
   m.location = isDomestic ? 'DOMESTIC' : 'FOREIGN';
+  // Swap FIELD_OPS ↔ FOREIGN_OPS and remove COUNTER_INTEL from foreign ops
+  if (m.execDepts && Array.isArray(m.execDepts)) {
+    for (var di = 0; di < m.execDepts.length; di++) {
+      if (!isDomestic && m.execDepts[di] === 'FIELD_OPS') m.execDepts[di] = 'FOREIGN_OPS';
+      else if (isDomestic && m.execDepts[di] === 'FOREIGN_OPS') m.execDepts[di] = 'FIELD_OPS';
+    }
+    if (!isDomestic) m.execDepts = m.execDepts.filter(function(d){ return d !== 'COUNTER_INTEL'; });
+  }
   if (m.fillVars) {
     m.fillVars.city = loc.city;
     m.fillVars.country = loc.country;
