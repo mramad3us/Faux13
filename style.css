@@ -269,7 +269,7 @@ input[type="range"] { accent-color: var(--accent); }
   font-size: 7px;
   color: var(--text-muted);
   letter-spacing: 0.3px;
-  padding-left: 2.7em;
+  padding-left: 3.2em;
 }
 .hdr-sub {
   font-family: var(--font-mono);
