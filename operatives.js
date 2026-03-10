@@ -175,7 +175,7 @@ hook('operation:resolved', function (data) {
   for (var c = 0; c < (G.eliteUnits || []).length; c++) {
     if (G.eliteUnits[c].alive) aliveCount++;
   }
-  if (aliveCount >= 10) return;
+  if (aliveCount >= 6) return;
 
   // Pick a dept that was used in the op
   var depts = m.assignedExecDepts || [];
@@ -551,7 +551,7 @@ function renderRoster() {
   var html = '';
 
   if (alive.length > 0) {
-    html += '<div class="roster-section-hdr">ACTIVE ELITE UNITS (' + alive.length + '/10)</div>';
+    html += '<div class="roster-section-hdr">ACTIVE ELITE UNITS (' + alive.length + '/6)</div>';
     for (var i = 0; i < alive.length; i++) html += renderEliteCard(alive[i]);
   }
 
