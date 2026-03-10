@@ -1562,7 +1562,7 @@ window.authAndExecute = function(missionId, btnEl) {
   overlay.className = 'auth-fingerprint-overlay';
   overlay.innerHTML = `
     <div class="auth-fp-content">
-      <div class="auth-fp-icon">◎</div>
+      <div class="auth-fp-icon">🫆</div>
       <div class="auth-fp-scanline"></div>
       <div class="auth-fp-label">DIRECTOR AUTHORIZATION</div>
       <div class="auth-fp-status">SCANNING BIOMETRIC...</div>
@@ -2742,7 +2742,7 @@ function renderFolderSidebar() {
     { id: 'inbox', label: 'Inbox', icon: '▸' },
     { id: 'pending', label: 'Pending', icon: '◌' },
     { id: 'active', label: 'Active Ops', icon: '◉' },
-    { id: 'results', label: 'Results', icon: '◎' },
+    { id: 'results', label: 'Results', icon: '🫆' },
     { id: 'threats', label: 'Threat Files', icon: '▲' },
     { id: 'agencies', label: 'Agencies', icon: '◇' },
     { id: 'geo', label: 'World Intel', icon: '⊕' },
@@ -2815,7 +2815,7 @@ function renderMessageList() {
     const senderName = senderMap[im.category] || 'Operations Center';
     const unreadCls = im.read ? '' : 'msg-unread';
     return `<div class="msg-row ${isSelected ? 'msg-selected' : ''} ${unreadCls}" onclick="selectIntelMessage('${im.id}')">
-      <span class="msg-priority msg-priority-normal">◎</span>
+      <span class="msg-priority msg-priority-normal">🫆</span>
       <span class="msg-from">${senderName}</span>
       <span class="msg-subject">${im.title}${im.subtitle ? ' — ' + im.subtitle : ''}</span>
       <span class="msg-status status-intel">${im.category}</span>
@@ -2908,7 +2908,7 @@ function renderReadingPane() {
   // Mission-based folders: show selected mission as email
   if (!G.selected) {
     paneEl.innerHTML = `<div class="rp-empty">
-      <div class="rp-empty-icon">◎</div>
+      <div class="rp-empty-icon">🫆</div>
       <div class="rp-empty-title">SHADOWNET SECURE MAIL</div>
       <div class="rp-empty-sub">Select a message to decrypt and read.</div>
     </div>`;
@@ -3885,7 +3885,7 @@ function bootTerminal() {
   auth.classList.add('hidden');
 
   const lines = [
-    { text: '◎ SHADOWNET SECURE TERMINAL v4.7.2', delay: 0, cls: 'term-hi' },
+    { text: '🫆 SHADOWNET SECURE TERMINAL v4.7.2', delay: 0, cls: 'term-hi' },
     { text: '================================', delay: 80, cls: 'term-dim' },
     { text: '', delay: 120 },
     { text: 'BIOS CHECK .......... OK', delay: 200 },
