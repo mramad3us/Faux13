@@ -3962,7 +3962,7 @@ function showDirectorLoginForm(output, saveInfo) {
   form.innerHTML = `
     <div class="dl-header">
       <div class="dl-fingerprint">🫆</div>
-      <div class="dl-title">DIRECTOR ACCESS</div>
+      <div class="dl-title">SECURE ACCESS</div>
       <div class="dl-subtitle">${agency} — ${country} · Day ${day}</div>
     </div>
     <div class="dl-fields">
