@@ -3895,9 +3895,202 @@ function bootTerminal() {
   profiles.classList.add('hidden');
   auth.classList.add('hidden');
 
+  // Check for existing saves
+  let hasSave = false;
+  let saveInfo = null;
+  try {
+    const raw = localStorage.getItem('shadowDirective_saves');
+    if (raw) {
+      const saves = JSON.parse(raw);
+      const auto = saves['__autosave__'];
+      if (auto) { hasSave = true; saveInfo = auto; }
+      else {
+        const keys = Object.keys(saves);
+        if (keys.length > 0) {
+          const newest = keys.sort((a, b) => saves[b].timestamp - saves[a].timestamp)[0];
+          hasSave = true; saveInfo = saves[newest];
+        }
+      }
+    }
+  } catch (e) {}
+
+  if (hasSave && saveInfo) {
+    bootDirectorLogin(output, saveInfo);
+  } else {
+    bootNewGameTerminal(output, profiles);
+  }
+}
+
+function bootDirectorLogin(output, saveInfo) {
+  const loginLines = [
+    { text: '🫆 SHADOWNET SECURE TERMINAL v4.7.2', delay: 0, cls: 'term-hi' },
+    { text: '════════════════════════════════════', delay: 80, cls: 'term-dim' },
+    { text: '', delay: 120 },
+    { text: 'SECURE UPLINK ....... ESTABLISHED', delay: 250 },
+    { text: 'CRYPTO MODULE ....... AES-256-GCM ACTIVE', delay: 450 },
+    { text: 'SESSION STATUS ...... PREVIOUS SESSION DETECTED', delay: 700, cls: 'term-class' },
+    { text: '', delay: 850 },
+    { text: 'DIRECTOR AUTHENTICATION REQUIRED:', delay: 1000, cls: 'term-hi' },
+  ];
+
+  let idx = 0;
+  function typeLine() {
+    if (idx >= loginLines.length) {
+      setTimeout(() => showDirectorLoginForm(output, saveInfo), 300);
+      return;
+    }
+    const line = loginLines[idx++];
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.className = `term-line ${line.cls || ''}`;
+      div.textContent = line.text;
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+      typeLine();
+    }, line.delay - (idx > 1 ? loginLines[idx - 2].delay : 0));
+  }
+  typeLine();
+}
+
+function showDirectorLoginForm(output, saveInfo) {
+  const agency = saveInfo.agency || 'SAA';
+  const country = saveInfo.country || 'Unknown';
+  const day = saveInfo.day || 1;
+
+  const form = document.createElement('div');
+  form.className = 'director-login-form';
+  form.innerHTML = `
+    <div class="dl-header">
+      <div class="dl-fingerprint">🫆</div>
+      <div class="dl-title">DIRECTOR ACCESS</div>
+      <div class="dl-subtitle">${agency} — ${country} · Day ${day}</div>
+    </div>
+    <div class="dl-fields">
+      <div class="dl-field">
+        <label class="dl-label">OPERATOR ID</label>
+        <div class="dl-input-wrap">
+          <input type="text" class="dl-input" id="dl-username" readonly autocomplete="off" />
+          <span class="dl-input-cursor"></span>
+        </div>
+      </div>
+      <div class="dl-field">
+        <label class="dl-label">ACCESS KEY</label>
+        <div class="dl-input-wrap">
+          <input type="password" class="dl-input" id="dl-password" readonly autocomplete="off" />
+          <span class="dl-input-cursor"></span>
+        </div>
+      </div>
+    </div>
+    <button class="dl-login-btn hidden" id="dl-login-btn">
+      <span class="dl-login-text">AUTHENTICATE</span>
+      <span class="dl-login-icon">→</span>
+    </button>
+    <div class="dl-forgot">
+      <a href="#" class="dl-forgot-link" id="dl-new-game">New identity? Request access credentials</a>
+    </div>
+  `;
+
+  output.parentElement.appendChild(form);
+  requestAnimationFrame(() => form.classList.add('dl-visible'));
+
+  // Auto-fill username with dots
+  const userInput = form.querySelector('#dl-username');
+  const passInput = form.querySelector('#dl-password');
+  const loginBtn = form.querySelector('#dl-login-btn');
+  const userWrap = userInput.closest('.dl-input-wrap');
+  const passWrap = passInput.closest('.dl-input-wrap');
+
+  const username = '••••••••••••';
+  const password = '••••••••••••••••';
+  let uIdx = 0, pIdx = 0;
+
+  // Start username autofill after form appears
+  setTimeout(() => {
+    userWrap.classList.add('dl-typing');
+    const uInterval = setInterval(() => {
+      if (uIdx < username.length) {
+        userInput.value += username[uIdx++];
+      } else {
+        clearInterval(uInterval);
+        userWrap.classList.remove('dl-typing');
+        userWrap.classList.add('dl-complete');
+        // Start password autofill
+        setTimeout(() => {
+          passWrap.classList.add('dl-typing');
+          const pInterval = setInterval(() => {
+            if (pIdx < password.length) {
+              passInput.value += password[pIdx++];
+            } else {
+              clearInterval(pInterval);
+              passWrap.classList.remove('dl-typing');
+              passWrap.classList.add('dl-complete');
+              // Show login button
+              setTimeout(() => {
+                loginBtn.classList.remove('hidden');
+                loginBtn.classList.add('dl-btn-visible');
+              }, 200);
+            }
+          }, 50);
+        }, 300);
+      }
+    }, 60);
+  }, 400);
+
+  // Login button — load most recent save
+  loginBtn.addEventListener('click', () => {
+    loginBtn.disabled = true;
+    loginBtn.querySelector('.dl-login-text').textContent = 'AUTHENTICATING...';
+    loginBtn.classList.add('dl-btn-auth');
+
+    // Reuse the biometric auth animation inline
+    setTimeout(() => {
+      loginBtn.querySelector('.dl-login-text').textContent = 'IDENTITY CONFIRMED';
+      loginBtn.classList.remove('dl-btn-auth');
+      loginBtn.classList.add('dl-btn-success');
+
+      setTimeout(() => {
+        // Load the save
+        const slotId = getSaveSlotToLoad();
+        if (typeof window._loadSlot === 'function' && slotId) {
+          window._loadSlot(slotId);
+        }
+      }, 600);
+    }, 1200);
+  });
+
+  // New game link
+  form.querySelector('#dl-new-game').addEventListener('click', (e) => {
+    e.preventDefault();
+    form.classList.add('dl-exit');
+    setTimeout(() => {
+      form.remove();
+      output.innerHTML = '';
+      const profiles = document.getElementById('login-profiles');
+      const auth = document.getElementById('login-auth');
+      profiles.classList.add('hidden');
+      auth.classList.add('hidden');
+      bootNewGameTerminal(output, profiles);
+    }, 400);
+  });
+}
+
+function getSaveSlotToLoad() {
+  try {
+    const raw = localStorage.getItem('shadowDirective_saves');
+    if (!raw) return null;
+    const saves = JSON.parse(raw);
+    if (saves['__autosave__']) return '__autosave__';
+    const keys = Object.keys(saves);
+    if (keys.length === 0) return null;
+    keys.sort((a, b) => saves[b].timestamp - saves[a].timestamp);
+    return keys[0];
+  } catch (e) { return null; }
+}
+
+function bootNewGameTerminal(output, profiles) {
   const lines = [
     { text: '🫆 SHADOWNET SECURE TERMINAL v4.7.2', delay: 0, cls: 'term-hi' },
-    { text: '================================', delay: 80, cls: 'term-dim' },
+    { text: '════════════════════════════════════', delay: 80, cls: 'term-dim' },
     { text: '', delay: 120 },
     { text: 'BIOS CHECK .......... OK', delay: 200 },
     { text: 'CRYPTO MODULE ....... AES-256-GCM READY', delay: 350 },
@@ -3914,7 +4107,6 @@ function bootTerminal() {
   let idx = 0;
   function typeLine() {
     if (idx >= lines.length) {
-      // Show profile cards
       setTimeout(() => renderProfileCards(), 200);
       return;
     }

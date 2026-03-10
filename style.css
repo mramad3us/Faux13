@@ -227,6 +227,190 @@ input[type="range"] { accent-color: var(--accent); }
 }
 .resume-btn:hover { background: #00ddb5; }
 
+/* Director Login Form (returning player) */
+.director-login-form {
+  margin-top: 30px;
+  padding: 28px 32px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+.director-login-form.dl-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.director-login-form.dl-exit {
+  opacity: 0;
+  transform: translateY(-12px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.dl-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.dl-fingerprint {
+  font-size: 48px;
+  line-height: 1;
+  margin-bottom: 12px;
+  animation: dlFpPulse 2s ease-in-out infinite;
+  filter: grayscale(1) brightness(1.5);
+}
+@keyframes dlFpPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.06); }
+}
+.dl-title {
+  font-family: var(--font-disp);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-hi);
+  letter-spacing: 2px;
+}
+.dl-subtitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+.dl-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.dl-field {}
+.dl-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
+}
+.dl-input-wrap {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.dl-input-wrap.dl-typing {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(0,201,167,0.1);
+}
+.dl-input-wrap.dl-complete {
+  border-color: var(--green);
+  box-shadow: 0 0 8px rgba(72,200,120,0.08);
+}
+.dl-input {
+  width: 100%;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-hi);
+  background: transparent;
+  border: none;
+  outline: none;
+  letter-spacing: 3px;
+  box-sizing: border-box;
+}
+.dl-input-cursor {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 18px;
+  background: var(--accent);
+  opacity: 0;
+}
+.dl-typing .dl-input-cursor {
+  animation: dlCursorBlink 0.6s step-end infinite;
+}
+@keyframes dlCursorBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.dl-login-btn {
+  width: 100%;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s;
+  opacity: 0;
+  transform: translateY(8px);
+}
+.dl-login-btn.hidden { display: none; }
+.dl-login-btn.dl-btn-visible {
+  display: flex;
+  opacity: 1;
+  transform: translateY(0);
+  animation: dlBtnAppear 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes dlBtnAppear {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dl-login-btn:hover:not(:disabled) {
+  background: #00ddb5;
+  box-shadow: 0 0 20px rgba(0,201,167,0.2);
+}
+.dl-login-btn:disabled { cursor: default; }
+.dl-login-btn.dl-btn-auth {
+  background: var(--amber);
+  animation: dlBtnPulse 0.6s ease-in-out infinite;
+}
+@keyframes dlBtnPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,192,96,0.3); }
+  50%      { box-shadow: 0 0 20px 4px rgba(240,192,96,0.15); }
+}
+.dl-login-btn.dl-btn-success {
+  background: var(--green);
+  box-shadow: 0 0 25px rgba(72,200,120,0.2);
+}
+.dl-login-icon {
+  font-size: 16px;
+  transition: transform 0.3s;
+}
+.dl-login-btn:hover:not(:disabled) .dl-login-icon {
+  transform: translateX(4px);
+}
+
+.dl-forgot {
+  text-align: center;
+  margin-top: 16px;
+}
+.dl-forgot-link {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-decoration: none;
+  letter-spacing: 0.5px;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+.dl-forgot-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 /* Footer warning */
 .login-footer {
   flex-shrink: 0;

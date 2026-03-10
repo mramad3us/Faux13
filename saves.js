@@ -317,32 +317,6 @@
 
   window.showSaveMenu = showSaveMenu;
 
-  // =========================================================================
-  // CHECK FOR SAVES ON BOOT — offer to resume on select screen
-  // =========================================================================
-
-  document.addEventListener('DOMContentLoaded', function () {
-    const saves = loadAllSaves();
-    if (Object.keys(saves).length === 0) return;
-
-    const loginScreen = document.getElementById('screen-login') || document.getElementById('screen-select');
-    if (!loginScreen) return;
-
-    const resumeBar = document.createElement('div');
-    resumeBar.id = 'resume-bar';
-    resumeBar.className = 'resume-bar';
-
-    const auto = saves[AUTOSAVE_ID];
-    const msg = auto
-      ? `Autosave available: ${auto.agency} \u2014 Day ${auto.day}`
-      : `${Object.keys(saves).length} save(s) available`;
-
-    resumeBar.innerHTML = `
-      <span class="resume-msg">${msg}</span>
-      <button class="btn-primary resume-btn" onclick="showSaveMenu()">LOAD GAME</button>
-    `;
-    const target = loginScreen.querySelector('.login-wrap') || loginScreen.querySelector('.select-content');
-    if (target) target.appendChild(resumeBar);
-  });
+  // Save detection is now handled by bootTerminal() in game.js
 
 })();
