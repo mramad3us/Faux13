@@ -1741,6 +1741,53 @@ input[type="range"] { accent-color: var(--accent); }
 .country-card { display: none; }
 .select-content { display: none; }
 
+/* After-Action Debrief */
+.debrief-section {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(0,0,0,0.25);
+}
+.debrief-toggle {
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 0.5px;
+  transition: color 0.2s, background 0.2s;
+}
+.debrief-toggle:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.03);
+}
+.debrief-toggle-icon {
+  display: inline-block;
+  transition: transform 0.2s;
+  font-size: 9px;
+  margin-right: 6px;
+}
+.debrief-open .debrief-toggle-icon {
+  transform: rotate(90deg);
+}
+.debrief-content {
+  display: none;
+  margin: 0;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.15);
+}
+.debrief-open .debrief-content {
+  display: block;
+}
+
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .msg-list-pane { width: 200px; }

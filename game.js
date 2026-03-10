@@ -956,6 +956,9 @@ function resolveOperation(m) {
       if (budgetReturn > 0) G.budget = Math.min(G.budget + budgetReturn, 999);
       m.confDelta = confGain; m.budgetDelta = budgetReturn;
       m.resultMsg = msg;
+      if (typeof window.generateDebrief === 'function') {
+        m.debriefHtml = window.generateDebrief(m, true);
+      }
       G.opsSucceeded++;
       G.monthOpsSucceeded++;
       gainXP(m.threat * 3, `OP ${m.codename} success`);
@@ -968,6 +971,9 @@ function resolveOperation(m) {
       G.confidence = clamp(G.confidence + confLoss, 0, 100);
       m.confDelta = confLoss; m.budgetDelta = 0;
       m.resultMsg = msg;
+      if (typeof window.generateDebrief === 'function') {
+        m.debriefHtml = window.generateDebrief(m, false);
+      }
       gainXP(1, `OP ${m.codename} (failed)`);
       registerOrUpdateHvtFailed(m);
       addLog(`FAILURE: OP ${m.codename}. ${confLoss}% confidence.`, 'log-fail');
@@ -3226,6 +3232,7 @@ function renderReadingPane() {
           ${m.budgetDelta > 0 ? `<span class="delta-item delta-pos">BUDGET RECOVERY +${fmt(m.budgetDelta)}</span>` : ''}
         </div>
       </div>
+      ${m.debriefHtml || ''}
     `;
     replyHtml = buildReplySection([
       { label: 'ACKNOWLEDGED — Archive this report', cls: '', onclick: `archiveMission('${m.id}')` }
@@ -3240,6 +3247,7 @@ function renderReadingPane() {
           <span class="delta-item delta-neg">CONFIDENCE ${m.confDelta}%</span>
         </div>
       </div>
+      ${m.debriefHtml || ''}
     `;
     replyHtml = buildReplySection([
       { label: 'ACKNOWLEDGED — Archive this report', cls: '', onclick: `archiveMission('${m.id}')` }
