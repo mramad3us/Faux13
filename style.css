@@ -1743,19 +1743,24 @@ input[type="range"] { accent-color: var(--accent); }
 
 /* After-Action Debrief */
 .debrief-section {
-  margin-top: 12px;
+  margin-top: 16px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: rgba(0,0,0,0.25);
+  border-left: 2px solid var(--text-dim);
+  border-radius: 2px;
+  background: var(--bg-2, rgba(0,0,0,0.2));
 }
 .debrief-toggle {
-  padding: 8px 12px;
-  font-family: var(--font-mono);
-  font-size: 11px;
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  font-family: var(--font-disp);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-dim);
   cursor: pointer;
   user-select: none;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
   transition: color 0.2s, background 0.2s;
 }
 .debrief-toggle:hover {
@@ -1764,29 +1769,33 @@ input[type="range"] { accent-color: var(--accent); }
 }
 .debrief-toggle-icon {
   display: inline-block;
-  transition: transform 0.2s;
-  font-size: 9px;
-  margin-right: 6px;
+  transition: transform 0.25s ease;
+  font-size: 8px;
+  margin-right: 8px;
+  color: var(--text-muted);
 }
 .debrief-open .debrief-toggle-icon {
   transform: rotate(90deg);
 }
+.debrief-open .debrief-toggle {
+  border-bottom: 1px solid var(--border);
+}
 .debrief-content {
   display: none;
   margin: 0;
-  padding: 12px 14px;
+  padding: 14px 16px;
   font-family: var(--font-mono);
   font-size: 11px;
-  line-height: 1.7;
-  color: var(--text-dim);
+  line-height: 1.8;
+  color: var(--text);
   white-space: pre-wrap;
   word-break: break-word;
-  border-top: 1px solid var(--border);
-  background: rgba(0,0,0,0.15);
 }
 .debrief-open .debrief-content {
   display: block;
 }
+.debrief-section.success { border-left-color: var(--green); }
+.debrief-section.failure { border-left-color: var(--red); }
 
 @media (max-width: 768px) {
   .sidebar { display: none; }

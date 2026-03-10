@@ -3289,11 +3289,15 @@ function renderReadingPane() {
 
   } else if (m.status === 'ARCHIVED') {
     const wasSuccess = m.confDelta > 0;
+    if (!m.debriefHtml && typeof window.generateDebrief === 'function') {
+      m.debriefHtml = window.generateDebrief(m, wasSuccess);
+    }
     bodyContent += `
       <div class="result-box ${wasSuccess ? 'success' : 'failure'}">
         <div class="result-title">${wasSuccess ? 'OPERATION SUCCESSFUL' : 'OPERATION CLOSED'}</div>
         <div class="result-msg">${m.resultMsg || 'No further details available.'}</div>
       </div>
+      ${m.debriefHtml || ''}
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:8px">ARCHIVED — DAY ${m.archivedDay || '?'}</div>
     `;
   }
