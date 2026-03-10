@@ -1550,65 +1550,76 @@ window.updateModalProb = function(missionId) {
 };
 
 window.authAndExecute = function(missionId, btnEl) {
-  // Prevent double-click
-  if (btnEl) btnEl.disabled = true;
+  if (!btnEl) { window.executeOperation(missionId); return; }
+  btnEl.disabled = true;
 
-  // Find the config panel to anchor the overlay
-  const panel = document.querySelector('.op-config-panel') || document.getElementById('reading-pane');
-  if (!panel) { window.executeOperation(missionId); return; }
+  // Hide the cancel button
+  const actionsRow = btnEl.closest('.op-config-actions');
+  const cancelBtn = actionsRow?.querySelector('.btn-neutral');
+  if (cancelBtn) cancelBtn.style.display = 'none';
 
-  // Create fingerprint auth overlay
-  const overlay = document.createElement('div');
-  overlay.className = 'auth-fingerprint-overlay';
-  overlay.innerHTML = `
-    <div class="auth-fp-content">
-      <div class="auth-fp-icon">🫆</div>
-      <div class="auth-fp-scanline"></div>
-      <div class="auth-fp-label">DIRECTOR AUTHORIZATION</div>
-      <div class="auth-fp-status">SCANNING BIOMETRIC...</div>
-      <div class="auth-fp-bar-wrap"><div class="auth-fp-bar"></div></div>
+  // Capture button dimensions for smooth morph
+  const btnRect = btnEl.getBoundingClientRect();
+  const origWidth = btnRect.width;
+  const origHeight = btnRect.height;
+  const origText = btnEl.textContent;
+
+  // Morph button into auth widget
+  btnEl.classList.add('auth-btn-morphing');
+  btnEl.style.width = origWidth + 'px';
+  btnEl.style.height = origHeight + 'px';
+  btnEl.innerHTML = `
+    <div class="auth-btn-inner">
+      <span class="auth-btn-fp">🫆</span>
+      <span class="auth-btn-status">SCANNING...</span>
     </div>
+    <div class="auth-btn-bar-wrap"><div class="auth-btn-bar"></div></div>
   `;
-  panel.style.position = 'relative';
-  panel.appendChild(overlay);
 
-  // Animate through auth steps
-  const status = overlay.querySelector('.auth-fp-status');
-  const bar = overlay.querySelector('.auth-fp-bar');
-  const icon = overlay.querySelector('.auth-fp-icon');
+  // Expand to full auth widget after a frame
+  requestAnimationFrame(() => {
+    btnEl.style.width = '';
+    btnEl.style.height = '';
+    btnEl.classList.add('auth-btn-expanded');
 
-  let progress = 0;
-  const steps = [
-    { at: 30, text: 'VERIFYING IDENTITY...' },
-    { at: 60, text: 'CLEARANCE CONFIRMED' },
-    { at: 85, text: 'GREENLIGHT AUTHORIZED' },
-  ];
-  let stepIdx = 0;
+    const fp = btnEl.querySelector('.auth-btn-fp');
+    const status = btnEl.querySelector('.auth-btn-status');
+    const bar = btnEl.querySelector('.auth-btn-bar');
 
-  const interval = setInterval(() => {
-    progress += randInt(6, 14);
-    if (progress > 100) progress = 100;
-    bar.style.width = progress + '%';
+    let progress = 0;
+    const steps = [
+      { at: 25, text: 'VERIFYING...' },
+      { at: 55, text: 'IDENTITY CONFIRMED' },
+      { at: 80, text: 'GREENLIGHT AUTHORIZED' },
+    ];
+    let stepIdx = 0;
 
-    if (stepIdx < steps.length && progress >= steps[stepIdx].at) {
-      status.textContent = steps[stepIdx].text;
-      stepIdx++;
-    }
+    const interval = setInterval(() => {
+      progress += randInt(6, 14);
+      if (progress > 100) progress = 100;
+      bar.style.width = progress + '%';
 
-    if (progress >= 100) {
-      clearInterval(interval);
-      icon.classList.add('auth-fp-confirmed');
-      status.textContent = 'OPERATION AUTHORIZED';
-      status.classList.add('auth-fp-go');
-      setTimeout(() => {
-        overlay.classList.add('auth-fp-fade');
-        overlay.addEventListener('animationend', () => {
-          overlay.remove();
-          window.executeOperation(missionId);
-        }, { once: true });
-      }, 400);
-    }
-  }, 80);
+      if (stepIdx < steps.length && progress >= steps[stepIdx].at) {
+        status.textContent = steps[stepIdx].text;
+        stepIdx++;
+      }
+
+      if (progress >= 100) {
+        clearInterval(interval);
+        fp.classList.add('auth-fp-confirmed');
+        status.textContent = 'AUTHORIZED';
+        status.classList.add('auth-fp-go');
+        btnEl.classList.add('auth-btn-confirmed');
+
+        setTimeout(() => {
+          btnEl.classList.add('auth-btn-launch');
+          btnEl.addEventListener('animationend', () => {
+            window.executeOperation(missionId);
+          }, { once: true });
+        }, 500);
+      }
+    }, 80);
+  });
 };
 
 window.executeOperation = function(missionId) {

@@ -1416,93 +1416,81 @@ input[type="range"] { accent-color: var(--accent); }
 }
 .op-launching { animation: opLaunch 0.8s ease-out both; }
 
-/* --- Fingerprint auth overlay for execute --- */
-.auth-fingerprint-overlay {
-  position: absolute; inset: 0; z-index: 50;
-  background: rgba(10, 14, 20, 0.92);
-  display: flex; align-items: center; justify-content: center;
-  animation: authFpIn 0.3s ease-out both;
-  backdrop-filter: blur(4px);
-  border-radius: 6px;
+/* --- Fingerprint auth inline (button morph) --- */
+.auth-btn-morphing {
+  transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+  overflow: hidden;
+  cursor: default;
+  pointer-events: none;
 }
-@keyframes authFpIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+.auth-btn-expanded {
+  width: 100% !important;
+  height: auto !important;
+  padding: 16px 20px !important;
+  background: rgba(10, 14, 20, 0.95) !important;
+  border: 1px solid var(--accent) !important;
+  box-shadow: 0 0 20px rgba(0,201,167,0.1), inset 0 0 30px rgba(0,201,167,0.03);
 }
-.auth-fp-content {
-  text-align: center;
-  font-family: var(--font-mono);
+.auth-btn-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
 }
-.auth-fp-icon {
-  font-size: 64px;
-  color: var(--accent);
+.auth-btn-fp {
+  font-size: 36px;
   line-height: 1;
-  margin-bottom: 12px;
   animation: fpPulse 1.2s ease-in-out infinite;
-  text-shadow: 0 0 20px rgba(0,201,167,0.3);
+  filter: drop-shadow(0 0 8px rgba(0,201,167,0.4));
 }
 @keyframes fpPulse {
-  0%, 100% { opacity: 0.6; transform: scale(1); text-shadow: 0 0 20px rgba(0,201,167,0.3); }
-  50%      { opacity: 1;   transform: scale(1.08); text-shadow: 0 0 40px rgba(0,201,167,0.6); }
+  0%, 100% { opacity: 0.6; transform: scale(1); filter: drop-shadow(0 0 8px rgba(0,201,167,0.3)); }
+  50%      { opacity: 1;   transform: scale(1.1); filter: drop-shadow(0 0 16px rgba(0,201,167,0.6)); }
 }
-.auth-fp-icon.auth-fp-confirmed {
+.auth-btn-fp.auth-fp-confirmed {
   animation: fpConfirm 0.4s ease-out both;
-  color: var(--green);
 }
 @keyframes fpConfirm {
   0%   { transform: scale(1); }
-  40%  { transform: scale(1.2); }
-  100% { transform: scale(1); text-shadow: 0 0 30px rgba(46,204,113,0.5); }
+  40%  { transform: scale(1.25); filter: drop-shadow(0 0 20px rgba(46,204,113,0.8)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 12px rgba(46,204,113,0.5)); }
 }
-.auth-fp-scanline {
-  width: 80px; height: 2px;
-  margin: 0 auto 16px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  animation: fpScanline 1s ease-in-out infinite;
-}
-@keyframes fpScanline {
-  0%   { transform: translateY(-30px); opacity: 0; }
-  50%  { opacity: 1; }
-  100% { transform: translateY(30px); opacity: 0; }
-}
-.auth-fp-label {
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-}
-.auth-fp-status {
+.auth-btn-status {
+  font-family: var(--font-mono);
   font-size: 11px;
+  letter-spacing: 1.5px;
   color: var(--amber);
-  letter-spacing: 1px;
-  margin-bottom: 12px;
   transition: color 0.3s;
 }
-.auth-fp-status.auth-fp-go {
+.auth-btn-status.auth-fp-go {
   color: var(--green);
 }
-.auth-fp-bar-wrap {
-  width: 120px;
-  height: 3px;
-  margin: 0 auto;
+.auth-btn-bar-wrap {
+  width: 100%;
+  height: 2px;
   background: rgba(255,255,255,0.08);
   border-radius: 2px;
   overflow: hidden;
 }
-.auth-fp-bar {
+.auth-btn-bar {
   width: 0;
   height: 100%;
-  background: var(--accent);
+  background: linear-gradient(90deg, var(--accent), var(--green));
   border-radius: 2px;
   transition: width 0.08s linear;
 }
-.auth-fp-fade {
-  animation: authFpOut 0.3s ease-in both;
+.auth-btn-confirmed {
+  border-color: var(--green) !important;
+  box-shadow: 0 0 25px rgba(46,204,113,0.15), inset 0 0 30px rgba(46,204,113,0.05) !important;
 }
-@keyframes authFpOut {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+.auth-btn-launch {
+  animation: authLaunch 0.5s ease-in both;
 }
+@keyframes authLaunch {
+  0%   { opacity: 1; transform: scale(1); }
+  50%  { opacity: 1; transform: scale(1.02); box-shadow: 0 0 40px rgba(46,204,113,0.3); }
+  100% { opacity: 0; transform: scale(0.97); }
 
 /* --- Stat value flash when changed (JS adds .stat-flash) --- */
 @keyframes statFlash {
