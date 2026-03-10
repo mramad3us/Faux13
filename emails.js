@@ -180,12 +180,12 @@ function getEventSender(event) {
 
 // --- Folder definitions ---
 const MAIL_FOLDERS = [
-  { id: 'inbox',    label: 'Inbox',        icon: '▸' },
+  { id: 'inbox',    label: 'Inbox',        icon: '✉' },
   { id: 'pending',  label: 'Pending',      icon: '◌' },
   { id: 'active',   label: 'Active Ops',   icon: '◉' },
-  { id: 'results',  label: 'Results',      icon: '◆' },
-  { id: 'threats',  label: 'Threat Files', icon: '▲' },
-  { id: 'agencies', label: 'Agencies',     icon: '◇' },
-  { id: 'geo',      label: 'World Intel',  icon: '⊕' },
-  { id: 'archive',  label: 'Archive',      icon: '□' },
+  { id: 'results',  label: 'Results',      icon: '🫆' },
+  { id: 'threats',  label: 'Threat Files', icon: '☠' },
+  { id: 'agencies', label: 'Agencies',     icon: '🤝' },
+  { id: 'geo',      label: 'World Intel',  icon: '🌎' },
+  { id: 'archive',  label: 'Archive',      icon: '📥' },
 ];
