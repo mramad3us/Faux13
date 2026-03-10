@@ -1464,7 +1464,7 @@ function openOperationModal(missionId) {
           </div>
         </div>
         <div class="op-config-actions anim-section" style="animation-delay:0.4s">
-          <button class="btn-primary" onclick="executeOperation('${missionId}')">EXECUTE OPERATION</button>
+          <button class="btn-primary" onclick="authAndExecute('${missionId}', this)">EXECUTE OPERATION</button>
           <button class="btn-neutral" onclick="openOperationModal('${missionId}')">CANCEL</button>
         </div>
       </div>
@@ -1547,6 +1547,68 @@ window.updateModalProb = function(missionId) {
   const probWrap = document.getElementById('op-prob-wrap');
   if (probEl)   probEl.textContent = `${p}%`;
   if (probWrap) probWrap.className = 'prob-value ' + (p >= 70 ? 'prob-high' : p >= 45 ? 'prob-med' : 'prob-low');
+};
+
+window.authAndExecute = function(missionId, btnEl) {
+  // Prevent double-click
+  if (btnEl) btnEl.disabled = true;
+
+  // Find the config panel to anchor the overlay
+  const panel = document.querySelector('.op-config-panel') || document.getElementById('reading-pane');
+  if (!panel) { window.executeOperation(missionId); return; }
+
+  // Create fingerprint auth overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'auth-fingerprint-overlay';
+  overlay.innerHTML = `
+    <div class="auth-fp-content">
+      <div class="auth-fp-icon">◎</div>
+      <div class="auth-fp-scanline"></div>
+      <div class="auth-fp-label">DIRECTOR AUTHORIZATION</div>
+      <div class="auth-fp-status">SCANNING BIOMETRIC...</div>
+      <div class="auth-fp-bar-wrap"><div class="auth-fp-bar"></div></div>
+    </div>
+  `;
+  panel.style.position = 'relative';
+  panel.appendChild(overlay);
+
+  // Animate through auth steps
+  const status = overlay.querySelector('.auth-fp-status');
+  const bar = overlay.querySelector('.auth-fp-bar');
+  const icon = overlay.querySelector('.auth-fp-icon');
+
+  let progress = 0;
+  const steps = [
+    { at: 30, text: 'VERIFYING IDENTITY...' },
+    { at: 60, text: 'CLEARANCE CONFIRMED' },
+    { at: 85, text: 'GREENLIGHT AUTHORIZED' },
+  ];
+  let stepIdx = 0;
+
+  const interval = setInterval(() => {
+    progress += randInt(6, 14);
+    if (progress > 100) progress = 100;
+    bar.style.width = progress + '%';
+
+    if (stepIdx < steps.length && progress >= steps[stepIdx].at) {
+      status.textContent = steps[stepIdx].text;
+      stepIdx++;
+    }
+
+    if (progress >= 100) {
+      clearInterval(interval);
+      icon.classList.add('auth-fp-confirmed');
+      status.textContent = 'OPERATION AUTHORIZED';
+      status.classList.add('auth-fp-go');
+      setTimeout(() => {
+        overlay.classList.add('auth-fp-fade');
+        overlay.addEventListener('animationend', () => {
+          overlay.remove();
+          window.executeOperation(missionId);
+        }, { once: true });
+      }, 400);
+    }
+  }, 80);
 };
 
 window.executeOperation = function(missionId) {

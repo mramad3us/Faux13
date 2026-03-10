@@ -1416,6 +1416,94 @@ input[type="range"] { accent-color: var(--accent); }
 }
 .op-launching { animation: opLaunch 0.8s ease-out both; }
 
+/* --- Fingerprint auth overlay for execute --- */
+.auth-fingerprint-overlay {
+  position: absolute; inset: 0; z-index: 50;
+  background: rgba(10, 14, 20, 0.92);
+  display: flex; align-items: center; justify-content: center;
+  animation: authFpIn 0.3s ease-out both;
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+}
+@keyframes authFpIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.auth-fp-content {
+  text-align: center;
+  font-family: var(--font-mono);
+}
+.auth-fp-icon {
+  font-size: 64px;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 12px;
+  animation: fpPulse 1.2s ease-in-out infinite;
+  text-shadow: 0 0 20px rgba(0,201,167,0.3);
+}
+@keyframes fpPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); text-shadow: 0 0 20px rgba(0,201,167,0.3); }
+  50%      { opacity: 1;   transform: scale(1.08); text-shadow: 0 0 40px rgba(0,201,167,0.6); }
+}
+.auth-fp-icon.auth-fp-confirmed {
+  animation: fpConfirm 0.4s ease-out both;
+  color: var(--green);
+}
+@keyframes fpConfirm {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.2); }
+  100% { transform: scale(1); text-shadow: 0 0 30px rgba(46,204,113,0.5); }
+}
+.auth-fp-scanline {
+  width: 80px; height: 2px;
+  margin: 0 auto 16px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: fpScanline 1s ease-in-out infinite;
+}
+@keyframes fpScanline {
+  0%   { transform: translateY(-30px); opacity: 0; }
+  50%  { opacity: 1; }
+  100% { transform: translateY(30px); opacity: 0; }
+}
+.auth-fp-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.auth-fp-status {
+  font-size: 11px;
+  color: var(--amber);
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  transition: color 0.3s;
+}
+.auth-fp-status.auth-fp-go {
+  color: var(--green);
+}
+.auth-fp-bar-wrap {
+  width: 120px;
+  height: 3px;
+  margin: 0 auto;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.auth-fp-bar {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.08s linear;
+}
+.auth-fp-fade {
+  animation: authFpOut 0.3s ease-in both;
+}
+@keyframes authFpOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
 /* --- Stat value flash when changed (JS adds .stat-flash) --- */
 @keyframes statFlash {
   0%   { color: var(--accent); text-shadow: 0 0 8px rgba(0,201,167,0.5); }
