@@ -367,7 +367,7 @@ input[type="range"] { accent-color: var(--accent); }
   cursor: pointer;
   transition: all 0.12s;
   font-family: var(--font-disp);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-dim);
   letter-spacing: 0.3px;
@@ -382,7 +382,7 @@ input[type="range"] { accent-color: var(--accent); }
   padding-left: 12px;
 }
 .folder-icon {
-  font-size: 14px;
+  font-size: 15px;
   width: 20px;
   text-align: center;
   color: inherit;
