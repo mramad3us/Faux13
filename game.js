@@ -2768,7 +2768,7 @@ function renderFolderSidebar() {
       ? `<span class="folder-badge ${hasUrgent ? 'folder-badge-urgent' : ''}">${count}</span>`
       : '';
     return `<div class="folder-item ${isActive ? 'active' : ''}" onclick="switchFolder('${f.id}')">
-      <span class="folder-icon">${f.icon}</span>
+      <span class="folder-icon ${f.iconCls || ''}">${f.icon}</span>
       <span class="folder-label">${f.label}</span>
       ${badgeHtml}
     </div>`;
