@@ -727,7 +727,7 @@ function advanceDay() {
   render();
   triggerDayScanline();
   // Mark newly spawned missions for arrival animation
-  if (G._prevMissionIds) {
+  if (G._prevMissionIds && typeof G._prevMissionIds.has === 'function') {
     requestAnimationFrame(() => {
       G.missions.forEach(m => {
         if (!G._prevMissionIds.has(m.id)) {
