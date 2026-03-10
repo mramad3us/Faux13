@@ -2726,6 +2726,8 @@ function renderHeader() {
   if (statBudget) {
     statBudget.textContent = fmt(G.budget);
     if (_prevBudget !== null && G.budget !== _prevBudget) flashStat(statBudget, G.budget - _prevBudget);
+    const budgetStat = statBudget.closest('.hdr-stat');
+    if (budgetStat && G.cfg) budgetStat.setAttribute('data-tip', `Available operational budget. Regenerates ${fmt(G.cfg.weeklyBudgetRegen)}/week (cap: ${fmt(G.cfg.budget)}).`);
   }
   _prevBudget = G.budget;
 
