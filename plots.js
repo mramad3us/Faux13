@@ -655,6 +655,88 @@ hook('calcProb:modify', function (data) {
   return data.prob;
 });
 
+// ---- Infiltration intel: surface new HVT from inside asset ----
+
+const INFILTRATION_HVT_ALIASES = [
+  'JACKAL', 'VIPER', 'SCORPION', 'FALCON', 'HYENA', 'COBRA',
+  'LYNX', 'MANTIS', 'CONDOR', 'HORNET', 'SCARAB', 'PANTHER',
+  'RAPTOR', 'PYTHON', 'WOLVERINE', 'BARRACUDA',
+];
+
+var INFILTRATION_HVT_ROLES = {
+  terrorist_network:      ['cell commander', 'bomb-maker', 'recruitment coordinator', 'financier', 'logistics handler', 'weapons courier'],
+  espionage_ring:         ['case officer', 'access agent', 'dead-drop coordinator', 'signals technician', 'mole handler', 'intelligence courier'],
+  weapons_proliferation:  ['procurement agent', 'end-user certificate forger', 'transport broker', 'materials scientist', 'shipping coordinator', 'front company director'],
+  state_proxy:            ['paramilitary commander', 'intelligence liaison', 'covert operations planner', 'arms supplier', 'propaganda coordinator', 'safe house operator'],
+  criminal_syndicate:     ['money launderer', 'smuggling route manager', 'corrupt official contact', 'enforcement chief', 'front business operator', 'cartel liaison'],
+};
+
+var INFILTRATION_INTEL_BODIES = [
+  '<p>Our inside asset within <strong>{orgName}</strong> has transmitted an emergency dead-drop report identifying a previously unknown operative. The individual — designated <strong>"{alias}"</strong> — is described as a <strong>{role}</strong> operating within the organization\'s command structure.</p><p>The asset reports that "{alias}" has been observed at {location} and is believed to be actively involved in ongoing operations. The asset assesses the individual as a high-value intelligence target.</p><p>FILE {fileName} — asset continues to produce. Handle with care; this intelligence must not be actioned in a way that compromises the source.</p>',
+  '<p>Encrypted burst transmission received from our penetration agent inside <strong>{orgName}</strong>. The asset has identified a key figure — <strong>"{alias}"</strong>, a <strong>{role}</strong> — who has recently surfaced in the organization\'s operational planning.</p><p>According to the asset, "{alias}" operates from {location} and has direct access to the network\'s senior leadership. The asset recommends immediate tracking.</p><p>SOURCE: FILE {fileName} — inside asset. CLASSIFICATION: This intelligence derives from an extraordinarily sensitive source. Protect accordingly.</p>',
+  '<p>Intelligence product from our embedded asset within <strong>{orgName}</strong>. During a routine operational meeting, the asset observed a previously unidentified individual referred to internally as <strong>"{alias}"</strong>.</p><p>Subsequent reporting confirms "{alias}" serves as a <strong>{role}</strong> within the organization and was last reported at {location}. The asset describes this individual as influential and operationally active.</p><p>FILE {fileName} — continuing to exploit infiltration access. This product is graded A2 (reliable source, probably true).</p>',
+  '<p>Our agent inside <strong>{orgName}</strong> has surfaced a new name: <strong>"{alias}"</strong> — a <strong>{role}</strong> operating in {location}.</p><p>The asset reports this individual plays a key role in the organization\'s current operational tempo and represents a viable target for tracking or direct action. The asset was able to observe "{alias}" directly during a recent internal meeting and confirms the identification with high confidence.</p><p>FILE {fileName} — asset intelligence production remains active. Source protection paramount.</p>',
+];
+
+function spawnInfiltrationHvt(plot) {
+  var alias = pick(INFILTRATION_HVT_ALIASES);
+  var roles = INFILTRATION_HVT_ROLES[plot.orgType] || INFILTRATION_HVT_ROLES.terrorist_network;
+  var role = pick(roles);
+
+  // Determine location from org's region
+  var hvtLocation = plot.region;
+  var city, country;
+  if (plot.region === 'DOMESTIC') {
+    city = pick(G.cfg.domesticCities);
+    country = G.cfg.name;
+  } else {
+    var loc = pick(FOREIGN_CITIES);
+    city = loc.city;
+    country = loc.country;
+  }
+
+  var hvtId = 'H' + (++G.hvtIdCounter);
+  G.hvts.push({
+    id: hvtId,
+    type: 'HVT',
+    alias: alias,
+    role: role,
+    org: plot.orgLabel + ' — FILE ' + plot.fileName,
+    threat: Math.min(plot.threat + 1, 5),
+    location: hvtLocation,
+    status: 'ACTIVE',
+    knownFields: { city: city, country: country },
+    gaps: ['Exact movements unknown', 'Security detail uncharacterized', 'Role within organization partially understood'],
+    linkedMissionIds: [],
+    addedDay: G.day,
+    detainedAt: null,
+    detainedDay: null,
+    interrogationCount: 0,
+    surveillanceEstablished: false,
+    handedTo: null,
+  });
+
+  var locationText = city + ', ' + country;
+  var bodyTemplate = pick(INFILTRATION_INTEL_BODIES);
+  var body = bodyTemplate
+    .replace(/\{orgName\}/g, plot.orgName)
+    .replace(/\{alias\}/g, alias)
+    .replace(/\{role\}/g, role)
+    .replace(/\{location\}/g, locationText)
+    .replace(/\{fileName\}/g, plot.fileName);
+
+  queueBriefingPopup({
+    title: 'INFILTRATION INTELLIGENCE — FILE ' + plot.fileName,
+    category: 'ASSET-DERIVED INTELLIGENCE',
+    subtitle: plot.orgName + ' — INSIDE ASSET REPORT',
+    accent: 'rgba(46, 204, 113, 0.9)',
+    body: body,
+    buttonLabel: 'ACKNOWLEDGED',
+  });
+
+  addLog('FILE ' + plot.fileName + ': Inside asset identifies new target — "' + alias + '" (' + role + '). Added to threat tracker.', 'log-info');
+}
+
 // ---- Day tick: maybe start new plot, spawn due missions ----
 hook('day:pre', function () {
   if (!G.plots) return;
@@ -677,6 +759,16 @@ hook('day:pre', function () {
     if (plot.currentStep >= plot.totalSteps) continue;
     if (G.day >= plot.nextMissionDay) {
       spawnPlotMission(plot);
+    }
+  }
+
+  // Infiltrated ORGs: weekly 5% chance to surface a new HVT
+  if (G.day % 7 === 0) {
+    for (var j = 0; j < G.plots.length; j++) {
+      var ip = G.plots[j];
+      if (ip.status !== 'ACTIVE' || !ip.infiltrated) continue;
+      if (Math.random() >= 0.05) continue;
+      spawnInfiltrationHvt(ip);
     }
   }
 });
