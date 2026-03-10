@@ -1179,10 +1179,10 @@ function archiveMission(missionId) {
 function pruneArchive() {
   const archived = G.missions.filter(m => m.status === 'ARCHIVED');
   if (archived.length > 10) {
-    const toRemove = archived.slice(0, archived.length - 10);
-    for (const m of toRemove) {
-      G.missions = G.missions.filter(x => x.id !== m.id);
-    }
+    // Sort oldest first, remove oldest to keep the 10 most recent
+    archived.sort((a, b) => (a.archivedDay || 0) - (b.archivedDay || 0));
+    const toRemove = new Set(archived.slice(0, archived.length - 10).map(m => m.id));
+    G.missions = G.missions.filter(x => !toRemove.has(x.id));
   }
 }
 
