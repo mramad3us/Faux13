@@ -2750,14 +2750,14 @@ function renderFolderSidebar() {
   if (!el) return;
 
   const folders = typeof MAIL_FOLDERS !== 'undefined' ? MAIL_FOLDERS : [
-    { id: 'inbox', label: 'Inbox', icon: '▸' },
+    { id: 'inbox', label: 'Inbox', icon: '✉' },
     { id: 'pending', label: 'Pending', icon: '◌' },
     { id: 'active', label: 'Active Ops', icon: '◉' },
     { id: 'results', label: 'Results', icon: '🫆' },
-    { id: 'threats', label: 'Threat Files', icon: '▲' },
-    { id: 'agencies', label: 'Agencies', icon: '◇' },
-    { id: 'geo', label: 'World Intel', icon: '⊕' },
-    { id: 'archive', label: 'Archive', icon: '□' },
+    { id: 'threats', label: 'Threat Files', icon: '☠' },
+    { id: 'agencies', label: 'Agencies', icon: '🤝' },
+    { id: 'geo', label: 'World Intel', icon: '🌎' },
+    { id: 'archive', label: 'Archive', icon: '📥' },
   ];
 
   el.innerHTML = folders.map(f => {
@@ -2774,7 +2774,7 @@ function renderFolderSidebar() {
     </div>`;
   }).join('') + '<div class="folder-divider"></div>' +
   `<div class="folder-item ${G.currentFolder === 'depts' ? 'active' : ''}" onclick="switchFolder('depts')">
-    <span class="folder-icon">■</span><span class="folder-label">Departments</span>
+    <span class="folder-icon">👥</span><span class="folder-label">Departments</span>
   </div>` +
   `<div class="folder-item ${G.currentFolder === 'roster' ? 'active' : ''}" onclick="switchFolder('roster')">
     <span class="folder-icon">★</span><span class="folder-label">Elite Roster</span>
