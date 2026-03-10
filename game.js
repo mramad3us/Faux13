@@ -3223,6 +3223,9 @@ function renderReadingPane() {
     `;
 
   } else if (m.status === 'SUCCESS') {
+    if (!m.debriefHtml && typeof window.generateDebrief === 'function') {
+      m.debriefHtml = window.generateDebrief(m, true);
+    }
     bodyContent += `
       <div class="result-box success">
         <div class="result-title">OPERATION SUCCESSFUL</div>
@@ -3239,6 +3242,9 @@ function renderReadingPane() {
     ]);
 
   } else if (m.status === 'FAILURE') {
+    if (!m.debriefHtml && typeof window.generateDebrief === 'function') {
+      m.debriefHtml = window.generateDebrief(m, false);
+    }
     bodyContent += `
       <div class="result-box failure">
         <div class="result-title">OPERATION FAILED</div>
