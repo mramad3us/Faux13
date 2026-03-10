@@ -170,6 +170,13 @@ hook('operation:resolved', function (data) {
   // Only trigger on high-quality successes
   if (Math.random() > 0.10) return;
 
+  // Cap: max 10 alive elite units
+  var aliveCount = 0;
+  for (var c = 0; c < (G.eliteUnits || []).length; c++) {
+    if (G.eliteUnits[c].alive) aliveCount++;
+  }
+  if (aliveCount >= 10) return;
+
   // Pick a dept that was used in the op
   var depts = m.assignedExecDepts || [];
   if (depts.length === 0) return;
@@ -416,6 +423,39 @@ window.toggleEliteUnit = function (eliteId, missionId) {
 };
 
 // =============================================================================
+// RETIRE ELITE UNIT
+// =============================================================================
+
+window.retireEliteUnit = function (eliteId) {
+  var unit = null;
+  for (var i = 0; i < (G.eliteUnits || []).length; i++) {
+    if (G.eliteUnits[i].id === eliteId) { unit = G.eliteUnits[i]; break; }
+  }
+  if (!unit || !unit.alive) return;
+
+  // Check if currently deployed
+  var deployed = false;
+  for (var j = 0; j < (G.missions || []).length; j++) {
+    var m = G.missions[j];
+    if (m.status === 'EXECUTING' && (m.attachedEliteIds || []).indexOf(eliteId) >= 0) {
+      deployed = true;
+      break;
+    }
+  }
+  if (deployed) {
+    addLog('Cannot retire ' + unit.fullName + ' — currently deployed on active operation.', 'log-warn');
+    return;
+  }
+
+  unit.alive = false;
+  unit.fate = 'RETIRED';
+  unit.deathDay = G.day;
+  unit.deathMission = null;
+  addLog(unit.fullName + ' (' + unit.deptName + ') honorably retired from active duty.', 'log-info');
+  renderRoster();
+};
+
+// =============================================================================
 // CSS INJECTION
 // =============================================================================
 
@@ -439,6 +479,11 @@ function injectEliteCSS() {
     '.roster-fate-badge { font-size: 8px; letter-spacing: 1px; padding: 2px 5px; border-radius: 3px; font-weight: 700; }',
     '.roster-fate-kia, .roster-fate-mia { background: rgba(192, 57, 43, 0.15); color: rgba(192, 57, 43, 0.95); border: 1px solid rgba(192, 57, 43, 0.3); }',
     '.roster-fate-burned { background: rgba(243, 156, 18, 0.15); color: rgba(243, 156, 18, 0.95); border: 1px solid rgba(243, 156, 18, 0.3); }',
+    '.roster-fate-retired { background: rgba(100, 149, 237, 0.15); color: rgba(100, 149, 237, 0.95); border: 1px solid rgba(100, 149, 237, 0.3); }',
+    '.roster-retired { background: rgba(100, 149, 237, 0.05); border: 1px solid rgba(100, 149, 237, 0.15); border-left: 3px solid rgba(100, 149, 237, 0.3); opacity: 0.55; }',
+    '.roster-retired .roster-name { text-decoration: line-through; color: rgba(100, 149, 237, 0.7); }',
+    '.btn-retire { font-family: var(--font-mono, monospace); font-size: 9px; letter-spacing: 1px; padding: 3px 8px; border: 1px solid rgba(100, 149, 237, 0.3); background: rgba(100, 149, 237, 0.08); color: rgba(100, 149, 237, 0.8); border-radius: 3px; cursor: pointer; transition: background 0.15s, color 0.15s; }',
+    '.btn-retire:hover { background: rgba(100, 149, 237, 0.2); color: rgba(100, 149, 237, 1); }',
     '.roster-dept { font-size: 9px; color: var(--text-dim, #888); letter-spacing: 0.8px; }',
     '.roster-stats { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }',
     '.roster-stat { font-size: 9px; padding: 1px 5px; border-radius: 3px; background: var(--bg3, rgba(255,255,255,0.04)); color: var(--text-dim, #888); letter-spacing: 0.5px; }',
@@ -506,7 +551,7 @@ function renderRoster() {
   var html = '';
 
   if (alive.length > 0) {
-    html += '<div class="roster-section-hdr">ACTIVE ELITE UNITS</div>';
+    html += '<div class="roster-section-hdr">ACTIVE ELITE UNITS (' + alive.length + '/10)</div>';
     for (var i = 0; i < alive.length; i++) html += renderEliteCard(alive[i]);
   }
 
@@ -526,11 +571,12 @@ function renderEliteCard(u) {
   var isFallen = !u.alive;
   var fate = u.fate || 'KIA';
   var isBurned = fate === 'BURNED';
-  var cardClass = isFallen ? (isBurned ? 'roster-burned' : 'roster-dead') : 'roster-elite';
+  var isRetired = fate === 'RETIRED';
+  var cardClass = isFallen ? (isRetired ? 'roster-retired' : (isBurned ? 'roster-burned' : 'roster-dead')) : 'roster-elite';
 
   var fateBadge = '';
   if (isFallen) {
-    var fateClass = fate === 'BURNED' ? 'roster-fate-burned' : 'roster-fate-kia';
+    var fateClass = isRetired ? 'roster-fate-retired' : (fate === 'BURNED' ? 'roster-fate-burned' : 'roster-fate-kia');
     fateBadge = '<span class="roster-fate-badge ' + fateClass + '">' + fate + '</span>';
   }
 
@@ -552,5 +598,6 @@ function renderEliteCard(u) {
       '<span class="roster-stat">FORGED DAY ' + u.forgedDay + ' \u2014 OP ' + u.forgedOnMission + '</span>' +
       (isFallen ? '<span class="roster-stat" style="color:' + (isBurned ? 'rgba(243,156,18,0.9)' : 'rgba(231,76,60,0.9)') + '">' + fate + ' DAY ' + u.deathDay + (u.deathMission ? ' \u2014 OP ' + u.deathMission : '') + '</span>' : '') +
     '</div>' +
+    (!isFallen ? '<div style="margin-top:6px;text-align:right"><button class="btn-retire" onclick="retireEliteUnit(\'' + u.id + '\')" data-tip="Honorably discharge this unit from active duty.">RETIRE</button></div>' : '') +
   '</div>';
 }
