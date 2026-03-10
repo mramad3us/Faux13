@@ -453,7 +453,7 @@ input[type="range"] { accent-color: var(--accent); }
   font-size: 7px;
   color: var(--text-muted);
   letter-spacing: 0.3px;
-  padding-left: 3.95em;
+  padding-left: 4.8em;
 }
 .hdr-sub {
   font-family: var(--font-mono);
