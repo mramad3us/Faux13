@@ -7,6 +7,50 @@
 (function () {
 
   // ===========================================================================
+  // CSS INJECTION (ensures styles load regardless of stylesheet caching)
+  // ===========================================================================
+
+  var _cssInjected = false;
+  function injectCSS() {
+    if (_cssInjected) return;
+    _cssInjected = true;
+    var s = document.createElement('style');
+    s.textContent =
+      '.db-wrap { margin-top:16px; border:1px solid var(--border); border-radius:4px; background:var(--bg-2,rgba(0,0,0,0.2)); overflow:hidden; }' +
+      '.db-success { border-left:3px solid var(--green); }' +
+      '.db-failure { border-left:3px solid var(--red); }' +
+      '.db-toggle { display:flex; align-items:center; gap:10px; padding:12px 16px; cursor:pointer; user-select:none; transition:background 0.2s; }' +
+      '.db-toggle:hover { background:rgba(255,255,255,0.03); }' +
+      '.db-toggle-arrow { font-size:9px; color:var(--text-muted); transition:transform 0.3s cubic-bezier(0.16,1,0.3,1); display:inline-block; }' +
+      '.db-open .db-toggle-arrow { transform:rotate(90deg); }' +
+      '.db-toggle-label { font-family:var(--font-disp); font-size:12px; font-weight:700; letter-spacing:1.5px; color:var(--text-dim); }' +
+      '.db-open .db-toggle-label { color:var(--text); }' +
+      '.db-body { max-height:0; overflow:hidden; transition:max-height 0.5s cubic-bezier(0.16,1,0.3,1),opacity 0.3s ease; opacity:0; border-top:1px solid transparent; }' +
+      '.db-open .db-body { max-height:5000px; opacity:1; border-top-color:var(--border); }' +
+      '.db-classification { font-family:var(--font-mono); font-size:10px; letter-spacing:2px; color:var(--red,#e84848); padding:14px 18px 4px; opacity:0.7; }' +
+      '.db-title { font-family:var(--font-disp); font-size:15px; font-weight:700; letter-spacing:1px; color:var(--text-hi,#fff); padding:2px 18px; }' +
+      '.db-subtitle { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); padding:2px 18px 14px; border-bottom:1px solid var(--border); margin-bottom:10px; }' +
+      '.db-section-title { font-family:var(--font-disp); font-size:11px; font-weight:700; letter-spacing:1.5px; color:var(--text-dim); padding:12px 18px 6px; text-transform:uppercase; }' +
+      '.db-assets { padding:0 18px 8px; display:flex; flex-wrap:wrap; gap:6px; }' +
+      '.db-asset-row { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10px; padding:4px 10px; border:1px solid var(--border); border-radius:3px; background:rgba(255,255,255,0.02); }' +
+      '.db-asset-dept { color:var(--text); font-weight:600; letter-spacing:0.5px; }' +
+      '.db-asset-type { color:var(--text-dim); }' +
+      '.db-asset-elite { border-color:rgba(46,204,113,0.3); background:rgba(46,204,113,0.04); }' +
+      '.db-asset-elite .db-asset-dept { color:var(--green); }' +
+      '.db-meta { font-family:var(--font-mono); font-size:10px; color:var(--text-muted); padding:4px 18px 12px; border-bottom:1px solid var(--border); }' +
+      '.db-day { font-family:var(--font-disp); font-size:11px; font-weight:700; letter-spacing:1px; color:var(--teal,#00c8b4); padding:10px 18px 4px; }' +
+      '.db-event { font-family:var(--font-mono); font-size:11px; line-height:1.7; color:var(--text); padding:3px 18px 3px 36px; position:relative; }' +
+      '.db-event::before { content:""; position:absolute; left:24px; top:11px; width:4px; height:4px; border-radius:50%; background:var(--text-dim); }' +
+      '.db-time { color:var(--text-dim); margin-right:6px; font-size:10px; letter-spacing:0.5px; }' +
+      '.db-assessment { font-family:var(--font-mono); font-size:11px; line-height:1.8; color:var(--text); padding:6px 18px 18px; font-style:italic; }';
+    document.head.appendChild(s);
+  }
+
+  // Inject immediately
+  if (document.head) injectCSS();
+  else document.addEventListener('DOMContentLoaded', injectCSS);
+
+  // ===========================================================================
   // HELPERS
   // ===========================================================================
 

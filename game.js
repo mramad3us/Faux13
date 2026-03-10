@@ -3225,29 +3225,6 @@ function renderReadingPane() {
   } else if (m.status === 'SUCCESS') {
     if (typeof window.generateDebrief === 'function') {
       m.debriefHtml = window.generateDebrief(m, true);
-      console.log('[DEBRIEF DEBUG] generateDebrief available:', typeof window.generateDebrief);
-      console.log('[DEBRIEF DEBUG] m.typeId:', m.typeId);
-      console.log('[DEBRIEF DEBUG] html length:', m.debriefHtml ? m.debriefHtml.length : 0);
-      console.log('[DEBRIEF DEBUG] html starts with:', m.debriefHtml ? m.debriefHtml.substring(0, 200) : 'EMPTY');
-      console.log('[DEBRIEF DEBUG] has db-wrap class:', m.debriefHtml ? m.debriefHtml.indexOf('db-wrap') >= 0 : false);
-      console.log('[DEBRIEF DEBUG] CSS check:', document.querySelector('style, link[href*="style"]') ? 'stylesheet found' : 'NO STYLESHEET');
-      // Check if db-wrap CSS rule exists
-      try {
-        var sheets = document.styleSheets;
-        var found = false;
-        for (var s = 0; s < sheets.length; s++) {
-          try {
-            var rules = sheets[s].cssRules || sheets[s].rules;
-            for (var r = 0; r < rules.length; r++) {
-              if (rules[r].selectorText && rules[r].selectorText.indexOf('db-wrap') >= 0) {
-                found = true; break;
-              }
-            }
-          } catch(e) {}
-          if (found) break;
-        }
-        console.log('[DEBRIEF DEBUG] .db-wrap CSS rule found:', found);
-      } catch(e) { console.log('[DEBRIEF DEBUG] CSS check error:', e); }
     }
     bodyContent += `
       <div class="result-box success">
