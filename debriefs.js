@@ -339,7 +339,7 @@
    * @returns {string} HTML-formatted debrief text
    */
   window.generateDebrief = function (m, success) {
-    const mtype = m.missionType || m.type;
+    const mtype = m.typeId || m.missionType || m.type;
     const pool = TYPE_MAP[mtype];
     if (!pool) return '';
 
