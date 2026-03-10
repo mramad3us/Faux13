@@ -1,6 +1,7 @@
 'use strict';
+const GAME_VERSION = '2.0.0';
 // =============================================================================
-// SHADOW DIRECTIVE v1.3  —  Per-department resources, XP & capabilities system
+// SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
 // =============================================================================
 
@@ -2505,6 +2506,16 @@ window.spawnHvtMission = function(hvtId, typeId) {
   const newest = G.missions[0];
   if (newest) {
     newest.linkedHvtId = hvtId;
+    // Mark elimination vs capture intent when spawned from threats tab
+    const ELIM_TYPES = new Set(['DOMESTIC_HVT', 'FOREIGN_HVT', 'LONG_HUNT_HVT']);
+    const ABDUCT_TYPES = new Set(['HVT_ABDUCTION_DOM', 'HVT_ABDUCTION_FOR']);
+    if (ELIM_TYPES.has(typeId))   newest.isElimination = true;
+    if (ABDUCT_TYPES.has(typeId)) newest.isAbduction = true;
+    // For elimination missions, filter out capture-sounding success messages
+    if (newest.isElimination && Array.isArray(newest.successMsgs)) {
+      const elimOnly = newest.successMsgs.filter(s => !/apprehend|custody|captured|arrest|taken into/i.test(s));
+      if (elimOnly.length > 0) newest.successMsgs = elimOnly;
+    }
     // Override location to match HVT's known location
     const oldCity    = newest.city;
     const oldCountry = newest.country;
@@ -2576,15 +2587,15 @@ window.spawnHvtMission = function(hvtId, typeId) {
           newest[arr] = newest[arr].map(s => s.includes('{') ? fillTemplate(s, newest.fillVars) : s);
         }
       }
-      // Fix suspects array so hvtAliasFromMission returns correctly
-      if (newest.suspects) {
-        for (const sus of newest.suspects) {
-          if (sus.isTarget) {
-            sus.alias = h.alias;
-            if (h.role) sus.role = h.role;
-          }
-        }
-      }
+      // Threat-initiated: we know exactly who the target is — single suspect
+      newest.suspects = [{
+        alias: h.alias,
+        role: h.role || newest.fillVars.hvt_role || newest.fillVars.target_role || 'Unknown',
+        confidence: 'HIGH',
+        isTarget: true,
+        eliminated: false,
+      }];
+      newest.selectedSuspectIdx = 0;
     }
     if (!h.linkedMissionIds.includes(newest.id)) h.linkedMissionIds.push(newest.id);
     addLog(`New mission spawned for target ${h.alias}: OP ${newest.codename}.`, 'log-info');
@@ -3963,7 +3974,7 @@ function bootTerminal() {
 
 function bootDirectorLogin(output, saveInfo) {
   const loginLines = [
-    { text: '🫆 SHADOWNET SECURE TERMINAL v4.7.2', delay: 0, cls: 'term-hi' },
+    { text: `🫆 SHADOWNET SECURE TERMINAL v${GAME_VERSION}`, delay: 0, cls: 'term-hi' },
     { text: '════════════════════════════════════', delay: 80, cls: 'term-dim' },
     { text: '', delay: 120 },
     { text: 'SECURE UPLINK ....... ESTABLISHED', delay: 250 },
@@ -4129,7 +4140,7 @@ function getSaveSlotToLoad() {
 
 function bootNewGameTerminal(output, profiles) {
   const lines = [
-    { text: '🫆 SHADOWNET SECURE TERMINAL v4.7.2', delay: 0, cls: 'term-hi' },
+    { text: `🫆 SHADOWNET SECURE TERMINAL v${GAME_VERSION}`, delay: 0, cls: 'term-hi' },
     { text: '════════════════════════════════════', delay: 80, cls: 'term-dim' },
     { text: '', delay: 120 },
     { text: 'BIOS CHECK .......... OK', delay: 200 },

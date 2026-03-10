@@ -413,13 +413,13 @@
     var target = fv.target_name || fv.alias || fv.hvt_name || 'the high-value target';
     var city = fv.city || fv.location || 'the target area';
     var weather = P(WEATHER);
-    var isAbduction = (m.typeId || '').indexOf('ABDUCTION') >= 0;
+    var isAbduction = m.isAbduction || (m.typeId || '').indexOf('ABDUCTION') >= 0;
     // Determine if this is an elimination (kill) vs capture mission
     var tid = m.typeId || '';
-    var isElim = !isAbduction && (tid === 'FOREIGN_HVT' || tid === 'LONG_HUNT_HVT' ||
+    var isElim = !isAbduction && (m.isElimination || tid === 'FOREIGN_HVT' || tid === 'LONG_HUNT_HVT' ||
       (m.resultMsg && /neutraliz|eliminat|killed/i.test(m.resultMsg)));
-    // DOMESTIC_HVT can go either way — check the result message for clues
-    if (tid === 'DOMESTIC_HVT' && !isElim && m.resultMsg && /apprehend|custody|arrest|captured/i.test(m.resultMsg)) {
+    // Organic DOMESTIC_HVT (no explicit flag) — fall back to result message
+    if (tid === 'DOMESTIC_HVT' && !m.isElimination && !isElim && m.resultMsg && /apprehend|custody|arrest|captured/i.test(m.resultMsg)) {
       isElim = false;
     }
 
