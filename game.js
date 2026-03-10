@@ -1189,6 +1189,8 @@ function pruneArchive() {
 function dismissMission(missionId) {
   const m = getMission(missionId);
   if (!m) return;
+  // Queue handover message for next day delivery
+  if (typeof window._queueHandover === 'function') window._queueHandover(m);
   // Clear any assignment — deptAllocated recomputes from active missions
   m.assignedInvDept   = null;
   m.assignedExecDepts = [];

@@ -136,6 +136,7 @@
     // Migrate new fields for old saves
     if (!G.intelMessages) G.intelMessages = [];
     if (!G.intelIdCounter) G.intelIdCounter = 0;
+    if (!G._pendingHandovers) G._pendingHandovers = [];
     if (G.selectedType === undefined) G.selectedType = null;
     if (!G.country) {
       // Guess country from cfg
