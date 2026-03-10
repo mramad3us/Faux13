@@ -150,20 +150,39 @@
     return lines.join('\n');
   }
 
-  // Generate an event at a random time within a range
-  function evt(hMin, hMax, text) {
-    return { time: rtime(), text: text };
-  }
-
-  // Generate a realistic time-ordered set of events for a day
+  // Prep-day events — hours apart (planning, staging, recon)
   function dayEvents(events) {
-    // Assign hours in ascending order
-    var hour = R(0, 4);
+    var hour = R(5, 9);
+    var min = P([0,10,15,20,30,40,45,50]);
     var out = [];
     for (var i = 0; i < events.length; i++) {
-      var m = P([0,5,10,15,20,25,30,35,40,45,50,55]);
-      out.push({ time: zp(hour) + zp(m) + 'Z', text: events[i] });
+      out.push({ time: zp(hour) + zp(min) + 'Z', text: events[i] });
       hour += R(1, 3);
+      min = P([0,5,10,15,20,25,30,35,40,45,50,55]);
+      if (hour > 22) hour = 22;
+    }
+    return out;
+  }
+
+  // Assault-day events — minutes apart, tightly sequenced from H-hour
+  // First few events (approach, staging) can be spaced wider, then the
+  // assault itself runs in 3-10 minute gaps, then exfil slightly wider
+  function assaultEvents(events) {
+    // Start in the early hours (0100-0400 typical for night raids)
+    var hour = R(1, 4);
+    var min = R(0, 3) * 15;
+    var out = [];
+    for (var i = 0; i < events.length; i++) {
+      out.push({ time: zp(hour) + zp(min) + 'Z', text: events[i] });
+      // First 2 events (pre-assault prep): 15-40 min gaps
+      // Middle events (the assault): 3-12 min gaps
+      // Last 2 events (exfil/cleanup): 10-25 min gaps
+      var gap;
+      if (i < 2) gap = R(15, 40);
+      else if (i >= events.length - 2) gap = R(10, 25);
+      else gap = R(3, 12);
+      min += gap;
+      while (min >= 60) { min -= 60; hour++; }
       if (hour > 23) hour = 23;
     }
     return out;
@@ -322,7 +341,7 @@
           'Weather forecast for execution window: ' + weather + '. Assessment: ' + P(['FAVORABLE','ACCEPTABLE','CHALLENGING BUT VIABLE','OPTIMAL FOR COVERT OPERATIONS']) + '.',
         ])});
       }
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         'H-HOUR MINUS 60. Final intelligence update: target confirmed at location. No unusual activity detected. GO authorization confirmed.',
         cs + ' assault element departed staging area. ' + weather + '. All teams moving to assigned positions.',
         'Outer security perimeter established. ' + R(2,4) + ' escape routes blocked by ' + (units.length > 1 ? units[units.length-1].short : 'support') + ' elements.',
@@ -353,7 +372,7 @@
         'Staging area established. Equipment and personnel pre-positioned. Communications checks completed.',
         elites.length ? elites[0].fullName + ' attached to assault element. Final coordination with ' + cs + ' team leader.' : cs + ' team leader conducted final rehearsal with assault element.',
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         'GO authorization received. Assault element departed staging. ' + weather + '.',
         'Approach to target area. ' + P(['All clear on primary route.','Minor delay — civilian vehicle on approach road required waiting.','Route clear, team making good time.','Counter-surveillance team reported all clear.']) ,
         P(['On arrival at target compound, immediately apparent that the location has been abandoned. Front door standing open, no vehicles present, no lights.','SIGINT reports: target\'s phone last pinged at this location '+R(4,18)+' hours ago. Currently offline. Probable departure.','Breach executed as planned. Building entered. Target NOT PRESENT. '+R(1,3)+' individuals found on-site — none matching target description.','Surveillance team reports target departed the location by vehicle approximately '+R(1,6)+' hours before assault element arrival. Pursuit attempted — vehicle lost in traffic.']),
@@ -396,7 +415,7 @@
         'Medical team pre-staged with ' + P(['trauma kit and stretcher','full field surgical capability','sedation and stabilization equipment','emergency medical evacuation helicopter on standby']) + '.',
         'Support asset deployed: ' + P(['ISR drone providing continuous overhead coverage','SIGINT intercept team monitoring all communications in the target area','sniper/observer team established on elevated terrain '+R(200,600)+'m from target','quick reaction force pre-positioned '+R(3,8)+'km from target for contingency']) + '.',
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         'Final intelligence update: ' + R(3,8) + ' armed guards observed at the holding location. ' + rescueTarget + P([' confirmed alive — visual confirmation through window.',' last heard via intercepted communication '+R(2,6)+' hours ago. Status: believed alive.',' status unknown but no evidence of harm detected.',' confirmed alive by HUMINT source inside the guard force.']) ,
         'H-HOUR MINUS 30. ' + cs + ' team departed staging. ' + weather + '. All elements moving.',
         'Outer cordon established. Escape routes blocked. ' + (units.length > 1 ? units[units.length-1].short + ' team covering rear and flanks.' : 'Support element covering rear.'),
@@ -423,7 +442,7 @@
         'Intelligence placed ' + rescueTarget + ' at ' + holdingDesc + ' in ' + city + '. Source: ' + P(INTEL_SRC) + '.',
         unitShort(units) + ' developed rescue plan. ' + (elites.length ? elites[0].fullName + ' designated as rescue lead.' : cs + ' assigned as team leader.'),
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         'Assault element deployed. ' + weather + '.',
         P(['On approach, guards detected the team. Alarm raised. Sound of vehicles — captors moving '+rescueTarget+' to a vehicle.','Breach executed. Building searched thoroughly. '+rescueTarget+' NOT at this location. Intelligence was '+P(['outdated','deliberately falsified','based on a misidentified building','accurate but the captors relocated '+R(6,24)+' hours ago'])+'.','Entry achieved. Intense firefight with '+R(4,8)+' guards. During the engagement, captors executed '+P(['an escape through a pre-prepared tunnel','a vehicle breakout through a back gate','a transfer of '+rescueTarget+' via an underground passage'])+'.','Rescue team reached the holding cell. '+rescueTarget+' '+P(['had been moved within the last few hours — cell empty, still warm','was found deceased — cause of death appears to be '+P(['gunshot wound','blunt force trauma','unknown — autopsy required'])+'. Time of death estimated '+R(6,36)+' hours prior.','had already been relocated to an unknown secondary site.'])] ),
         'Operation called. All elements withdrawing. ' + (elites.length ? elites[0].fullName + ' confirmed no trace of ' + rescueTarget + ' at the location. ' : '') + P(AFTERMATH_F),
@@ -467,7 +486,7 @@
           'SIGINT intercept: suspect\'s personal phone placed a call to a number associated with ' + P(['a known foreign intelligence front organization','an individual under existing counter-intelligence investigation','a diplomatic mission of a hostile nation','an encrypted messaging service frequently used by foreign intelligence','a previously unidentified number — now flagged for monitoring']) + '.',
         ])});
       }
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         'Decision made to move to arrest. Evidence package reviewed by internal legal counsel: assessed as SUFFICIENT for prosecution and internal action.',
         'Arrest team assembled. ' + cs + ' designated as lead. Location: suspect is currently at ' + P(['their desk in the operations center','a meeting in the conference room','the parking garage about to leave for the day','the cafeteria','their personal vehicle in the parking lot']) + '.',
         'Suspect approached by ' + cs + ' team. ' + P(['Suspect immediately requested legal counsel. Declined to make any statement.','Suspect appeared shocked. Made spontaneous admissions before being advised of rights.','Suspect attempted to destroy their phone by smashing it — device partially recovered.','Suspect was calm and cooperative. Stated: "I knew this day would come."','Suspect became agitated and attempted to flee — restrained by security.']) ,
@@ -491,7 +510,7 @@
         'Investigation focused on primary suspect. ' + unitShort(units) + ' initiated surveillance and canary trap protocols.',
         'Canary documents distributed through suspect pool.',
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         P(['Canary trap produced inconclusive results — no leaked document matched a single variant.','Surveillance detected that the suspect has become aware of scrutiny. Suspect altered daily patterns and began counter-surveillance runs.','Investigation stalled. Digital forensics found no unauthorized access from monitored accounts. Suspect appears to be using methods outside our monitoring scope.','Suspect abruptly resigned citing "personal reasons." Submitted resignation effective immediately and departed the building before arrest authority could be obtained.','Suspect was found to have destroyed personal devices and sanitized their workspace overnight. Evidence preservation failed.']),
         (elites.length ? elites[0].fullName + ' reported the suspect\'s evasive behavior indicates professional counter-intelligence training.' : 'Assessment: suspect demonstrates counter-intelligence awareness beyond what was anticipated.'),
         'Investigation suspended. ' + P(AFTERMATH_F),
@@ -527,7 +546,7 @@
         unitShort(units) + ' acquisition team assembled. Specialized equipment: ' + P(['sedation kit with medical supervision','covert transport vehicle with concealed compartment','false identity documents for target\'s cover story','biometric spoofing equipment for border controls']) + '.',
         'Transfer logistics confirmed. Route: ' + city + ' → ' + P(['regional airstrip ('+R(30,120)+'km)','safe house network ('+R(3,5)+' waypoints)','maritime extraction point','border crossing with pre-arranged passage','embassy vehicle to diplomatic compound']) + ' → final destination.',
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         'Final confirmation: target at expected location following predicted routine. ' + cs + ' team deployed.',
         'Acquisition point selected: ' + P(['a quiet side street during target\'s morning walk','the parking structure beneath target\'s office building','a gas station on target\'s commute route','target\'s apartment building entrance at '+rtime(),'a restaurant where target dines regularly']) + '.',
         cs + ' approach team made contact. Target ' + P(['was approached by two operatives posing as local police. Complied with instructions.','was intercepted exiting a vehicle. Sedated within '+R(5,15)+' seconds. No witnesses.','was invited into a vehicle by an operative posing as an associate. Once inside, secured.','struggled briefly before being subdued with a sedative injection. Duration of resistance: under '+R(10,30)+' seconds.']) ,
@@ -552,7 +571,7 @@
       entries.push({ day: opStart, events: dayEvents([
         'Rendition plan approved. ' + unitShort(units) + ' acquisition team staged.',
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         cs + ' team deployed to acquisition point. ' + P(WEATHER) + '.',
         P(['Target arrived at acquisition point but accompanied by '+R(2,4)+' unexpected associates. Acquisition in presence of witnesses was assessed as non-viable.','Target deviated from established routine. Did not appear at the acquisition point. Alternate locations checked — negative.','Acquisition initiated but target resisted loudly. A passerby intervened. Local police were called. Team forced to disengage and withdraw.','Target\'s vehicle was intercepted but a second vehicle with unknown occupants was following. Possible security detail or counter-surveillance. Operation aborted to protect the rendition network.','On approach, team identified what appeared to be a surveillance camera not present in previous reconnaissance. Risk of identification forced abort.']),
         'Emergency withdrawal executed. All team members extracted via ' + P(['pre-planned exfiltration route','emergency vehicle swap','on-foot dispersal to safe houses','diplomatic vehicle']) + '. ' + P(AFTERMATH_F),
@@ -591,7 +610,7 @@
           (elites.length ? elites[0].fullName + ' coordinated directly with local opposition forces, providing ' + P(['tactical guidance','communications support','weapons training','intelligence on regime force positions']) + '.' : 'Agency liaison maintained coordination with opposition elements.'),
         ])});
       }
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         'Phase 2: Local opposition elements executed coordinated actions across ' + R(2,5) + ' locations. ' + P(['Government buildings occupied','Key transportation routes blocked','Regime military units defected and joined opposition','Broadcasting facilities seized — opposition message now on national media','Border crossings taken by opposition forces']) + '.',
         'Regime control in the target area ' + P(['collapsed','degraded significantly','weakened to the point of non-functionality','fractured along ethnic/tribal lines as predicted']) + '.',
         'All agency personnel commenced withdrawal per exfiltration plan. ' + P(['All foreign operatives extracted via '+P(['helicopter','overland route','maritime pickup'])+'.','Two operatives delayed at checkpoint — resolved through bribery. All eventually extracted.','Extraction clean. No agency personnel remain in-country.']) ,
@@ -611,7 +630,7 @@
         unitShort(units) + ' initiated the operation. Ground assets activated.',
         'Local opposition elements notified. Coordination commenced.',
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         P(['Local assets failed to execute coordinated actions — the network was penetrated by regime counter-intelligence.','Opposition elements were arrested before they could act. '+R(3,8)+' local assets are now in regime custody.','Regime security forces preemptively deployed to all planned target locations. Intelligence leaked.','An agency operative was identified by regime security. Emergency extraction triggered for all foreign personnel.']),
         (elites.length ? elites[0].fullName + ' organized the emergency withdrawal, ensuring all agency personnel reached extraction points.' : 'Emergency extraction initiated for all foreign personnel.'),
         'All agency elements extracted via ' + P(EXFIL) + '. ' + P([R(1,2)+' team members sustained minor injuries during the withdrawal.','No friendly casualties.','All personnel accounted for.']) ,
@@ -673,7 +692,7 @@
         'Surveillance teams deployed to ' + city + '. Observation positions established.',
         'Initial collection began. Target sighted at known location.',
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         P(['Target conducted aggressive counter-surveillance and identified our observation team. Target made eye contact with surveillance operative and immediately altered behavior.','Target\'s security detail detected our technical surveillance device. Device removed and destroyed. Target is now aware of monitoring.','Target departed the area entirely. SIGINT indicates relocation to unknown location. All collection lost.','Local security services questioned our surveillance team, compromising the operation. Team extracted using cover identities.']),
         'Surveillance operation terminated. ' + P(AFTERMATH_F),
         (elites.length ? elites[0].fullName + ' recommended immediate suspension to prevent further compromise.' : 'Assessment: continuing surveillance would risk further compromise.'),
@@ -706,7 +725,7 @@
         'Synchronization plan established. All teams will execute simultaneously at H-hour to prevent targets from warning each other.',
         (elites.length ? elites[0].fullName + ' assigned to lead the raid on the primary target — the organization\'s leadership location.' : 'Senior team leader assigned to the primary target location.'),
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         'H-HOUR. Simultaneous raids commenced at ' + R(3,7) + ' locations across ' + city + '.',
         'Location 1 (primary — leadership): ' + P(BREACH) + '. ' + R(2,5) + ' senior organization members detained. ' + P(RESIST_LIGHT),
         'Location 2 (logistics): ' + R(3,8) + ' individuals detained. ' + P(EVIDENCE) + ' recovered. Significant financial records seized.',
@@ -752,7 +771,7 @@
         (isTakedown ? 'Takedown operation planning finalized. Teams assembled.' : 'Agent reported possible compromise within the organization.'),
         unitShort(units) + ' ' + (isTakedown ? 'prepared simultaneous raid packages.' : 'activated emergency extraction protocols.'),
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         isTakedown ?
           'Raids executed at ' + R(3,6) + ' locations. PRIMARY TARGET LOCATION: key leadership ABSENT. ' + P(['Organization received advance warning.','Only low-level members found on-site.','The location had been evacuated within the last '+R(6,24)+' hours.']) :
           'Agent extraction attempted. ' + P(['Agent reached safe house but was followed by organization security.','Agent missed the extraction window. Communications lost.','Agent was detained by the organization before reaching the rendezvous.','Agent extracted under fire — QRF deployed to assist.']),
@@ -789,7 +808,7 @@
         'Joint planning session with ' + agencyName + ' liaison. Rules of engagement and information-sharing protocols established.',
         (elites.length ? elites[0].fullName + ' designated as primary liaison and operational lead.' : 'Senior officer designated as agency representative for the joint operation.'),
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         unitShort(units) + ' deployed to ' + city + '. ' + P(WEATHER) + '.',
         'Primary objective engaged. ' + P(['Target located and secured as requested.','Surveillance package delivered to partner agency specifications.','Extraction completed per partner requirements.','Direct action executed per joint operational plan.','Intelligence collection completed — products transferred to requesting agency.']),
         P(RESIST_LIGHT),
@@ -809,7 +828,7 @@
       entries.push({ day: opStart, events: dayEvents([
         agencyName + ' request received and accepted. ' + unitShort(units) + ' assigned.',
       ])});
-      entries.push({ day: cd, events: dayEvents([
+      entries.push({ day: cd, events: assaultEvents([
         unitShort(units) + ' deployed. ' + P(WEATHER) + '.',
         P(['Objective could not be achieved — '+P(['target was not at the specified location','operational conditions were non-viable','the intelligence provided by '+agencyName+' was inaccurate','unexpected opposition rendered the approach unsafe','equipment failure at a critical moment'])+'.','Operation was compromised during execution. Teams withdrew.','Partially completed before conditions forced abort.']),
         (elites.length ? elites[0].fullName + ' managed the withdrawal. ' : '') + P(AFTERMATH_F),
