@@ -3223,7 +3223,7 @@ function renderReadingPane() {
     `;
 
   } else if (m.status === 'SUCCESS') {
-    if ((!m.debriefHtml || m.debriefHtml.indexOf('debrief-section') >= 0) && typeof window.generateDebrief === 'function') {
+    if (typeof window.generateDebrief === 'function') {
       m.debriefHtml = window.generateDebrief(m, true);
     }
     bodyContent += `
@@ -3242,7 +3242,7 @@ function renderReadingPane() {
     ]);
 
   } else if (m.status === 'FAILURE') {
-    if ((!m.debriefHtml || m.debriefHtml.indexOf('debrief-section') >= 0) && typeof window.generateDebrief === 'function') {
+    if (typeof window.generateDebrief === 'function') {
       m.debriefHtml = window.generateDebrief(m, false);
     }
     bodyContent += `
@@ -3289,7 +3289,7 @@ function renderReadingPane() {
 
   } else if (m.status === 'ARCHIVED') {
     const wasSuccess = m.confDelta > 0;
-    if ((!m.debriefHtml || m.debriefHtml.indexOf('debrief-section') >= 0) && typeof window.generateDebrief === 'function') {
+    if (typeof window.generateDebrief === 'function') {
       m.debriefHtml = window.generateDebrief(m, wasSuccess);
     }
     bodyContent += `
