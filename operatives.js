@@ -70,6 +70,114 @@ function resolveEliteFate(deptId) {
 }
 
 // =============================================================================
+// LEVEL / STAR SYSTEM
+// =============================================================================
+
+var ELITE_LEVELS = [
+  { stars: 0, label: 'Elite',     opsRequired: 0,   daBonus: 8,  intelBonus: 8,  intelFields: 0 },
+  { stars: 1, label: 'Elite',     opsRequired: 10,  daBonus: 12, intelBonus: 8,  intelFields: 1 },
+  { stars: 2, label: 'Elite',     opsRequired: 100, daBonus: 20, intelBonus: 12, intelFields: 2 },
+  { stars: 3, label: 'Legendary', opsRequired: 500, daBonus: 30, intelBonus: 18, intelFields: 3 },
+];
+
+var DA_DEPTS = { FIELD_OPS: true, FOREIGN_OPS: true, SPECIAL_OPS: true };
+
+function getEliteLevel(unit) {
+  var lvl = ELITE_LEVELS[0];
+  for (var i = ELITE_LEVELS.length - 1; i >= 0; i--) {
+    if (unit.missionsCompleted >= ELITE_LEVELS[i].opsRequired) { lvl = ELITE_LEVELS[i]; break; }
+  }
+  return lvl;
+}
+
+function isDAUnit(unit) {
+  return !!DA_DEPTS[unit.deptId];
+}
+
+function getEliteBonusValue(unit) {
+  var lvl = getEliteLevel(unit);
+  return isDAUnit(unit) ? lvl.daBonus : lvl.intelBonus;
+}
+
+function getEliteIntelFields(unit) {
+  if (isDAUnit(unit)) return 0;
+  return getEliteLevel(unit).intelFields;
+}
+
+function getEliteTitle(unit) {
+  return getEliteLevel(unit).label;
+}
+
+function starsDisplay(unit) {
+  var lvl = getEliteLevel(unit);
+  if (lvl.stars === 0) return '';
+  var s = '';
+  for (var i = 0; i < lvl.stars; i++) s += '\u2605';
+  return s;
+}
+
+function applyEliteLevel(unit) {
+  unit.bonusValue = getEliteBonusValue(unit);
+  unit.intelFieldBonus = getEliteIntelFields(unit);
+  unit.stars = getEliteLevel(unit).stars;
+  unit.title = getEliteTitle(unit);
+}
+
+// Promotion notifications
+
+var PROMOTION_INTROS = {
+  1: [
+    'Operational tempo has forged something exceptional. After a decade of missions, {name} has earned its first star.',
+    'Ten operations completed without a single critical failure. {name} has proven itself worthy of recognition.',
+    'The agency\'s most demanding operations have tested {name} — and they have passed every test. One star earned.',
+    'Command has reviewed the operational record. {name} is elevated to one-star status — effective immediately.',
+  ],
+  2: [
+    'One hundred operations. {name} has written a chapter of agency history that will never appear in any public record.',
+    'A century of missions — each one a risk, each one a story. {name} is promoted to two-star status.',
+    'There is no training pipeline that produces what {name} has become. Two stars. One hundred operations. Zero hesitation.',
+    'The Director has personally signed the commendation. {name} reaches two-star status after one hundred successful deployments.',
+  ],
+  3: [
+    'Five hundred operations. {name} has transcended elite status entirely. From this point forward, they are Legendary.',
+    'There is no precedent for what {name} has achieved. Five hundred missions. A record that may never be matched. They are now Legendary.',
+    'The word "elite" no longer applies. After five hundred operations, {name} is redesignated as Legendary — the highest honor the agency can bestow.',
+    'Half a thousand operations. {name} is no longer simply an asset — they are an institution. Legendary status conferred.',
+  ],
+};
+
+function notifyPromotion(unit, opCodename) {
+  var lvl = getEliteLevel(unit);
+  var starStr = starsDisplay(unit);
+  var typeLabel = isDAUnit(unit) ? 'DIRECT ACTION' : 'INTELLIGENCE';
+  var bonusDesc = isDAUnit(unit)
+    ? '+' + lvl.daBonus + '% success rate'
+    : '+' + lvl.intelBonus + '% success rate, +' + lvl.intelFields + ' intel field' + (lvl.intelFields > 1 ? 's' : '');
+  var titleLabel = lvl.label.toUpperCase();
+
+  var intro = pick(PROMOTION_INTROS[lvl.stars] || PROMOTION_INTROS[1]).replace(/\{name\}/g, unit.fullName);
+
+  addLog(
+    titleLabel + ' PROMOTION: ' + unit.fullName + ' ' + starStr + ' — ' + bonusDesc + '.',
+    'log-success'
+  );
+
+  queueBriefingPopup({
+    title: titleLabel + ' UNIT PROMOTION — ' + starStr,
+    category: 'ROSTER UPDATE',
+    subtitle: unit.deptName.toUpperCase() + ' — OP ' + opCodename,
+    accent: lvl.stars === 3 ? 'rgba(255, 215, 0, 0.9)' : 'rgba(46, 204, 113, 0.9)',
+    body: '<p>' + intro + '</p>' +
+      '<div style="margin-top:12px;padding:8px 10px;border:1px solid ' + (lvl.stars === 3 ? 'rgba(255,215,0,0.3)' : 'rgba(46,204,113,0.3)') + ';border-left:3px solid ' + (lvl.stars === 3 ? 'rgba(255,215,0,0.6)' : 'rgba(46,204,113,0.6)') + ';border-radius:4px;background:' + (lvl.stars === 3 ? 'rgba(255,215,0,0.05)' : 'rgba(46,204,113,0.05)') + '">' +
+        '<div style="font-size:11px;font-weight:700;letter-spacing:0.5px;color:' + (lvl.stars === 3 ? 'rgba(255,215,0,0.95)' : 'rgba(46,204,113,0.95)') + '">' + unit.fullName + ' ' + starStr + '</div>' +
+        '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">' + unit.deptName + ' · ' + typeLabel + ' · ' + unit.missionsCompleted + ' ops</div>' +
+        '<div style="font-size:10px;color:var(--text-hi);margin-top:4px;line-height:1.4">' + bonusDesc + '</div>' +
+      '</div>',
+    buttonLabel: 'ACKNOWLEDGED',
+  });
+}
+
+// =============================================================================
 // COOLDOWN — 7 day cooldown between uses
 // =============================================================================
 
@@ -103,6 +211,9 @@ function createEliteUnit(deptId, missionCodename) {
     fullName: naming.full,
     desc: ELITE_DESCRIPTIONS[deptId] || 'An elite unit with exceptional operational capability.',
     bonusValue: 8,
+    intelFieldBonus: 0,
+    stars: 0,
+    title: 'Elite',
     missionsCompleted: 1,
     forgedOnMission: missionCodename,
     forgedDay: G.day,
@@ -136,11 +247,12 @@ hook('render:after', function () {
   if (_eliteMigrated) return;
   _eliteMigrated = true;
   if (!G.eliteUnits) { G.eliteUnits = []; G.eliteIdCounter = 0; }
-  // Migrate old units: add fate/cooldown fields
+  // Migrate old units: add fate/cooldown/level fields
   for (var i = 0; i < G.eliteUnits.length; i++) {
     var u = G.eliteUnits[i];
     if (u.fate === undefined) u.fate = u.alive ? null : 'KIA';
     if (u.lastDeployedDay === undefined) u.lastDeployedDay = null;
+    if (u.stars === undefined) applyEliteLevel(u);
   }
 });
 
@@ -160,8 +272,12 @@ hook('operation:resolved', function (data) {
   var attached = m.attachedEliteIds || [];
   for (var a = 0; a < attached.length; a++) {
     for (var b = 0; b < (G.eliteUnits || []).length; b++) {
-      if (G.eliteUnits[b].id === attached[a] && G.eliteUnits[b].alive) {
-        G.eliteUnits[b].missionsCompleted++;
+      var eu = G.eliteUnits[b];
+      if (eu.id === attached[a] && eu.alive) {
+        var oldStars = getEliteLevel(eu).stars;
+        eu.missionsCompleted++;
+        applyEliteLevel(eu);
+        if (eu.stars > oldStars) notifyPromotion(eu, m.codename || '???');
         break;
       }
     }
@@ -218,7 +334,7 @@ hook('operation:resolved', function (data) {
     body: pick(flavorIntros) + '<br><br>' + pick(flavorClosers) +
       '<div style="margin-top:12px;padding:8px 10px;border:1px solid rgba(46,204,113,0.3);border-left:3px solid rgba(46,204,113,0.6);border-radius:4px;background:rgba(46,204,113,0.05)">' +
         '<div style="font-size:11px;font-weight:700;letter-spacing:0.5px;color:rgba(46,204,113,0.95)">' + unit.fullName + '</div>' +
-        '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">' + deptName + ' · +' + unit.bonusValue + '% bonus · Forged in OP ' + opName + '</div>' +
+        '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">' + deptName + ' · ' + (isDAUnit(unit) ? 'DIRECT ACTION' : 'INTELLIGENCE') + ' · +' + unit.bonusValue + '% bonus · Forged in OP ' + opName + '</div>' +
         '<div style="font-size:10px;color:var(--text-hi);margin-top:4px;line-height:1.4">' + unit.desc + '</div>' +
       '</div>',
     buttonLabel: 'ACKNOWLEDGED',
@@ -360,14 +476,17 @@ window.buildEliteUnitsHtml = function (missionId, execDepts) {
     var cdRemaining = eliteCooldownRemaining(u);
     var cdNote = onCooldown ? ' [COOLDOWN ' + cdRemaining + 'd]' : '';
     var cdTip = onCooldown ? '&#10;&#10;On cooldown — available in ' + cdRemaining + ' day(s).' : '';
+    var stars = starsDisplay(u);
+    var titleTag = u.title || 'Elite';
+    var intelExtra = (u.intelFieldBonus > 0) ? ' +' + u.intelFieldBonus + 'Intel' : '';
     rows += '<div class="elite-unit-check' + (onCooldown ? ' on-cooldown' : '') + '"' +
       ' data-elite="' + u.id + '" data-dept="' + u.deptId + '"' +
       ' onclick="toggleEliteUnit(\'' + u.id + '\',\'' + missionId + '\')"' +
       ' data-tip="' + u.desc + cdTip + '">' +
       '<span class="elite-dept-tag">' + u.deptName + '</span>' +
-      '<span class="elite-unit-label">' + u.fullName + cdNote + '</span>' +
-      '<span class="elite-bonus-badge">+' + u.bonusValue + '%</span>' +
-      '<span class="elite-missions-badge">' + u.missionsCompleted + ' ops</span>' +
+      '<span class="elite-unit-label">' + u.fullName + (stars ? ' ' + stars : '') + cdNote + '</span>' +
+      '<span class="elite-bonus-badge">+' + u.bonusValue + '%' + intelExtra + '</span>' +
+      '<span class="elite-missions-badge">' + titleTag + ' · ' + u.missionsCompleted + ' ops</span>' +
       '</div>';
   }
 
@@ -551,7 +670,9 @@ function renderRoster() {
   var html = '';
 
   if (alive.length > 0) {
-    html += '<div class="roster-section-hdr">ACTIVE ELITE UNITS (' + alive.length + '/6)</div>';
+    var legendaryCount = alive.filter(function(u) { return u.stars >= 3; }).length;
+    var rosterLabel = legendaryCount > 0 ? 'ACTIVE UNITS (' + alive.length + '/6)' : 'ACTIVE ELITE UNITS (' + alive.length + '/6)';
+    html += '<div class="roster-section-hdr">' + rosterLabel + '</div>';
     for (var i = 0; i < alive.length; i++) html += renderEliteCard(alive[i]);
   }
 
@@ -585,15 +706,21 @@ function renderEliteCard(u) {
     cooldownNote = '<span class="roster-cooldown">COOLDOWN ' + eliteCooldownRemaining(u) + 'd</span>';
   }
 
-  return '<div class="roster-card ' + cardClass + '">' +
+  var stars = starsDisplay(u);
+  var titleTag = (u.title || 'Elite').toUpperCase();
+  var intelExtra = (u.intelFieldBonus > 0) ? ' +' + u.intelFieldBonus + ' INTEL' : '';
+  var isLegendary = u.stars >= 3;
+  var legendaryStyle = isLegendary && !isFallen ? 'border-color:rgba(255,215,0,0.4);border-left-color:rgba(255,215,0,0.7);background:rgba(255,215,0,0.04);' : '';
+
+  return '<div class="roster-card ' + cardClass + '"' + (legendaryStyle ? ' style="' + legendaryStyle + '"' : '') + '>' +
     '<div class="roster-hdr">' +
-      '<span class="roster-type-badge">' + u.prefix.toUpperCase() + '</span>' +
-      '<span class="roster-name">' + u.fullName + '</span>' +
+      '<span class="roster-type-badge"' + (isLegendary && !isFallen ? ' style="background:rgba(255,215,0,0.15);color:rgba(255,215,0,0.95);border-color:rgba(255,215,0,0.3)"' : '') + '>' + u.prefix.toUpperCase() + '</span>' +
+      '<span class="roster-name">' + u.fullName + (stars ? ' ' + stars : '') + '</span>' +
       fateBadge +
     '</div>' +
-    '<div class="roster-dept">' + u.deptName + (cooldownNote ? ' · ' + cooldownNote : '') + '</div>' +
+    '<div class="roster-dept">' + u.deptName + ' · ' + titleTag + (cooldownNote ? ' · ' + cooldownNote : '') + '</div>' +
     '<div class="roster-stats">' +
-      '<span class="roster-stat">+' + u.bonusValue + '% BONUS</span>' +
+      '<span class="roster-stat">+' + u.bonusValue + '% BONUS' + intelExtra + '</span>' +
       '<span class="roster-stat">OPS: ' + u.missionsCompleted + '</span>' +
       '<span class="roster-stat">FORGED DAY ' + u.forgedDay + ' \u2014 OP ' + u.forgedOnMission + '</span>' +
       (isFallen ? '<span class="roster-stat" style="color:' + (isBurned ? 'rgba(243,156,18,0.9)' : 'rgba(231,76,60,0.9)') + '">' + fate + ' DAY ' + u.deathDay + (u.deathMission ? ' \u2014 OP ' + u.deathMission : '') + '</span>' : '') +

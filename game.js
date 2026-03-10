@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '2.1.0';
+const GAME_VERSION = '2.2.0';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -1328,7 +1328,12 @@ function calcOpProb(m, budget, depts, selectedSupport) {
   const intelSupportFields = (selectedSupport || [])
     .filter(s => s.bonusType === 'intelField')
     .reduce((sum, s) => sum + s.bonusValue, 0);
-  const effectiveRevealed = Math.min(total, revealed + intelSupportFields);
+  // Elite INTEL units contribute bonus intel fields
+  const eliteIntelFields = (m.attachedEliteIds || []).reduce((sum, eid) => {
+    const eu = (G.eliteUnits || []).find(u => u.id === eid);
+    return sum + (eu && eu.alive && eu.intelFieldBonus && depts.includes(eu.deptId) ? eu.intelFieldBonus : 0);
+  }, 0);
+  const effectiveRevealed = Math.min(total, revealed + intelSupportFields + eliteIntelFields);
   const intelPenalty     = total > 0 ? Math.round((1 - effectiveRevealed / total) * 30) : 0;
   const intelBonusAmt    = (effectiveRevealed >= total && total > 0) ? 10 : (m.intelBonus ? 10 : 0);
   const blownPenalty     = m.blown ? 25 : 0;
@@ -1922,6 +1927,11 @@ const BUDGET_UPGRADES = [
     apply: () => { G.cfg.budget += 10; } },
 ];
 
+const INSTANT_UPGRADES = [
+  { id: 'cashInfusion', label: '+$5M immediate budget', xpCost: 100,
+    apply: () => { G.budget = Math.min(G.budget + 5, G.cfg.budget); } },
+];
+
 function showCapabilitiesMenu(isMonthly = false) {
   const prevXP   = G.xp - G.xpThisMonth;
   const monthXP  = G.xpThisMonth;
@@ -1979,6 +1989,22 @@ function showCapabilitiesMenu(isMonthly = false) {
       </div>`;
     }
 
+    // Instant upgrades (unlimited purchases)
+    for (const iu of INSTANT_UPGRADES) {
+      const canAfford = G.xp >= iu.xpCost;
+      html += `<div class="upgrade-row" id="upg-${iu.id}">
+        <div class="upgrade-info">
+          <span class="upgrade-label">${iu.label}</span>
+          <span class="upgrade-current" style="color:var(--text-dim)">(unlimited)</span>
+        </div>
+        <div class="upgrade-cost-wrap">
+          <span class="upgrade-cost">${iu.xpCost} XP</span>
+          <button class="btn-upgrade ${canAfford ? '' : 'disabled'}" ${canAfford ? '' : 'disabled'}
+            onclick="buyUpgrade('instant','${iu.id}')">ACQUIRE</button>
+        </div>
+      </div>`;
+    }
+
     return html;
   };
 
@@ -2024,6 +2050,12 @@ window.buyUpgrade = function(type, id) {
     G.upgrades[id] = purchased + 1;
     bu.apply();
     addLog(`UPGRADE: ${bu.label}.`, 'log-info');
+  } else if (type === 'instant') {
+    const iu = INSTANT_UPGRADES.find(u => u.id === id);
+    if (!iu || G.xp < iu.xpCost) return;
+    G.xp -= iu.xpCost;
+    iu.apply();
+    addLog(`UPGRADE: ${iu.label}.`, 'log-info');
   }
 
   // Refresh modal body in-place
@@ -2063,6 +2095,20 @@ window.buyUpgrade = function(type, id) {
           <span class="upgrade-cost">${bu.xpCost} XP</span>
           <button class="btn-upgrade ${canBuy ? '' : 'disabled'}" ${canBuy ? '' : 'disabled'}
             onclick="buyUpgrade('budget','${bu.id}')">ACQUIRE</button>
+        </div>
+      </div>`;
+    }
+    for (const iu of INSTANT_UPGRADES) {
+      const canAfford = G.xp >= iu.xpCost;
+      html += `<div class="upgrade-row" id="upg-${iu.id}">
+        <div class="upgrade-info">
+          <span class="upgrade-label">${iu.label}</span>
+          <span class="upgrade-current" style="color:var(--text-dim)">(unlimited)</span>
+        </div>
+        <div class="upgrade-cost-wrap">
+          <span class="upgrade-cost">${iu.xpCost} XP</span>
+          <button class="btn-upgrade ${canAfford ? '' : 'disabled'}" ${canAfford ? '' : 'disabled'}
+            onclick="buyUpgrade('instant','${iu.id}')">ACQUIRE</button>
         </div>
       </div>`;
     }

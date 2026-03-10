@@ -287,7 +287,9 @@
       rows += '<div class="db-asset-row"><span class="db-asset-dept">' + units[i].short + '</span><span class="db-asset-type">' + units[i].unit + role + '</span></div>';
     }
     for (var j = 0; j < elites.length; j++) {
-      rows += '<div class="db-asset-row db-asset-elite"><span class="db-asset-dept">' + elites[j].fullName + '</span><span class="db-asset-type">' + elites[j].deptName + ' — ELITE</span></div>';
+      var eTitle = (elites[j].title || 'Elite').toUpperCase();
+      var eStars = typeof starsDisplay === 'function' ? starsDisplay(elites[j]) : '';
+      rows += '<div class="db-asset-row db-asset-elite"><span class="db-asset-dept">' + elites[j].fullName + (eStars ? ' ' + eStars : '') + '</span><span class="db-asset-type">' + elites[j].deptName + ' — ' + eTitle + '</span></div>';
     }
     var budget = m.assignedBudget ? '$' + m.assignedBudget + 'M' : 'CLASSIFIED';
     var prob = m.successProb ? m.successProb + '%' : '—';
