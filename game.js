@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.0.10';
+const GAME_VERSION = '3.0.11';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -3984,11 +3984,25 @@ function showHelp() {
         <div class="help-section-title">THREATS & HVT TRACKER</div>
         <p>The Threats tab tracks High-Value Targets and hostile Organizations. HVTs progress through a lifecycle:</p>
         <div class="help-flow" style="margin-top:6px">
-          <div class="help-flow-step"><span class="help-step-num" style="background:var(--red-dim)">A</span><div><strong>ACTIVE</strong> — Target at large, location unknown. Use TRACK to launch a surveillance mission.</div></div>
-          <div class="help-flow-step"><span class="help-step-num" style="background:var(--accent2)">T</span><div><strong>TRACKED</strong> — Under surveillance. Choose ABDUCT (capture alive) or ELIMINATE (neutralize).</div></div>
-          <div class="help-flow-step"><span class="help-step-num" style="background:var(--amber-dim)">D</span><div><strong>DETAINED</strong> — In custody. INTERROGATE (max 3 sessions, spawns follow-up missions), EXECUTE (+confidence), or HAND OVER to a partner agency (+relation).</div></div>
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--red-dim)">A</span><div><strong>ACTIVE</strong> — Target at large. Use TRACK to launch a surveillance mission.</div></div>
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--accent2)">T</span><div><strong>TRACKED</strong> — Under surveillance. Choose ABDUCT (capture alive) or ELIMINATE (neutralize). Surveillance <strong>expires</strong> after 20–40 days — target reverts to ACTIVE if not acted upon.</div></div>
+          <div class="help-flow-step"><span class="help-step-num" style="background:var(--amber-dim)">D</span><div><strong>DETAINED</strong> — In custody. INTERROGATE (max 3 sessions — yields Intel + 60% chance to reveal a new HVT from the same network), RELEASE (return to TRACKED for passive intelligence), EXECUTE (+confidence), HAND OVER to a partner agency (+relation), or FACTION TRANSFER (intel-type HVTs only — earn Intel).</div></div>
         </div>
+        <p style="margin-top:8px"><strong>Passive intelligence:</strong> TRACKED HVTs affiliated with a faction or ORG have a 10% daily chance to yield Intel and expose a new ACTIVE target from their network — making RELEASE a strategic option.</p>
         <p style="margin-top:8px">Failed HVT and counter-terror ops automatically register escaped targets as ACTIVE threats.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">HVT HARDNESS</div>
+        <p>Every HVT is classified by <strong>hardness</strong> — how difficult they are to operate against. Classification is based on the target's role:</p>
+        <div style="font-size:10px;line-height:1.8;margin-top:6px">
+          <span style="color:#2ecc71"><strong>SOFT</strong></span> — Scientists, technical specialists, forgers. Low counter-surveillance training. Cooldown: 3–10 days. Threat: −1.<br>
+          <span style="color:#f39c12"><strong>MODERATE</strong></span> — Terrorists, criminals, couriers, facilitators, financiers. Operational but not tradecraft-trained. Cooldown: 7–25 days.<br>
+          <span style="color:#e74c3c"><strong>HARD</strong></span> — Intelligence officers, espionage operatives, hostile state agents. Trained in tradecraft and counter-surveillance. Cooldown: 25–60 days. Threat: +1.<br>
+          <span style="color:#c0392b"><strong>ELITE</strong></span> — Senior commanders, military chiefs, paramilitary leaders. Heavily protected. Cooldown: 40–90 days. Threat: +1.
+        </div>
+        <p style="margin-top:8px"><strong>Cooldown:</strong> When an operation against an HVT fails, the target goes to ground for a duration based on their hardness. During cooldown, all operations against that target are suspended. You'll receive a briefing when the target resurfaces.</p>
+        <p style="margin-top:8px"><strong>Threat modifier:</strong> Missions spawned from the threats panel have their threat level adjusted by the target's hardness — SOFT targets generate easier ops, HARD and ELITE targets generate harder ones.</p>
       </div>
 
       <div class="help-section">
@@ -4000,6 +4014,7 @@ function showHelp() {
           <div class="help-flow-step"><span class="help-step-num" style="background:var(--red)">2</span><div><strong>TAKEDOWN</strong> (4-phase op) — Available only when ALL intel is confirmed AND the org is infiltrated. On success: org permanently destroyed.</div></div>
         </div>
         <p style="margin-top:8px">Intel is revealed progressively through successful linked missions. Interrogating detained org members can also reveal intelligence.</p>
+        <p style="margin-top:8px"><strong>Infiltration decay:</strong> Infiltrated organizations have a 20% chance each year to lose their infiltration status — the inside asset is compromised through routine security tightening. The +10% bonus and weekly Intel production cease, and a new infiltration operation must be launched.</p>
       </div>
 
       <div class="help-section">
@@ -4017,7 +4032,7 @@ function showHelp() {
 
       <div class="help-section">
         <div class="help-section-title">ELITE UNITS</div>
-        <p>As departments gain experience, elite specialist units can be created — dedicated teams attached to specific operations for a probability bonus.</p>
+        <p>As departments gain experience, elite specialist units can be created — dedicated teams attached to specific operations for a probability bonus. Maximum 7 active elite units at any time; duplicate department types are not permitted (e.g., only one SIGINT elite can be active).</p>
         <p style="margin-top:8px"><strong>Cooldown:</strong> After deployment, an elite unit is unavailable for 7 days. Plan assignments carefully.</p>
         <p style="margin-top:8px"><strong>Risk of loss:</strong> When an operation with attached elite units fails, those units may be lost permanently:</p>
         <div class="help-flow" style="margin-top:6px">
@@ -4058,8 +4073,23 @@ function showHelp() {
       </div>
 
       <div class="help-section">
+        <div class="help-section-title">INTELLIGENCE FACTIONS & NETWORKS</div>
+        <p>Eight rival intelligence factions compete for influence across all theaters. Each faction has a <strong>home theater</strong> where they hold ~35% network share; elsewhere they hold ~9%. Your faction is highlighted in the network health bar on the GEO panel.</p>
+        <p style="margin-top:8px"><strong>Zero-sum system:</strong> All faction shares per theater always sum to exactly 100%. When your share increases, it comes proportionally from the others — and vice versa.</p>
+        <p style="margin-top:8px"><strong>Growing your network:</strong></p>
+        <div style="font-size:10px;line-height:1.7;margin-top:4px">
+          ▸ <strong>Successful operations</strong> — Completing missions in a theater boosts your share (proportional to threat level)<br>
+          ▸ <strong>Network expansion</strong> — Use the EXPAND NETWORK button in the GEO panel to launch a dedicated operation that significantly grows your presence in a theater (+5 bonus on top of threat-based boost)<br>
+          ▸ <strong>Bolster</strong> — Spend 10 Intel to raise your network floor +1% in a theater for one week, preventing erosion
+        </div>
+        <p style="margin-top:8px"><strong>Erosion:</strong> Without active operations, your network share drifts toward equilibrium over time. Geopolitical events can also erode your presence.</p>
+        <p style="margin-top:8px"><strong>Faction transfer:</strong> Intel-type detained HVTs (espionage, counter-intel) can be transferred to rival factions in exchange for Intel. The receiving faction gains a small network boost in their home theater.</p>
+      </div>
+
+      <div class="help-section">
         <div class="help-section-title">SURVEILLANCE & FAILED OPS</div>
-        <p>Failing an <strong>abduct</strong> or <strong>eliminate</strong> operation on a TRACKED HVT causes <strong>loss of surveillance</strong>. The target goes underground — reverting to ACTIVE status. You must re-establish surveillance before attempting another direct action.</p>
+        <p>Failing an <strong>abduct</strong> or <strong>eliminate</strong> operation on a TRACKED HVT causes <strong>loss of surveillance</strong>. The target reverts to ACTIVE and enters a <strong>cooldown period</strong> based on their hardness classification (see HVT Hardness). During cooldown the target is underground and all operations are suspended.</p>
+        <p style="margin-top:8px">Failing any HVT-linked operation — including surveillance — also triggers the cooldown. Harder targets stay underground longer.</p>
         <p style="margin-top:8px">Similarly, a failed <strong>org takedown</strong> burns your infiltration — the inside asset is compromised and the organization must be re-infiltrated from scratch before another takedown attempt.</p>
       </div>
 
@@ -4084,6 +4114,7 @@ function showHelp() {
         <div class="help-resource-row"><strong>CONFIDENCE</strong> — Drops 2%/week (more at high DEFCON), falls on failures, rises on successes. Hits 0% = game over.</div>
         <div class="help-resource-row" style="margin-top:8px"><strong>BUDGET</strong> — Spent on operations. Regenerates weekly (upgradeable). Running dry ends the agency.</div>
         <div class="help-resource-row" style="margin-top:8px"><strong>XP</strong> — Earned from operations. Spend at monthly reviews or anytime via UPGRD.</div>
+        <div class="help-resource-row" style="margin-top:8px"><strong>INTEL</strong> — Earned from interrogations, tracked HVT surveillance intercepts, infiltrated ORG weekly reports, faction transfers, and successful operations. Spend on BOLSTER (10 Intel = +1% network floor for one week).</div>
       </div>
 
       <div class="help-section">
