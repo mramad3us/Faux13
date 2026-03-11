@@ -293,8 +293,13 @@ hook('operation:resolved', function (data) {
   }
   if (aliveCount >= 6) return;
 
-  // Pick a dept that was used in the op
-  var depts = m.assignedExecDepts || [];
+  // Pick a dept that was used in the op, excluding depts that already have an active elite
+  var depts = (m.assignedExecDepts || []).filter(function (d) {
+    for (var u = 0; u < (G.eliteUnits || []).length; u++) {
+      if (G.eliteUnits[u].alive && G.eliteUnits[u].dept === d) return false;
+    }
+    return true;
+  });
   if (depts.length === 0) return;
   var deptId = pick(depts);
 

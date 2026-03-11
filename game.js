@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.0.4';
+const GAME_VERSION = '3.0.5';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
