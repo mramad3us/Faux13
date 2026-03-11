@@ -265,6 +265,7 @@
           </div>
           <div class="save-slot-actions">
             <button class="btn-primary save-btn" onclick="window._loadSlot('${k}')">LOAD</button>
+            <button class="btn-neutral save-btn" onclick="window._exportSlot('${k}')">EXPORT</button>
             <button class="btn-danger save-btn save-btn-del" onclick="window._deleteSlot('${k}')">DEL</button>
           </div>
         </div>`;
@@ -287,11 +288,118 @@
         <div class="modal-section-title">SAVED GAMES</div>
         <div class="save-slots-list">${slotsHtml}</div>
       </div>
+      <div class="modal-section">
+        <div class="modal-section-title">IMPORT / EXPORT</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+          <button class="btn-neutral" onclick="window._importSave()">IMPORT SAVE</button>
+          ${keys.length > 0 ? '<button class="btn-neutral" onclick="window._exportAll()">EXPORT ALL</button>' : ''}
+        </div>
+      </div>
       <div style="margin-top:10px;text-align:right;">
         <button class="btn-neutral" onclick="hideModal()">CLOSE</button>
       </div>
     `;
     showModal();
+  }
+
+  // =========================================================================
+  // IMPORT / EXPORT
+  // =========================================================================
+
+  function sanitizeFilename(str) {
+    return str.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_').substring(0, 60);
+  }
+
+  function exportFilename(entry) {
+    var label = sanitizeFilename(entry.label || 'save');
+    var agency = sanitizeFilename(entry.agency || 'UNKNOWN');
+    return 'shadownet_' + agency + '_day' + (entry.day || 0) + '_' + label + '.json';
+  }
+
+  function downloadJson(filename, obj) {
+    var json = JSON.stringify(obj, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportSave(slotId) {
+    var saves = loadAllSaves();
+    var entry = saves[slotId];
+    if (!entry) return;
+    downloadJson(exportFilename(entry), entry);
+  }
+
+  function exportAllSaves() {
+    var saves = loadAllSaves();
+    var keys = Object.keys(saves);
+    if (keys.length === 0) return;
+    // Small delay between downloads so browser doesn't block them
+    var i = 0;
+    function next() {
+      if (i >= keys.length) return;
+      exportSave(keys[i]);
+      i++;
+      if (i < keys.length) setTimeout(next, 300);
+    }
+    next();
+  }
+
+  function importSave(file) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var entry = JSON.parse(e.target.result);
+        // Validate structure
+        if (!entry.data || !entry.timestamp) {
+          addLog('IMPORT ERROR: Invalid save file format.', 'log-fail');
+          return;
+        }
+        // Verify the save can deserialize
+        var test = deserializeState(entry.data);
+        if (!test) {
+          addLog('IMPORT ERROR: Save data is corrupt or from an incompatible version.', 'log-fail');
+          return;
+        }
+        // Insert into save list with a new slot ID to avoid collisions
+        var saves = loadAllSaves();
+        var slotId = 'import_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+        saves[slotId] = {
+          label: entry.label || 'Imported Save',
+          agency: entry.agency || '—',
+          country: entry.country || '—',
+          day: entry.day || 0,
+          confidence: entry.confidence || 0,
+          timestamp: entry.timestamp,
+          data: entry.data,
+        };
+        persistAllSaves(saves);
+        addLog('Save imported: ' + (entry.label || 'Imported Save'), 'log-info');
+        showSaveMenu(); // refresh
+      } catch (err) {
+        addLog('IMPORT ERROR: Could not parse save file.', 'log-fail');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function triggerImport() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.multiple = true;
+    input.onchange = function () {
+      for (var i = 0; i < input.files.length; i++) {
+        importSave(input.files[i]);
+      }
+    };
+    input.click();
   }
 
   // --- Global callbacks for modal buttons ---
@@ -314,6 +422,18 @@
   window._deleteSlot = function (slotId) {
     deleteSave(slotId);
     showSaveMenu(); // refresh
+  };
+
+  window._exportSlot = function (slotId) {
+    exportSave(slotId);
+  };
+
+  window._exportAll = function () {
+    exportAllSaves();
+  };
+
+  window._importSave = function () {
+    triggerImport();
   };
 
   window.showSaveMenu = showSaveMenu;
