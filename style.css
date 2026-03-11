@@ -1164,6 +1164,8 @@ input[type="range"] { accent-color: var(--accent); }
 .threat-status-neutralized{ background: var(--green-dim); color: var(--green); }
 .threat-status-eliminated { background: var(--red-dim); color: var(--red); }
 .threat-status-handed-over{ background: var(--blue-dim); color: var(--blue); }
+.threat-hardness-badge { font-family: var(--font-mono); font-size: 7px; padding: 1px 4px; border-radius: 2px; border: 1px solid; letter-spacing: 0.5px; opacity: 0.85; }
+.threat-cooldown { font-family: var(--font-mono); font-size: 9px; color: var(--amber); background: rgba(243,156,18,0.08); border: 1px solid rgba(243,156,18,0.2); border-radius: 3px; padding: 4px 8px; margin: 4px 0; letter-spacing: 0.3px; text-align: center; }
 .threat-role { font-size: 11px; color: var(--text-dim); }
 .threat-org { font-size: 10px; color: var(--text-muted); }
 .threat-known-fields { margin: 6px 0; }

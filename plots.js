@@ -717,6 +717,7 @@ function spawnInfiltrationHvt(plot) {
     linkedPlotId: plot.id,
     factionId: plot.factionId || null,
     hvtIntelType: false,
+    hardness: typeof classifyHvtHardness === 'function' ? classifyHvtHardness(role) : 'MODERATE',
   });
 
   var locationText = city + ', ' + country;
@@ -803,6 +804,32 @@ hook('day:pre', function () {
     }
   }
 
+  // HVT cooldown expiry: target resurfaces after going to ground
+  for (var ci = 0; ci < (G.hvts || []).length; ci++) {
+    var ch = G.hvts[ci];
+    if (!ch.cooldownUntil) continue;
+    if (G.day >= ch.cooldownUntil && (ch.status === 'ACTIVE' || ch.status === 'TRACKED')) {
+      ch.cooldownUntil = null;
+      addLog('TARGET RESURFACED: "' + ch.alias + '" has been detected again. Operations may resume.', 'log-info');
+
+      var RESURFACE_MESSAGES = [
+        '"' + ch.alias + '" has resurfaced. After weeks underground, the target has been detected resuming contact with known associates. Pattern-of-life indicators suggest the subject believes the threat has passed. Our operational window is reopening.',
+        'Intelligence sources report "' + ch.alias + '" is active again. The target has re-established communication channels and returned to a semi-regular pattern of movement. The period of heightened security appears to have ended.',
+        'The wait is over. "' + ch.alias + '" has emerged from hiding and resumed operations. Our analysts have confirmed the target is back at known locations and has relaxed counter-surveillance measures. Operations against this target may now resume.',
+        'SIGINT has reacquired "' + ch.alias + '". After an extended period underground, the target has made the mistake of returning to old habits — using previously identified communication methods and frequenting known locations. The subject is once again within our operational reach.',
+      ];
+
+      queueBriefingPopup({
+        title: 'TARGET RESURFACED',
+        category: 'THREAT INTELLIGENCE',
+        subtitle: '"' + ch.alias + '" — Operational Window Reopened',
+        accent: 'rgba(46, 204, 113, 0.9)',
+        body: '<p>' + pick(RESURFACE_MESSAGES) + '</p>',
+        buttonLabel: 'ACKNOWLEDGED',
+      });
+    }
+  }
+
   // ORG infiltration decay: yearly check, 20% chance to lose infiltration
   if (G.day % 365 === 0 && G.day > 1) {
     for (var oi = 0; oi < G.plots.length; oi++) {
@@ -872,6 +899,7 @@ hook('day:pre', function () {
       surveillanceEstablished: false, handedTo: null,
       factionId: th.factionId || null, hvtIntelType: th.hvtIntelType || false,
       linkedPlotId: th.linkedPlotId || null,
+      hardness: typeof classifyHvtHardness === 'function' ? classifyHvtHardness(newRole) : 'MODERATE',
     });
 
     addLog('SIGINT INTERCEPT: Surveillance on "' + th.alias + '" picked up contact with "' + newAlias + '" (+' + intelYield + ' Intel). New target added.', 'log-info');

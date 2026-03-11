@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.0.7';
+const GAME_VERSION = '3.0.8';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -1095,6 +1095,7 @@ function spawnFollowUpMission(m, phase) {
     interrogationCount: 0,
     surveillanceEstablished: false,
     handedTo: null,
+    hardness: classifyHvtHardness(handlerRole),
   });
   // Link follow-up mission to this HVT
   if (followUpMission) followUpMission.linkedHvtId = hvtId;
@@ -2181,6 +2182,32 @@ function weightedPick(arr) {
   return arr[arr.length - 1];
 }
 
+// =============================================================================
+// HVT HARDNESS CLASSIFICATION
+// =============================================================================
+// Hardness determines cooldown duration after failed ops and threat modifier
+const HVT_HARDNESS = {
+  SOFT:     { level: 1, label: 'SOFT',     color: '#2ecc71', cooldown: [3, 10],  threatMod: -1 },
+  MODERATE: { level: 2, label: 'MODERATE',  color: '#f39c12', cooldown: [7, 25],  threatMod: 0 },
+  HARD:     { level: 3, label: 'HARD',     color: '#e74c3c', cooldown: [25, 60], threatMod: 1 },
+  ELITE:    { level: 4, label: 'ELITE',    color: '#c0392b', cooldown: [40, 90], threatMod: 1 },
+};
+
+function classifyHvtHardness(role) {
+  if (!role) return 'MODERATE';
+  const r = role.toLowerCase();
+  // ELITE: senior leaders, commanders, military chiefs, operations directors
+  if (/\bcommander\b|operations chief|security chief|war crimes|paramilitary/.test(r)) return 'ELITE';
+  if (/attack coordinator|target selection|operational director/.test(r)) return 'ELITE';
+  // HARD: intelligence/espionage professionals, hostile state operatives
+  if (/intelligence|espionage|case officer|mole handler|clandestine|hostile/.test(r)) return 'HARD';
+  if (/access agent|dead-drop|influence operative|signals tech|wmd/.test(r)) return 'HARD';
+  // SOFT: scientists, technical specialists, forgers, front companies
+  if (/scientist|researcher|forger|front company|technology thief/.test(r)) return 'SOFT';
+  // MODERATE: terrorists, criminals, couriers, facilitators, financiers — everyone else
+  return 'MODERATE';
+}
+
 const HVT_REGISTER_TYPES = new Set([
   'FOREIGN_HVT', 'DOMESTIC_HVT', 'RENDITION', 'SURVEILLANCE_TAKEDOWN', 'LONG_HUNT_HVT', 'MOLE_HUNT',
   'HVT_SURVEILLANCE_DOM', 'HVT_SURVEILLANCE_FOR', 'HVT_ABDUCTION_DOM', 'HVT_ABDUCTION_FOR',
@@ -2302,6 +2329,17 @@ const HVT_POPUP_TEXT = {
     category: 'CONTROLLED RELEASE',
     accent: 'rgba(52, 152, 219, 0.9)',
   },
+  goneToGround: {
+    intros: [
+      'The failed operation has spooked the target. "{alias}" has abandoned known patterns, changed vehicles, and gone dark on all monitored communications. Our assessment: the subject has activated counter-surveillance protocols and will remain underground for the foreseeable future.',
+      'In the aftermath of the failed operation, "{alias}" has gone to ground. SIGINT reports all known phone numbers deactivated within hours. Physical surveillance assets report the target has vacated their last known residence. The network is clearly on high alert.',
+      'The botched attempt against "{alias}" has triggered an immediate security lockdown across the target\'s network. Safe houses are being cleared, communication channels rotated, and known associates have dispersed. Direct action against this individual is suspended until the target resurfaces.',
+      'Our failed operation has not gone unnoticed. "{alias}" — {role} — has entered a hardened posture. Counter-intelligence sources indicate the target has relocated to a protected environment and is being shielded by the organization\'s security apparatus. Operations against this target are on hold.',
+      'The target knows we came for them. "{alias}" has executed what appears to be a pre-planned disappearance protocol — evidence of advance preparation against exactly this scenario. All operational approaches to this target are suspended pending intelligence reassessment.',
+    ],
+    category: 'TARGET GONE TO GROUND',
+    accent: 'rgba(243, 156, 18, 0.9)',
+  },
   lostSurveillance: {
     intros: [
       'The operation went wrong — and the target knows it. Within hours of the failed attempt, the subject abandoned all known patterns. Safehouses emptied, phones discarded, contacts scattered. Our surveillance network is blind.',
@@ -2321,6 +2359,8 @@ function hvtBriefingPopup(type, h, extra) {
   if (!cfg) return;
   var intro = pick(cfg.intros);
   if (extra?.codename) intro = intro.replace(/\{codename\}/g, extra.codename);
+  if (h.alias) intro = intro.replace(/\{alias\}/g, h.alias);
+  if (h.role) intro = intro.replace(/\{role\}/g, h.role);
   var location = '';
   if (h.knownFields?.city) location = h.knownFields.city;
   if (h.knownFields?.country) location += (location ? ', ' : '') + h.knownFields.country;
@@ -2465,6 +2505,7 @@ function registerOrUpdateHvt(m) {
     factionId: null,
     hvtIntelType: false,
   };
+  entry.hardness = classifyHvtHardness(entry.role);
   // Assign faction for intelligence-type HVTs
   if (typeof window.assignHvtFaction === 'function') {
     window.assignHvtFaction(entry, m.typeId, m.country);
@@ -2483,12 +2524,29 @@ const HVT_SURVLOSS_TYPES = new Set([
 ]);
 
 function registerOrUpdateHvtFailed(m) {
+  // Set cooldown on the linked HVT — target goes to ground
+  if (m.linkedHvtId) {
+    const linked = G.hvts.find(x => x.id === m.linkedHvtId);
+    if (linked && (linked.status === 'ACTIVE' || linked.status === 'TRACKED')) {
+      const hCfg = HVT_HARDNESS[linked.hardness || 'MODERATE'] || HVT_HARDNESS.MODERATE;
+      linked.cooldownUntil = G.day + randInt(...hCfg.cooldown);
+      const cooldownDays = linked.cooldownUntil - G.day;
+      addLog(`TARGET ALERT: "${linked.alias}" has gone to ground. Operations suspended for ~${cooldownDays} days.`, 'log-warn');
+      hvtBriefingPopup('goneToGround', linked, {
+        codename: m.codename,
+        detail: `Target classification: ${hCfg.label}. Estimated time underground: ${cooldownDays} days. Operations against this target are suspended until D${linked.cooldownUntil}.`,
+      });
+    }
+  }
+
   // Failed abduct/eliminate on a TRACKED HVT → lose surveillance
   if (HVT_SURVLOSS_TYPES.has(m.typeId) && m.linkedHvtId) {
     const h = G.hvts.find(x => x.id === m.linkedHvtId);
     if (h && h.status === 'TRACKED') {
       h.status = 'ACTIVE';
       h.surveillanceEstablished = false;
+      h.trackedDay = null;
+      h.trackedExpiry = null;
       h.gaps = ['Current location unconfirmed', 'Security detail size unknown', 'Subject adopted new patterns'];
       addLog(`SURVEILLANCE LOST: ${h.alias} has gone underground after failed operation.`, 'log-fail');
       hvtBriefingPopup('lostSurveillance', h, { codename: m.codename });
@@ -2525,6 +2583,7 @@ function registerOrUpdateHvtFailed(m) {
     hvtIntelType: false,
   });
   var failEntry = G.hvts[G.hvts.length - 1];
+  failEntry.hardness = classifyHvtHardness(failEntry.role);
   if (typeof window.assignHvtFaction === 'function') {
     window.assignHvtFaction(failEntry, m.typeId, m.country);
   }
@@ -2585,10 +2644,20 @@ window.openHvtMissionModal = function(hvtId) {
 window.spawnHvtMission = function(hvtId, typeId) {
   const h = G.hvts.find(h => h.id === hvtId);
   if (!h) return;
+  // Block if target is in cooldown
+  if (h.cooldownUntil && G.day < h.cooldownUntil) {
+    addLog(`"${h.alias}" has gone to ground. Operations unavailable for ${h.cooldownUntil - G.day} more days.`, 'log-warn');
+    return;
+  }
   spawnMission(typeId);
   const newest = G.missions[0];
   if (newest) {
     newest.linkedHvtId = hvtId;
+    // Apply hardness threat modifier
+    const hCfg = HVT_HARDNESS[h.hardness || 'MODERATE'] || HVT_HARDNESS.MODERATE;
+    if (hCfg.threatMod !== 0) {
+      newest.threat = clamp(newest.threat + hCfg.threatMod, 1, 5);
+    }
     // Mark elimination vs capture intent when spawned from threats tab
     const ELIM_TYPES = new Set(['DOMESTIC_HVT', 'FOREIGN_HVT', 'LONG_HUNT_HVT']);
     const ABDUCT_TYPES = new Set(['HVT_ABDUCTION_DOM', 'HVT_ABDUCTION_FOR']);
@@ -2756,6 +2825,7 @@ window.interrogateTarget = function(hvtId) {
       surveillanceEstablished: false, handedTo: null,
       factionId: h.factionId || null, hvtIntelType: h.hvtIntelType || false,
       linkedPlotId: h.linkedPlotId || null,
+      hardness: classifyHvtHardness(newRole),
     };
     G.hvts.push(newHvt);
     addLog(`Interrogation session ${h.interrogationCount}/3: ${h.alias} yielded intelligence (+${interrogIntel} Intel). New target revealed: "${newAlias}" — ${newRole}.`, 'log-info');
@@ -3635,6 +3705,8 @@ function renderThreats() {
 
   const buildCard = h => {
     const typeBadge = `<span class="threat-type-badge ${h.type === 'HVT' ? 'hvt-badge' : 'org-badge'}">${h.type}</span>`;
+    const hCfg = h.type === 'HVT' ? (HVT_HARDNESS[h.hardness || 'MODERATE'] || HVT_HARDNESS.MODERATE) : null;
+    const hardnessBadge = hCfg ? `<span class="threat-hardness-badge" style="color:${hCfg.color};border-color:${hCfg.color}" data-tip="Target classification: ${hCfg.label}&#10;Cooldown on failure: ${hCfg.cooldown[0]}-${hCfg.cooldown[1]} days&#10;Threat modifier: ${hCfg.threatMod >= 0 ? '+' : ''}${hCfg.threatMod}">${hCfg.label}</span>` : '';
 
     // Status chip
     const statusChipMap = {
@@ -3695,6 +3767,8 @@ function renderThreats() {
 
     if (opBusy) {
       actionSection = `<div class="surv-indicator" style="color:var(--accent)">◉ OPERATION IN PROGRESS</div>`;
+    } else if (cooldownActive && (h.status === 'ACTIVE' || h.status === 'TRACKED')) {
+      actionSection = `<div class="surv-indicator" style="color:var(--text-dim)">◉ TARGET UNDERGROUND — OPERATIONS SUSPENDED</div>`;
     }
     // ORG entries have their own action logic (infiltrate / takedown)
     else if (h.type === 'ORG' && h.linkedPlotId && h.status === 'ACTIVE') {
@@ -3780,10 +3854,16 @@ function renderThreats() {
       ? 'threat-card-active'
       : 'threat-card-neutralized';
 
+    const cooldownActive = h.cooldownUntil && G.day < h.cooldownUntil;
+    const cooldownHtml = cooldownActive
+      ? `<div class="threat-cooldown">TARGET UNDERGROUND — ${h.cooldownUntil - G.day} days remaining</div>`
+      : '';
+
     return `<div class="threat-card ${cardCls}">
       <div class="threat-card-hdr">
         ${typeBadge}
         <span class="threat-alias">${h.alias}</span>
+        ${hardnessBadge}
         ${statusChip}
       </div>
       <div class="threat-role">${h.role}</div>
@@ -3791,6 +3871,7 @@ function renderThreats() {
       ${knownHtml ? `<div class="threat-known-fields">${knownHtml}</div>` : ''}
       ${gapsHtml}
       ${linkedBadges ? `<div class="threat-linked">${linkedBadges}</div>` : ''}
+      ${cooldownHtml}
       ${actionSection}
     </div>`;
   };
