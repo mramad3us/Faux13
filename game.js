@@ -1465,6 +1465,87 @@ function calcOpProb(m, budget, depts, selectedSupport) {
   return clamp(p, 10, 92);
 }
 
+// Breakdown version — returns { total, items: [{label, value}] }
+function calcOpProbBreakdown(m, budget, depts, selectedSupport) {
+  const items = [];
+  const minBudget        = Math.max(1, Math.floor(m.baseBudget * 0.5));
+  const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
+  const total            = m.intelFields?.length || 0;
+  const revealed         = m.intelFields?.filter(f => f.revealed).length || 0;
+  const intelSupportFields = (selectedSupport || [])
+    .filter(s => s.bonusType === 'intelField')
+    .reduce((sum, s) => sum + s.bonusValue, 0);
+  const eliteIntelFields = (m.attachedEliteIds || []).reduce((sum, eid) => {
+    const eu = (G.eliteUnits || []).find(u => u.id === eid);
+    return sum + (eu && eu.alive && eu.intelFieldBonus && depts.includes(eu.deptId) ? eu.intelFieldBonus : 0);
+  }, 0);
+  const effectiveRevealed = Math.min(total, revealed + intelSupportFields + eliteIntelFields);
+  const intelPenalty     = total > 0 ? Math.round((1 - effectiveRevealed / total) * 30) : 0;
+  const intelBonusAmt    = (effectiveRevealed >= total && total > 0) ? 10 : (m.intelBonus ? 10 : 0);
+  const blownPenalty     = m.blown ? 25 : 0;
+  const agencyBonus      = (selectedSupport || [])
+    .filter(s => s.bonusType === 'execProb')
+    .reduce((sum, s) => sum + s.bonusValue, 0);
+  const budgetContrib    = Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
+  const recDepts         = depts.filter(d =>  m.execDepts.includes(d)).length;
+  const optDepts         = depts.filter(d => !m.execDepts.includes(d)).length;
+
+  items.push({ label: 'Base', value: 35 });
+  if (budgetContrib)    items.push({ label: 'Budget allocation', value: budgetContrib });
+  if (recDepts)         items.push({ label: `Recommended dept${recDepts > 1 ? 's' : ''} (×${recDepts})`, value: recDepts * 12 });
+  if (optDepts)         items.push({ label: `Optional dept${optDepts > 1 ? 's' : ''} (×${optDepts})`, value: optDepts * 5 });
+  if (intelBonusAmt)    items.push({ label: 'Full intel confirmed', value: intelBonusAmt });
+  if (intelPenalty)     items.push({ label: `Unconfirmed intel (${effectiveRevealed}/${total})`, value: -intelPenalty });
+  if (falseFlagPenalty) items.push({ label: 'Anomaly detected', value: -falseFlagPenalty });
+  if (blownPenalty)     items.push({ label: 'Operation compromised', value: -blownPenalty });
+  if (agencyBonus)      items.push({ label: 'Agency support', value: agencyBonus });
+
+  let p = 35 - falseFlagPenalty - intelPenalty - blownPenalty + intelBonusAmt + agencyBonus + budgetContrib + recDepts * 12 + optDepts * 5;
+  // Hook modifiers (elite, infiltration, network)
+  const preHook = p;
+  for (const fn of _hooks['calcProb:modify'] || []) p = fn({ mission: m, prob: p, budget, depts });
+  const hookDelta = p - preHook;
+  // Try to itemize known hook sources
+  if (hookDelta !== 0) {
+    // Elite bonus
+    const attached = (m.attachedEliteIds || []);
+    let eliteBonus = 0;
+    for (const eid of attached) {
+      const eu = (G.eliteUnits || []).find(u => u.id === eid);
+      if (eu && eu.alive && eu.bonusValue && depts.includes(eu.deptId)) eliteBonus += eu.bonusValue;
+    }
+    if (eliteBonus) items.push({ label: 'Elite operative', value: eliteBonus });
+    // Infiltration bonus
+    if (m.plotId && G.plots) {
+      const plot = G.plots.find(pl => pl.id === m.plotId);
+      if (plot && plot.infiltrated && plot.status === 'ACTIVE') items.push({ label: 'Infiltration intel', value: 10 });
+    }
+    // Network modifier
+    if (typeof getMissionTheaterId === 'function' && typeof getNetworkModifier === 'function') {
+      const tid = getMissionTheaterId(m);
+      if (tid) {
+        const netMod = getNetworkModifier(tid);
+        if (netMod !== 0) items.push({ label: 'Network modifier', value: netMod });
+      }
+    }
+  }
+
+  const clamped = clamp(p, 10, 92);
+  return { total: clamped, items };
+}
+
+function buildProbTooltip(breakdown) {
+  let tip = 'PROBABILITY BREAKDOWN\n';
+  for (let i = 0; i < breakdown.items.length; i++) {
+    const it = breakdown.items[i];
+    if (i === 0) { tip += `${it.label}: ${it.value}%\n`; continue; }
+    const sign = it.value >= 0 ? '+' : '';
+    tip += `${it.label}: ${sign}${it.value}%\n`;
+  }
+  tip += `─────────────\nResult: ${breakdown.total}% (clamped 10–92)`;
+  return tip;
+}
+
 // Network modifier badge for mission cards and op config
 function networkModBadge(m) {
   if (typeof getMissionTheaterId !== 'function' || typeof getNetworkModifier !== 'function') return '';
@@ -1622,7 +1703,7 @@ function openOperationModal(missionId) {
         </div>` : ''}
         ${typeof window.buildEliteUnitsHtml === 'function' ? `<div class="op-config-section anim-section" style="animation-delay:0.3s">${window.buildEliteUnitsHtml(missionId, m.execDepts)}</div>` : ''}
         <div class="op-config-section anim-section" style="animation-delay:0.35s">
-          <div class="prob-display" data-tip="Estimated success probability.${m.phaseFalseFlagPenalty ? ' Reduced 25% due to anomaly.' : ''}">
+          <div class="prob-display" id="prob-display-tip">
             <div class="prob-label">ESTIMATED SUCCESS PROBABILITY</div>
             <div class="prob-value ${initProb >= 70 ? 'prob-high' : initProb >= 45 ? 'prob-med' : 'prob-low'}" id="op-prob-wrap">
               <span id="op-prob">${initProb}%</span>
@@ -1646,6 +1727,10 @@ function openOperationModal(missionId) {
     const paneEl = document.getElementById('reading-pane');
     if (paneEl) paneEl.insertAdjacentHTML('beforeend', configHtml);
   }
+
+  // Set probability breakdown tooltip
+  const probTipEl = document.getElementById('prob-display-tip');
+  if (probTipEl) probTipEl.setAttribute('data-tip', buildProbTooltip(calcOpProbBreakdown(m, defBudget, selectedDepts, [])));
 
   // Scroll the config panel into view
   const panel = document.getElementById('op-config-panel');
@@ -1713,12 +1798,17 @@ window.updateModalProb = function(missionId) {
   // Temporarily attach elite IDs so calcProb:modify hook can pick them up
   const prevElites = m.attachedEliteIds;
   m.attachedEliteIds = window._currentOpSelectedElites || [];
-  const p       = calcOpProb(m, b, window._currentOpSelectedDepts || [], window._currentOpSelectedSupport || []);
+  const depts = window._currentOpSelectedDepts || [];
+  const support = window._currentOpSelectedSupport || [];
+  const p       = calcOpProb(m, b, depts, support);
+  const breakdown = calcOpProbBreakdown(m, b, depts, support);
   m.attachedEliteIds = prevElites; // restore
   const probEl  = document.getElementById('op-prob');
   const probWrap = document.getElementById('op-prob-wrap');
+  const probDisp = document.getElementById('prob-display-tip');
   if (probEl)   probEl.textContent = `${p}%`;
   if (probWrap) probWrap.className = 'prob-value ' + (p >= 70 ? 'prob-high' : p >= 45 ? 'prob-med' : 'prob-low');
+  if (probDisp) probDisp.setAttribute('data-tip', buildProbTooltip(breakdown));
 };
 
 window.authAndExecute = function(missionId, btnEl) {
