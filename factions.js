@@ -72,19 +72,118 @@ window.getMissionTheaterId = getMissionTheaterId;
 window.getFactionForTheater = getFactionForTheater;
 
 // =============================================================================
-// STATE INITIALIZATION
+// ZERO-SUM NETWORK SYSTEM — all faction shares per theater sum to 100%
+// Internal values stored as 5-decimal floats for balanced redistribution.
 // =============================================================================
 
-// Initialize AI faction health for a theater
-function initAiFactions(tid) {
-  var factions = {};
+function round5(v) { return Math.round(v * 100000) / 100000; }
+
+// Create initial shares for a theater (all factions including player)
+function initTheaterShares(tid) {
+  var shares = {};
+  // Home faction gets ~35%, rest split ~9.3% each
   for (var fid in FACTIONS) {
-    if (fid === G.playerFactionId) continue;
     var isHome = (FACTIONS[fid].homeTheater === tid);
-    factions[fid] = isHome ? 75 : randInt(8, 25);
+    shares[fid] = isHome ? 35 : (100 - 35) / 7;
   }
-  return factions;
+  // Add slight noise for variety
+  for (var fid in shares) {
+    shares[fid] += (Math.random() - 0.5) * 3;
+    if (shares[fid] < 0.5) shares[fid] = 0.5;
+  }
+  // Normalize to exactly 100
+  var sum = 0;
+  for (var fid in shares) sum += shares[fid];
+  for (var fid in shares) shares[fid] = round5(shares[fid] * 100 / sum);
+  return shares;
 }
+
+// Normalize shares to sum exactly to 100%, enforcing player floor
+function normalizeShares(tid) {
+  var net = G.networks[tid];
+  if (!net || !net.factions) return;
+  var pfid = G.playerFactionId;
+
+  // Clamp negatives
+  for (var fid in net.factions) {
+    if (net.factions[fid] < 0) net.factions[fid] = 0;
+  }
+
+  // Enforce player floor
+  var floorActive = net.floor > 0 && (net.factions[pfid] || 0) < net.floor;
+  if (floorActive) {
+    net.factions[pfid] = net.floor;
+  }
+
+  if (floorActive) {
+    // Lock player, scale others to fill remainder
+    var playerVal = net.factions[pfid];
+    var othersSum = 0;
+    for (var fid in net.factions) {
+      if (fid !== pfid) othersSum += net.factions[fid];
+    }
+    var remainder = 100 - playerVal;
+    if (remainder < 0) { remainder = 0; net.factions[pfid] = 100; }
+    if (othersSum > 0) {
+      var sc = remainder / othersSum;
+      for (var fid in net.factions) {
+        if (fid !== pfid) net.factions[fid] = round5(net.factions[fid] * sc);
+      }
+    } else {
+      // Others all zero — distribute remainder equally
+      var okeys = Object.keys(net.factions).filter(function (f) { return f !== pfid; });
+      for (var oi = 0; oi < okeys.length; oi++) {
+        net.factions[okeys[oi]] = round5(remainder / okeys.length);
+      }
+    }
+    net.factions[pfid] = round5(net.factions[pfid]);
+  } else {
+    // Normal: scale everyone proportionally
+    var sum = 0;
+    for (var fid in net.factions) sum += net.factions[fid];
+    if (sum > 0) {
+      var sc = 100 / sum;
+      for (var fid in net.factions) {
+        net.factions[fid] = round5(net.factions[fid] * sc);
+      }
+    }
+  }
+
+  // Sync player health alias (used by getNetworkModifier)
+  net.health = net.factions[pfid] || 0;
+}
+
+// Adjust a single faction's share; proportionally redistribute from/to others
+function adjustShare(tid, fid, rawDelta) {
+  var net = G.networks[tid];
+  if (!net || !net.factions) return;
+
+  var cur = net.factions[fid] || 0;
+  var newVal = Math.max(0, Math.min(100, cur + rawDelta));
+  var actualDelta = newVal - cur;
+  if (Math.abs(actualDelta) < 0.00001) return;
+
+  net.factions[fid] = newVal;
+
+  // Distribute -actualDelta proportionally among others
+  var othersSum = 0;
+  for (var ofid in net.factions) {
+    if (ofid !== fid) othersSum += net.factions[ofid];
+  }
+  if (othersSum > 0) {
+    for (var ofid in net.factions) {
+      if (ofid === fid) continue;
+      var proportion = net.factions[ofid] / othersSum;
+      net.factions[ofid] = Math.max(0, net.factions[ofid] - actualDelta * proportion);
+    }
+  }
+
+  normalizeShares(tid);
+}
+
+// =============================================================================
+// STATE INITIALIZATION
+// =============================================================================
 
 hook('game:start', function () {
   var cfg = G.cfg;
@@ -97,11 +196,13 @@ hook('game:start', function () {
   for (var i = 0; i < THEATER_IDS.length; i++) {
     var tid = THEATER_IDS[i];
     G.networks[tid] = {
-      health: (tid === G.homeTheaterId) ? 65 : 5,
+      health: 0,
       floor: 0,
       floorDecayDay: G.day,
-      factions: initAiFactions(tid),
+      factions: initTheaterShares(tid),
     };
+    // Sync .health from player share
+    G.networks[tid].health = G.networks[tid].factions[G.playerFactionId] || 0;
   }
 });
 
@@ -118,19 +219,23 @@ hook('render:after', function () {
     G.networks = {};
     for (var i = 0; i < THEATER_IDS.length; i++) {
       var tid = THEATER_IDS[i];
-      G.networks[tid] = {
-        health: (tid === G.homeTheaterId) ? 65 : 5,
-        floor: 0,
-        floorDecayDay: G.day,
-        factions: initAiFactions(tid),
-      };
+      G.networks[tid] = { health: 0, floor: 0, floorDecayDay: G.day, factions: initTheaterShares(tid) };
+      G.networks[tid].health = G.networks[tid].factions[G.playerFactionId] || 0;
     }
+    return;
   }
-  // Migrate old saves missing AI faction health
+  // Migrate old format: player was separate from factions dict
   for (var k = 0; k < THEATER_IDS.length; k++) {
     var t = THEATER_IDS[k];
-    if (G.networks[t] && !G.networks[t].factions) {
-      G.networks[t].factions = initAiFactions(t);
+    var n = G.networks[t];
+    if (!n) continue;
+    if (!n.factions || !n.factions[G.playerFactionId]) {
+      // Old format — rebuild as zero-sum shares
+      var oldPlayerHealth = n.health || 5;
+      n.factions = initTheaterShares(t);
+      // Inject old player health and re-normalize
+      n.factions[G.playerFactionId] = oldPlayerHealth;
+      normalizeShares(t);
     }
   }
 });
@@ -142,59 +247,52 @@ hook('render:after', function () {
 hook('day:post', function () {
   if (!G.networks || G.day % 7 !== 0) return;
 
+  var EQ_HOME = 35;                         // home faction equilibrium share
+  var EQ_OTHER = (100 - EQ_HOME) / 7;      // ~9.286% for non-home factions
+
   for (var i = 0; i < THEATER_IDS.length; i++) {
     var tid = THEATER_IDS[i];
     var net = G.networks[tid];
-    if (!net) continue;
+    if (!net || !net.factions) continue;
 
-    var isHome = (tid === G.homeTheaterId);
-    var equilibrium = isHome ? 65 : 5;
-    var current = net.health;
-
-    // Drift toward equilibrium (10% of distance per week)
-    var drift = (equilibrium - current) * 0.10;
-
-    // AI pressure: foreign factions push player out
     var theater = THEATERS[tid];
     var vol = theater ? theater.volatility : 0.3;
-    var aiPressure = isHome ? -vol * 0.5 : -vol * 3;
 
-    // Geo events amplify pressure
-    if (G.geo && G.geo.activeEvents) {
-      for (var j = 0; j < G.geo.activeEvents.length; j++) {
-        var evt = G.geo.activeEvents[j];
-        if (evt.theaterId === tid && !evt.resolved) {
-          if (evt.typeId === 'INTELLIGENCE_WAR') aiPressure -= 3;
-          else if (evt.typeId === 'CYBER_CAMPAIGN') aiPressure -= 1.5;
+    // Compute raw desired value for each faction, then normalize
+    for (var fid in net.factions) {
+      var f = FACTIONS[fid];
+      if (!f) continue;
+      var isHome = (f.homeTheater === tid);
+      var isPlayer = (fid === G.playerFactionId);
+      var eq = isHome ? EQ_HOME : EQ_OTHER;
+      var cur = net.factions[fid];
+
+      // Drift toward equilibrium (10% of distance per week)
+      var drift = (eq - cur) * 0.10;
+      // Noise scaled by theater volatility
+      var noise = (Math.random() - 0.5) * vol * (isPlayer ? 1.5 : 2);
+
+      // Player-specific: geo events exert downward pressure
+      if (isPlayer && G.geo && G.geo.activeEvents) {
+        for (var j = 0; j < G.geo.activeEvents.length; j++) {
+          var evt = G.geo.activeEvents[j];
+          if (evt.theaterId === tid && !evt.resolved) {
+            if (evt.typeId === 'INTELLIGENCE_WAR') noise -= 2;
+            else if (evt.typeId === 'CYBER_CAMPAIGN') noise -= 1;
+          }
         }
       }
-    }
 
-    // Apply drift + pressure
-    var newHealth = current + drift + aiPressure;
-    // Enforce floor
-    newHealth = Math.max(newHealth, net.floor);
-    net.health = clamp(Math.round(newHealth * 10) / 10, 0, 100);
+      net.factions[fid] = Math.max(0, cur + drift + noise);
+    }
 
     // Decay floor by 5% per week
     if (net.floor > 0) {
       net.floor = Math.max(0, net.floor - 5);
     }
 
-    // Tick AI faction health in this theater
-    if (net.factions) {
-      for (var fid in net.factions) {
-        var aiFaction = FACTIONS[fid];
-        if (!aiFaction) continue;
-        var aiIsHome = (aiFaction.homeTheater === tid);
-        var aiEq = aiIsHome ? 75 : 15;
-        var aiCur = net.factions[fid];
-        var aiDrift = (aiEq - aiCur) * 0.10;
-        // AI factions get slight random pressure/growth
-        var aiNoise = (Math.random() - 0.45) * vol * 2;
-        net.factions[fid] = clamp(Math.round((aiCur + aiDrift + aiNoise) * 10) / 10, 0, 100);
-      }
-    }
+    // Re-normalize so all shares sum to exactly 100%
+    normalizeShares(tid);
   }
 });
 
@@ -208,21 +306,10 @@ hook('operation:resolved', function (data) {
   var tid = getMissionTheaterId(m);
   if (!tid || !G.networks[tid]) return;
 
-  // Standard op success boost
-  var boost = m.threat * 2;
-
-  // NETWORK_EXPANSION missions get a much larger boost
-  if (m.typeId === 'NETWORK_EXPANSION') boost += 15;
-
-  G.networks[tid].health = clamp(G.networks[tid].health + boost, 0, 100);
-
-  // Player success pushes AI factions down slightly in this theater
-  if (G.networks[tid].factions) {
-    var pushDown = boost * 0.3;
-    for (var afid in G.networks[tid].factions) {
-      G.networks[tid].factions[afid] = clamp(G.networks[tid].factions[afid] - pushDown, 0, 100);
-    }
-  }
+  // Player gains share — proportionally taken from all other factions
+  var boost = m.threat * 0.8;
+  if (m.typeId === 'NETWORK_EXPANSION') boost += 5;
+  adjustShare(tid, G.playerFactionId, boost);
 
   // Captured foreign operatives yield bonus Intel
   if (m.typeId === 'COUNTER_ESPIONAGE') {
@@ -275,13 +362,15 @@ window.boostNetworkFloor = function (theaterId) {
     return;
   }
   G.intel -= 10;
-  G.networks[theaterId].floor = Math.min(100, G.networks[theaterId].floor + 1);
-  // If health is below floor, push it up
-  if (G.networks[theaterId].health < G.networks[theaterId].floor) {
-    G.networks[theaterId].health = G.networks[theaterId].floor;
+  var net = G.networks[theaterId];
+  net.floor = Math.min(100, net.floor + 1);
+  // If player share is below floor, push it up via adjustShare
+  var playerShare = net.factions ? (net.factions[G.playerFactionId] || 0) : 0;
+  if (playerShare < net.floor) {
+    adjustShare(theaterId, G.playerFactionId, net.floor - playerShare);
   }
   var theater = THEATERS[theaterId];
-  addLog('Network floor in ' + (theater ? theater.name : theaterId) + ' bolstered (+1%). Floor: ' + G.networks[theaterId].floor + '%.', 'log-info');
+  addLog('Network floor in ' + (theater ? theater.name : theaterId) + ' bolstered (+1%). Floor: ' + net.floor + '%.', 'log-info');
   if (typeof render === 'function') render();
 };
 
@@ -348,9 +437,8 @@ window.transferHvtToFaction = function (hvtId, factionId) {
 
   // Small network boost for the receiving AI faction in their home theater
   var homeTheater = faction.homeTheater;
-  if (G.networks && G.networks[homeTheater] && G.networks[homeTheater].factions) {
-    var curAi = G.networks[homeTheater].factions[factionId] || 0;
-    G.networks[homeTheater].factions[factionId] = clamp(curAi + 5, 0, 100);
+  if (G.networks && G.networks[homeTheater]) {
+    adjustShare(homeTheater, factionId, 2);
   }
 
   h.status = 'HANDED_OVER';
@@ -520,7 +608,8 @@ function getHealthColor(health, isPlayer, isHome) {
 window.renderNetworkBar = function (theaterId) {
   if (!G.networks || !G.networks[theaterId]) return '';
   var net = G.networks[theaterId];
-  var health = Math.round(net.health);
+  if (!net.factions) return '';
+  var health = Math.round(net.factions[G.playerFactionId] || 0);
   var isHome = (theaterId === G.homeTheaterId);
   var modifier = getNetworkModifier(theaterId);
 
@@ -545,10 +634,10 @@ window.renderNetworkBar = function (theaterId) {
     modStr +
   '</div>';
 
-  // AI faction rows
+  // Other faction rows
   if (net.factions) {
-    // Sort: home faction first, then by health descending
-    var sortedFids = Object.keys(net.factions).sort(function (a, b) {
+    // Sort: home faction first, then by health descending (exclude player)
+    var sortedFids = Object.keys(net.factions).filter(function (f) { return f !== G.playerFactionId; }).sort(function (a, b) {
       var aHome = FACTIONS[a] && FACTIONS[a].homeTheater === theaterId ? 1 : 0;
       var bHome = FACTIONS[b] && FACTIONS[b].homeTheater === theaterId ? 1 : 0;
       if (aHome !== bHome) return bHome - aHome;
