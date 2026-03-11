@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.0.11';
+const GAME_VERSION = '3.0.12';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -535,7 +535,8 @@ function spawnMission(forcedType) {
     ['INCOMING', 'INVESTIGATING', 'READY', 'PHASE_COMPLETE'].includes(m.status));
   if (inbox.length >= 30) return;
 
-  const typeId = forcedType || pick(Object.keys(MISSION_TYPES));
+  const NO_RANDOM_SPAWN = new Set(['ORG_INFILTRATION', 'ORG_TAKEDOWN']);
+  const typeId = forcedType || pick(Object.keys(MISSION_TYPES).filter(k => !NO_RANDOM_SPAWN.has(k)));
   const tmpl   = MISSION_TYPES[typeId];
   if (!tmpl) return;
 
@@ -2511,6 +2512,18 @@ function registerOrUpdateHvt(m) {
     window.assignHvtFaction(entry, m.typeId, m.country);
   }
   G.hvts.push(entry);
+
+  // Favor rendition/detention: immediately hand over to requesting agency
+  const FAVOR_HANDOVER_TYPES = new Set(['FAVOR_AGENCY_RENDITION', 'FAVOR_BUREAU_DETENTION']);
+  if (FAVOR_HANDOVER_TYPES.has(m.typeId) && m.favorOf && newStatus === 'DETAINED') {
+    const agCfg = G.cfg?.partnerAgencies?.[m.favorOf];
+    entry.status = 'HANDED_OVER';
+    entry.handedTo = m.favorOf;
+    const agName = agCfg?.name || m.favorAgencyName || m.favorOf;
+    hvtBriefingPopup('handedOver', entry, { codename: m.codename, detail: 'Target captured and transferred directly to ' + agName + ' per favor agreement.' });
+    return;
+  }
+
   // Only show pop-up for targets that remain active threats — neutralized-on-arrival needs no fanfare
   if (newStatus !== 'NEUTRALIZED') {
     const popupType = newStatus === 'DETAINED' ? 'detained' : newStatus === 'TRACKED' ? 'tracked' : 'newTarget';
