@@ -470,7 +470,7 @@ function injectFactionCSS() {
     '.geo-network-label-you { font-weight: 700; }',
     // Network health bar in theater cards
     '.geo-network-row { display: flex; align-items: center; gap: 6px; padding: 2px 0 1px; }',
-    '.geo-network-label { font-size: 7px; letter-spacing: 0.8px; color: var(--text-dim); font-family: var(--font-mono); min-width: 52px; }',
+    '.geo-network-label { font-size: 7px; letter-spacing: 0.8px; color: var(--text-dim); font-family: var(--font-mono); min-width: 52px; cursor: help; }',
     '.geo-network-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; position: relative; }',
     '.geo-network-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease, background 0.3s; }',
     '.geo-network-val { font-size: 8px; font-family: var(--font-mono); color: var(--text-dim); min-width: 30px; text-align: right; }',
@@ -527,6 +527,8 @@ window.renderNetworkBar = function (theaterId) {
   // Player row
   var playerFaction = FACTIONS[G.playerFactionId];
   var fillColor = getHealthColor(health, true, isHome);
+  var playerTheaterName = (G.homeTheaterId && THEATERS[G.homeTheaterId]) ? THEATERS[G.homeTheaterId].name : 'Unknown';
+  var playerTip = playerFaction ? (playerFaction.name + '&#10;Home: ' + playerTheaterName + '&#10;Agencies: ' + playerFaction.agencies) : 'Your faction';
 
   var modStr = '';
   if (modifier > 0) modStr = '<span class="geo-network-modifier positive">+' + modifier + '%</span>';
@@ -537,7 +539,7 @@ window.renderNetworkBar = function (theaterId) {
 
   var html = '<div class="geo-network-section">';
   html += '<div class="geo-network-row geo-network-player">' +
-    '<span class="geo-network-label geo-network-label-you" style="color:' + (playerFaction ? playerFaction.color : 'var(--green)') + '">' + (playerFaction ? playerFaction.icon + ' ' + playerFaction.shortName : 'YOU') + '</span>' +
+    '<span class="geo-network-label geo-network-label-you" style="color:' + (playerFaction ? playerFaction.color : 'var(--green)') + '" data-tip="' + playerTip + '">' + (playerFaction ? playerFaction.icon + ' ' + playerFaction.shortName : 'YOU') + '</span>' +
     '<div class="geo-network-bar"><div class="geo-network-fill" style="width:' + health + '%;background:' + fillColor + '"></div></div>' +
     '<span class="geo-network-val">' + health + '%' + floorStr + '</span>' +
     modStr +
@@ -558,8 +560,10 @@ window.renderNetworkBar = function (theaterId) {
       if (!f) continue;
       var aiHealth = Math.round(net.factions[fid]);
       var aiIsHome = (f.homeTheater === theaterId);
+      var aiHomeTheater = THEATERS[f.homeTheater] ? THEATERS[f.homeTheater].name : f.homeTheater;
+      var aiTip = f.name + '&#10;Home: ' + aiHomeTheater + '&#10;Agencies: ' + f.agencies;
       html += '<div class="geo-network-row geo-network-ai">' +
-        '<span class="geo-network-label" style="color:' + f.color + '">' + f.icon + ' ' + f.shortName + '</span>' +
+        '<span class="geo-network-label" style="color:' + f.color + '" data-tip="' + aiTip + '">' + f.icon + ' ' + f.shortName + '</span>' +
         '<div class="geo-network-bar"><div class="geo-network-fill" style="width:' + aiHealth + '%;background:' + f.color + ';opacity:' + (aiIsHome ? '0.8' : '0.5') + '"></div></div>' +
         '<span class="geo-network-val">' + aiHealth + '%</span>' +
       '</div>';
