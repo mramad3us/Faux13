@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.2.1';
+const GAME_VERSION = '3.0.16';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -26,6 +26,11 @@ const COUNTRIES = {
       ANALYSIS: 8, HUMINT: 6, SIGINT: 5,
       FIELD_OPS: 4, SPECIAL_OPS: 2, FOREIGN_OPS: 4, COUNTER_INTEL: 5,
     },
+    deptMaxCapacities: {
+      ANALYSIS: 14, HUMINT: 10, SIGINT: 10,
+      FIELD_OPS: 10, SPECIAL_OPS: 6, FOREIGN_OPS: 10, COUNTER_INTEL: 10,
+    },
+    maxBudgetRegen: 4, maxBudgetCap: 3,
     domesticCities: ['New York', 'Chicago', 'Los Angeles', 'Washington D.C.', 'Miami', 'Houston', 'Seattle', 'Boston', 'Atlanta', 'Denver'],
     partnerAgencies: {
       BUREAU:   { name: 'The Bureau (FBI)', shortName: 'BUREAU',  type: 'domestic', startingRelation: 60,
@@ -66,6 +71,11 @@ const COUNTRIES = {
       ANALYSIS: 7, HUMINT: 5, SIGINT: 5,
       FIELD_OPS: 3, SPECIAL_OPS: 2, FOREIGN_OPS: 3, COUNTER_INTEL: 4,
     },
+    deptMaxCapacities: {
+      ANALYSIS: 12, HUMINT: 8, SIGINT: 8,
+      FIELD_OPS: 8, SPECIAL_OPS: 5, FOREIGN_OPS: 8, COUNTER_INTEL: 8,
+    },
+    maxBudgetRegen: 3, maxBudgetCap: 2,
     domesticCities: ['London', 'Manchester', 'Birmingham', 'Glasgow', 'Leeds', 'Bristol', 'Edinburgh', 'Cardiff', 'Liverpool', 'Sheffield'],
     partnerAgencies: {
       BUREAU:   { name: 'MI5 (Security Service)', shortName: 'MI5',  type: 'domestic', startingRelation: 62,
@@ -106,6 +116,11 @@ const COUNTRIES = {
       ANALYSIS: 6, HUMINT: 4, SIGINT: 4,
       FIELD_OPS: 3, SPECIAL_OPS: 1, FOREIGN_OPS: 3, COUNTER_INTEL: 4,
     },
+    deptMaxCapacities: {
+      ANALYSIS: 10, HUMINT: 7, SIGINT: 7,
+      FIELD_OPS: 7, SPECIAL_OPS: 4, FOREIGN_OPS: 7, COUNTER_INTEL: 7,
+    },
+    maxBudgetRegen: 3, maxBudgetCap: 2,
     domesticCities: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Bordeaux', 'Lille', 'Nice', 'Nantes', 'Strasbourg', 'Rennes'],
     partnerAgencies: {
       BUREAU:   { name: 'DGSI', shortName: 'DGSI', type: 'domestic', startingRelation: 58,
@@ -2020,7 +2035,8 @@ function showCapabilitiesMenu(isMonthly = false) {
     for (const dcfg of DEPT_CONFIG) {
       const dept     = G.depts[dcfg.id];
       const purchased = G.upgrades[dcfg.id] || 0;
-      const maxExtra  = dcfg.maxCapacity - dept.capacity; // remaining upgrades possible
+      const countryMax = (G.cfg.deptMaxCapacities && G.cfg.deptMaxCapacities[dcfg.id]) || dcfg.maxCapacity;
+      const maxExtra  = countryMax - dept.capacity; // remaining upgrades possible
       const cost      = dcfg.xpCostPerUnit;
       const canAfford = G.xp >= cost;
       const canBuy    = maxExtra > 0 && canAfford;
@@ -2040,7 +2056,10 @@ function showCapabilitiesMenu(isMonthly = false) {
     // Budget upgrades
     for (const bu of BUDGET_UPGRADES) {
       const purchased = G.upgrades[bu.id] || 0;
-      const remaining = bu.maxPurchases - purchased;
+      const mxP = (bu.id === 'budgetRegen' && G.cfg.maxBudgetRegen !== undefined) ? G.cfg.maxBudgetRegen
+                : (bu.id === 'budgetCap' && G.cfg.maxBudgetCap !== undefined) ? G.cfg.maxBudgetCap
+                : bu.maxPurchases;
+      const remaining = mxP - purchased;
       const canAfford = G.xp >= bu.xpCost;
       const canBuy    = remaining > 0 && canAfford;
       html += `<div class="upgrade-row" id="upg-${bu.id}">
@@ -2102,7 +2121,8 @@ window.buyUpgrade = function(type, id) {
   if (type === 'dept') {
     if (!dcfg || !dept) return;
     const cost     = dcfg.xpCostPerUnit;
-    const maxExtra = dcfg.maxCapacity - dept.capacity;
+    const countryMax = (G.cfg.deptMaxCapacities && G.cfg.deptMaxCapacities[id]) || dcfg.maxCapacity;
+    const maxExtra = countryMax - dept.capacity;
     if (maxExtra <= 0 || G.xp < cost) return;
     G.xp -= cost;
     dept.capacity++;
@@ -2112,7 +2132,10 @@ window.buyUpgrade = function(type, id) {
     const bu = BUDGET_UPGRADES.find(b => b.id === id);
     if (!bu) return;
     const purchased = G.upgrades[id] || 0;
-    if (purchased >= bu.maxPurchases || G.xp < bu.xpCost) return;
+    const maxP = (id === 'budgetRegen' && G.cfg.maxBudgetRegen !== undefined) ? G.cfg.maxBudgetRegen
+               : (id === 'budgetCap' && G.cfg.maxBudgetCap !== undefined) ? G.cfg.maxBudgetCap
+               : bu.maxPurchases;
+    if (purchased >= maxP || G.xp < bu.xpCost) return;
     G.xp -= bu.xpCost;
     G.upgrades[id] = purchased + 1;
     bu.apply();
@@ -2134,7 +2157,8 @@ window.buyUpgrade = function(type, id) {
     let html = '';
     for (const d of DEPT_CONFIG) {
       const dpt      = G.depts[d.id];
-      const maxExtra = d.maxCapacity - dpt.capacity;
+      const cMax     = (G.cfg.deptMaxCapacities && G.cfg.deptMaxCapacities[d.id]) || d.maxCapacity;
+      const maxExtra = cMax - dpt.capacity;
       const cost     = d.xpCostPerUnit;
       const canBuy   = maxExtra > 0 && G.xp >= cost;
       html += `<div class="upgrade-row" id="upg-${d.id}">
@@ -2151,7 +2175,10 @@ window.buyUpgrade = function(type, id) {
     }
     for (const bu of BUDGET_UPGRADES) {
       const purchased = G.upgrades[bu.id] || 0;
-      const remaining = bu.maxPurchases - purchased;
+      const mxP = (bu.id === 'budgetRegen' && G.cfg.maxBudgetRegen !== undefined) ? G.cfg.maxBudgetRegen
+                : (bu.id === 'budgetCap' && G.cfg.maxBudgetCap !== undefined) ? G.cfg.maxBudgetCap
+                : bu.maxPurchases;
+      const remaining = mxP - purchased;
       const canBuy    = remaining > 0 && G.xp >= bu.xpCost;
       html += `<div class="upgrade-row" id="upg-${bu.id}">
         <div class="upgrade-info">
