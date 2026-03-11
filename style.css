@@ -4,7 +4,7 @@
    ============================================================================= */
 
 /* --- Base zoom — matches Safari's first zoom-in step --- */
-html { zoom: 1.10; }
+html { zoom: 1.05; }
 
 /* --- CSS Variables --- */
 :root {
