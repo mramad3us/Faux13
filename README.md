@@ -70,7 +70,7 @@ Organizations can be infiltrated and ultimately taken down through multi-phase o
 
 ### Geopolitics
 
-Six global theaters with independent threat levels and volatility. Long-term crises (regional wars, proxy conflicts, cyber campaigns) spawn mission chains and reshape the operational landscape.
+Eight global theaters with independent threat levels and volatility, each represented by custom SVG icons. Long-term crises (regional wars, proxy conflicts, insurgencies, cyber campaigns, arms races, civil unrest, regime changes, naval standoffs, and intelligence wars) spawn mission chains and reshape the operational landscape.
 
 ### Consequences
 
@@ -78,11 +78,37 @@ Failed operations have repercussions. A botched counter-terrorism raid may trigg
 
 ### Inter-Agency Relations
 
-Three partner agencies per country offer support packages when relations are strong. Completing favor missions improves cooperation; failures and scandals degrade it.
+Three partner agencies per country offer support packages when relations are strong — tactical teams (FBI HRT, JSOC Tier 1, SAS, GIGN...), SIGINT capabilities, and intelligence briefs. Allied support appears in after-action debriefs with contextual narrative describing their operational contribution. Completing favor missions improves cooperation; failures and scandals degrade it.
 
 ### Elite Operatives
 
-Critical successes can spawn named elite units — persistent specialists with unique codenames who provide bonuses on future operations. They can also be killed, captured, or burned.
+Critical successes can spawn named elite units — persistent specialists with unique codenames who provide bonuses on future operations. Only one elite unit per department type can be active at a time. They can also be killed, captured, or burned.
+
+### Save System
+
+Saves are stored in localStorage with 20 manual slots plus autosave. The save menu supports:
+
+- **Export** — Download individual saves as portable JSON files
+- **Export All** — Download all saves at once (one file per save)
+- **Import** — Load saves from JSON files (multi-select supported, validated before insertion)
+
+Exported saves are fully self-contained and can be shared or transferred between browsers.
+
+### Codenames & Aliases
+
+All entities use procedurally generated names from non-overlapping vocabulary pools:
+
+| Pool | Theme | Combinations |
+|------|-------|-------------|
+| Mission codenames | Metals, colors, terrain, tactical | ~32,400 |
+| Organization names | Sinister, atmospheric | ~7,700 |
+| Case file codenames | Mythological figures | 125 |
+| Handler aliases | Tradecraft, botanical, geographic | 60 |
+| Leader aliases | "THE [profession]" | 80 |
+| Infiltration HVT aliases | Animals | 80 |
+| Foreign operative aliases | Objects, tools, instruments | 90 |
+
+Active-entity deduplication ensures no two simultaneous missions, HVTs, or operatives share the same codename.
 
 ## Controls
 
@@ -98,9 +124,9 @@ Critical successes can spawn named elite units — persistent specialists with u
 
 Pure vanilla JavaScript — no frameworks, no build tools, no transpilation.
 
-- **14 JS modules** loaded via `<script>` tags
+- **15 JS modules** loaded via `<script>` tags
 - **CSS custom properties** for theming
-- **localStorage** for save/load (20 slots + autosave)
+- **localStorage** for save/load (20 slots + autosave, JSON import/export)
 - **Google Fonts** (Share Tech Mono, Rajdhani, Exo 2)
 
 ## Project Structure
@@ -109,17 +135,23 @@ Pure vanilla JavaScript — no frameworks, no build tools, no transpilation.
 index.html        — Single-page shell: login, game client, game-over screens
 game.js           — Core engine: state management, rendering, day loop, UI
 missions.js       — Mission template definitions (20+ types with configs)
-geopolitics.js    — Theater system, crisis events, geopolitical simulation
+geopolitics.js    — Theater system, crisis events, geopolitical simulation, SVG icons
+factions.js       — Faction networks, foreign operatives, counter-espionage
 plots.js          — Persistent threat organizations, multi-mission chains
 operatives.js     — Elite unit system: naming, fate, cooldowns
+debriefs.js       — Procedural after-action reports with allied support narratives
+handover.js       — Inter-agency mission handover system
 events.js         — Random event catalog (100+), player choices
 emails.js         — Email generation, sender/subject mapping
 headlines.js      — Press headline generation
-saves.js          — Save/load system, old-save migration
+saves.js          — Save/load system, JSON import/export, old-save migration
+saves/            — Exported save files
 difficulty.js     — DEFCON calculation, dynamic difficulty
 cascading.js      — Consequence system: failure spawns new threats
 animations.js     — Targeted UI animations
 style.css         — Full styling: terminal login, 3-pane email client, panels
+icons/            — SVG icons: theaters, events, sidebar, UI elements
+saves/            — Exported save files
 ```
 
 ## License
