@@ -75,6 +75,17 @@ window.getFactionForTheater = getFactionForTheater;
 // STATE INITIALIZATION
 // =============================================================================
 
+// Initialize AI faction health for a theater
+function initAiFactions(tid) {
+  var factions = {};
+  for (var fid in FACTIONS) {
+    if (fid === G.playerFactionId) continue;
+    var isHome = (FACTIONS[fid].homeTheater === tid);
+    factions[fid] = isHome ? 75 : randInt(8, 25);
+  }
+  return factions;
+}
+
 hook('game:start', function () {
   var cfg = G.cfg;
   G.intel = 0;
@@ -89,6 +100,7 @@ hook('game:start', function () {
       health: (tid === G.homeTheaterId) ? 65 : 5,
       floor: 0,
       floorDecayDay: G.day,
+      factions: initAiFactions(tid),
     };
   }
 });
@@ -110,7 +122,15 @@ hook('render:after', function () {
         health: (tid === G.homeTheaterId) ? 65 : 5,
         floor: 0,
         floorDecayDay: G.day,
+        factions: initAiFactions(tid),
       };
+    }
+  }
+  // Migrate old saves missing AI faction health
+  for (var k = 0; k < THEATER_IDS.length; k++) {
+    var t = THEATER_IDS[k];
+    if (G.networks[t] && !G.networks[t].factions) {
+      G.networks[t].factions = initAiFactions(t);
     }
   }
 });
@@ -160,6 +180,21 @@ hook('day:post', function () {
     if (net.floor > 0) {
       net.floor = Math.max(0, net.floor - 5);
     }
+
+    // Tick AI faction health in this theater
+    if (net.factions) {
+      for (var fid in net.factions) {
+        var aiFaction = FACTIONS[fid];
+        if (!aiFaction) continue;
+        var aiIsHome = (aiFaction.homeTheater === tid);
+        var aiEq = aiIsHome ? 75 : 15;
+        var aiCur = net.factions[fid];
+        var aiDrift = (aiEq - aiCur) * 0.10;
+        // AI factions get slight random pressure/growth
+        var aiNoise = (Math.random() - 0.45) * vol * 2;
+        net.factions[fid] = clamp(Math.round((aiCur + aiDrift + aiNoise) * 10) / 10, 0, 100);
+      }
+    }
   }
 });
 
@@ -180,6 +215,14 @@ hook('operation:resolved', function (data) {
   if (m.typeId === 'NETWORK_EXPANSION') boost += 15;
 
   G.networks[tid].health = clamp(G.networks[tid].health + boost, 0, 100);
+
+  // Player success pushes AI factions down slightly in this theater
+  if (G.networks[tid].factions) {
+    var pushDown = boost * 0.3;
+    for (var afid in G.networks[tid].factions) {
+      G.networks[tid].factions[afid] = clamp(G.networks[tid].factions[afid] - pushDown, 0, 100);
+    }
+  }
 
   // Captured foreign operatives yield bonus Intel
   if (m.typeId === 'COUNTER_ESPIONAGE') {
@@ -303,10 +346,11 @@ window.transferHvtToFaction = function (hvtId, factionId) {
   G.intel = (G.intel || 0) + intelReward;
   G.intelLifetime = (G.intelLifetime || 0) + intelReward;
 
-  // Small network boost in the receiving faction's home theater
+  // Small network boost for the receiving AI faction in their home theater
   var homeTheater = faction.homeTheater;
-  if (G.networks && G.networks[homeTheater]) {
-    G.networks[homeTheater].health = clamp(G.networks[homeTheater].health + 3, 0, 100);
+  if (G.networks && G.networks[homeTheater] && G.networks[homeTheater].factions) {
+    var curAi = G.networks[homeTheater].factions[factionId] || 0;
+    G.networks[homeTheater].factions[factionId] = clamp(curAi + 5, 0, 100);
   }
 
   h.status = 'HANDED_OVER';
@@ -418,9 +462,15 @@ function injectFactionCSS() {
   _factionCssInjected = true;
   var style = document.createElement('style');
   style.textContent = [
+    // Network section container
+    '.geo-network-section { padding: 4px 0 2px; border-top: 1px solid rgba(255,255,255,0.04); margin-top: 4px; }',
+    '.geo-network-section .geo-network-player { margin-bottom: 2px; }',
+    '.geo-network-ai { opacity: 0.75; }',
+    '.geo-network-ai .geo-network-bar { height: 4px !important; }',
+    '.geo-network-label-you { font-weight: 700; }',
     // Network health bar in theater cards
-    '.geo-network-row { display: flex; align-items: center; gap: 6px; padding: 4px 0 2px; }',
-    '.geo-network-label { font-size: 8px; letter-spacing: 0.8px; color: var(--text-dim); font-family: var(--font-mono); min-width: 58px; }',
+    '.geo-network-row { display: flex; align-items: center; gap: 6px; padding: 2px 0 1px; }',
+    '.geo-network-label { font-size: 7px; letter-spacing: 0.8px; color: var(--text-dim); font-family: var(--font-mono); min-width: 52px; }',
     '.geo-network-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; position: relative; }',
     '.geo-network-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease, background 0.3s; }',
     '.geo-network-val { font-size: 8px; font-family: var(--font-mono); color: var(--text-dim); min-width: 30px; text-align: right; }',
@@ -456,6 +506,17 @@ hook('render:after', function () {
 // EXPOSE for geopolitics.js theater card rendering
 // =============================================================================
 
+function getHealthColor(health, isPlayer, isHome) {
+  if (isPlayer) {
+    if (isHome) {
+      return health > 65 ? 'rgba(46,204,113,0.8)' : health >= 30 ? 'rgba(241,196,15,0.7)' : health >= 10 ? 'rgba(231,76,60,0.7)' : 'rgba(192,57,43,0.9)';
+    }
+    return health > 50 ? 'rgba(46,204,113,0.8)' : health > 15 ? 'rgba(52,152,219,0.7)' : health >= 5 ? 'rgba(241,196,15,0.7)' : 'rgba(231,76,60,0.7)';
+  }
+  // AI factions: use their faction color at varying opacity
+  return null; // caller uses faction color
+}
+
 window.renderNetworkBar = function (theaterId) {
   if (!G.networks || !G.networks[theaterId]) return '';
   var net = G.networks[theaterId];
@@ -463,13 +524,9 @@ window.renderNetworkBar = function (theaterId) {
   var isHome = (theaterId === G.homeTheaterId);
   var modifier = getNetworkModifier(theaterId);
 
-  // Color based on thresholds
-  var fillColor;
-  if (isHome) {
-    fillColor = health > 65 ? 'rgba(46,204,113,0.8)' : health >= 30 ? 'rgba(241,196,15,0.7)' : health >= 10 ? 'rgba(231,76,60,0.7)' : 'rgba(192,57,43,0.9)';
-  } else {
-    fillColor = health > 50 ? 'rgba(46,204,113,0.8)' : health > 15 ? 'rgba(52,152,219,0.7)' : health >= 5 ? 'rgba(241,196,15,0.7)' : 'rgba(231,76,60,0.7)';
-  }
+  // Player row
+  var playerFaction = FACTIONS[G.playerFactionId];
+  var fillColor = getHealthColor(health, true, isHome);
 
   var modStr = '';
   if (modifier > 0) modStr = '<span class="geo-network-modifier positive">+' + modifier + '%</span>';
@@ -478,12 +535,39 @@ window.renderNetworkBar = function (theaterId) {
 
   var floorStr = net.floor > 0 ? ' <span class="geo-floor-indicator">\u2191' + net.floor + '%</span>' : '';
 
-  return '<div class="geo-network-row">' +
-    '<span class="geo-network-label">' + (isHome ? 'HOME NET' : 'NETWORK') + '</span>' +
+  var html = '<div class="geo-network-section">';
+  html += '<div class="geo-network-row geo-network-player">' +
+    '<span class="geo-network-label geo-network-label-you" style="color:' + (playerFaction ? playerFaction.color : 'var(--green)') + '">' + (playerFaction ? playerFaction.icon + ' ' + playerFaction.shortName : 'YOU') + '</span>' +
     '<div class="geo-network-bar"><div class="geo-network-fill" style="width:' + health + '%;background:' + fillColor + '"></div></div>' +
     '<span class="geo-network-val">' + health + '%' + floorStr + '</span>' +
     modStr +
   '</div>';
+
+  // AI faction rows
+  if (net.factions) {
+    // Sort: home faction first, then by health descending
+    var sortedFids = Object.keys(net.factions).sort(function (a, b) {
+      var aHome = FACTIONS[a] && FACTIONS[a].homeTheater === theaterId ? 1 : 0;
+      var bHome = FACTIONS[b] && FACTIONS[b].homeTheater === theaterId ? 1 : 0;
+      if (aHome !== bHome) return bHome - aHome;
+      return net.factions[b] - net.factions[a];
+    });
+    for (var fi = 0; fi < sortedFids.length; fi++) {
+      var fid = sortedFids[fi];
+      var f = FACTIONS[fid];
+      if (!f) continue;
+      var aiHealth = Math.round(net.factions[fid]);
+      var aiIsHome = (f.homeTheater === theaterId);
+      html += '<div class="geo-network-row geo-network-ai">' +
+        '<span class="geo-network-label" style="color:' + f.color + '">' + f.icon + ' ' + f.shortName + '</span>' +
+        '<div class="geo-network-bar"><div class="geo-network-fill" style="width:' + aiHealth + '%;background:' + f.color + ';opacity:' + (aiIsHome ? '0.8' : '0.5') + '"></div></div>' +
+        '<span class="geo-network-val">' + aiHealth + '%</span>' +
+      '</div>';
+    }
+  }
+
+  html += '</div>';
+  return html;
 };
 
 window.renderFactionBadge = function (theaterId) {
