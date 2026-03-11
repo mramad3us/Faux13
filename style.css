@@ -3,6 +3,9 @@
    Complete UI for intelligence agency email client simulation
    ============================================================================= */
 
+/* --- Base zoom — matches Safari's first zoom-in step --- */
+html { zoom: 1.15; }
+
 /* --- CSS Variables --- */
 :root {
   --bg:         #080c12;
