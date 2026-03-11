@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.2.3';
+const GAME_VERSION = '3.2.4';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -2624,6 +2624,36 @@ const HVT_SURVLOSS_TYPES = new Set([
   'DOMESTIC_HVT', 'FOREIGN_HVT', 'LONG_HUNT_HVT', 'RENDITION', 'SURVEILLANCE_TAKEDOWN',
 ]);
 
+// Relocate an HVT to a different city within the same theater (or domestic pool)
+function relocateHvt(h) {
+  if (!h || !h.knownFields) return;
+  var oldCity = h.knownFields.city;
+  var candidates = [];
+  if (h.location === 'DOMESTIC' && G.cfg && G.cfg.domesticCities) {
+    candidates = G.cfg.domesticCities.filter(function(c) { return c !== oldCity; })
+      .map(function(c) { return { city: c, country: G.cfg.name }; });
+  } else if (typeof THEATERS !== 'undefined') {
+    // Find theater containing the current city
+    var theaterIds = Object.keys(THEATERS);
+    for (var ti = 0; ti < theaterIds.length; ti++) {
+      var th = THEATERS[theaterIds[ti]];
+      if (th.cities && th.cities.some(function(c) { return c.city === oldCity; })) {
+        candidates = th.cities.filter(function(c) { return c.city !== oldCity; });
+        break;
+      }
+    }
+    // Fallback: pick from all foreign cities
+    if (candidates.length === 0 && typeof FOREIGN_CITIES !== 'undefined') {
+      candidates = FOREIGN_CITIES.filter(function(c) { return c.city !== oldCity; });
+    }
+  }
+  if (candidates.length > 0) {
+    var newLoc = pick(candidates);
+    h.knownFields.city = newLoc.city;
+    h.knownFields.country = newLoc.country;
+  }
+}
+
 function registerOrUpdateHvtFailed(m) {
   // Set cooldown on the linked HVT — target goes to ground
   if (m.linkedHvtId) {
@@ -2631,6 +2661,7 @@ function registerOrUpdateHvtFailed(m) {
     if (linked && (linked.status === 'ACTIVE' || linked.status === 'TRACKED')) {
       const hCfg = HVT_HARDNESS[linked.hardness || 'MODERATE'] || HVT_HARDNESS.MODERATE;
       linked.cooldownUntil = G.day + randInt(...hCfg.cooldown);
+      relocateHvt(linked);
       const cooldownDays = linked.cooldownUntil - G.day;
       addLog(`TARGET ALERT: "${linked.alias}" has gone to ground. Operations suspended for ~${cooldownDays} days.`, 'log-warn');
       hvtBriefingPopup('goneToGround', linked, {
@@ -2649,6 +2680,7 @@ function registerOrUpdateHvtFailed(m) {
       h.trackedDay = null;
       h.trackedExpiry = null;
       h.gaps = ['Current location unconfirmed', 'Security detail size unknown', 'Subject adopted new patterns'];
+      relocateHvt(h);
       addLog(`SURVEILLANCE LOST: ${h.alias} has gone underground after failed operation.`, 'log-fail');
       hvtBriefingPopup('lostSurveillance', h, { codename: m.codename });
       return;
@@ -2950,6 +2982,7 @@ window.releaseTarget = function(hvtId) {
   h.trackedDay = G.day;
   h.trackedExpiry = G.day + randInt(20, 40);
   h.detainedAt = null;
+  relocateHvt(h);
   addLog(`CONTROLLED RELEASE: "${h.alias}" released from custody. Surveillance reactivated.`, 'log-info');
   hvtBriefingPopup('released', h, { detail: 'Subject released under controlled conditions. Tracking package deployed — surveillance window: ' + (h.trackedExpiry - G.day) + ' days.' });
   render();
