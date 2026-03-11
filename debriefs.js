@@ -1297,6 +1297,102 @@
     }
   }
 
+  // ---- NETWORK EXPANSION (clandestine source recruitment in foreign theater) ----
+
+  function gen_NETWORK_EXPANSION(m, units, elites, success) {
+    var cd = currentDay();
+    var execDays = m.execDays || R(5,8);
+    var opStart = Math.max(1, cd - execDays);
+    var cs = P(CALLSIGNS);
+    var fv = m.fillVars || {};
+    var city = fv.city || 'the operational area';
+    var country = fv.country || 'the target country';
+    var theaterName = fv.theater_name || 'the target theater';
+
+    var COVER_PLATFORMS = ['a commercial consulting firm','an import-export company','a foreign media bureau','a diplomatic liaison office','an NGO field office','a technology startup','a language school','a cultural exchange program'];
+    var RECRUIT_TARGETS = ['a mid-level military intelligence officer','a foreign ministry official with access to classified cables','a telecommunications engineer with network access','a port authority official controlling customs records','a university professor connected to defense research','a banking executive with visibility into state-linked transactions','a local police commander with informant networks','an airport security supervisor with manifest access'];
+    var RECRUIT_METHODS = ['gradual rapport-building over shared professional interests','financial inducement following identification of personal debt','ideological appeal — the source expressed disillusionment with the regime','false-flag approach under the cover of a partner intelligence service','exploitation of a compromising personal situation','professional flattery and staged career opportunities abroad','mutual contact introduction through an existing low-level asset','leveraging family ties — the source has relatives in a Western country'];
+    var INFRA_TYPES = ['dead-drop sites at '+R(3,5)+' locations across the city','a secure covert communications channel using encrypted messaging','a safe house in a residential district with multiple exit routes','a brush-pass protocol for document exchange in crowded markets','a vehicle cache with emergency exfiltration kit','a signal plan using pre-arranged visual indicators','a courier network through commercial shipping routes','a backup extraction route via neighboring country border crossing'];
+
+    if (success) {
+      var numSources = R(2,4);
+      var entries = [];
+      // Phase 1: Arrival and cover establishment
+      entries.push({ day: opStart, events: dayEvents([
+        unitShort(units) + ' advance team arrived in ' + city + ' under cover. Cover platform established: ' + P(COVER_PLATFORMS) + '.',
+        'Initial area familiarization. Case officers mapped the local security environment — police presence, surveillance cameras, counter-intelligence patterns.',
+        'Target environment assessment completed. ' + P(['Local security services appear stretched thin — favorable operating conditions.','CI presence detected but predictable — standard precautions sufficient.','Moderate surveillance activity in the diplomatic quarter — will require careful tradecraft.','Target-rich environment. Multiple potential recruitment candidates identified through social mapping.']) ,
+        elites.length ? eliteCombatOrSupport(elites[0],
+          elites[0].fullName + ' embedded with the advance team. Assumed role: ' + P(['team security and counter-surveillance lead','primary recruitment handler','technical operations specialist','field team coordinator']) + '.',
+          elites[0].fullName + ' established secure communications link from the operations center. Assigned: real-time intelligence support and source vetting coordination.') : cs + ' team leader established operational rhythm. Daily counter-surveillance detection routes implemented.',
+      ])});
+      // Phase 2: Source identification and development
+      entries.push({ day: opStart + Math.min(2, execDays - 2), events: dayEvents([
+        'Source development phase initiated. Primary recruitment target identified: ' + P(RECRUIT_TARGETS) + '. Designated ASSET-1.',
+        'Initial contact with ASSET-1 via ' + P(['a staged social encounter at a diplomatic reception','a professional conference introduction','a mutual acquaintance in the business community','a carefully arranged meeting at a public venue']) + '. Assessment: ' + P(['receptive and potentially motivated','cautious but showed interest','ideologically sympathetic — promising','financially stressed — viable leverage point']) + '.',
+        'Parallel spotting. Second potential source identified: ' + P(RECRUIT_TARGETS) + '. Designated ASSET-2. ' + P(['Approached through different case officer to compartmentalize.','Development assigned to secondary handler.','Initial assessment pending — background check in progress.']),
+        P(['Counter-surveillance team confirmed no hostile monitoring of case officers.','SIGINT sweep detected no technical surveillance on team communications.','Safe house inspection completed — no signs of compromise.','Operational security review: all team members passing counter-surveillance checks.']),
+      ])});
+      // Phase 3: Recruitment and infrastructure
+      entries.push({ day: cd, events: dayEvents([
+        'ASSET-1 recruitment pitch delivered. Method: ' + P(RECRUIT_METHODS) + '. Result: ' + P(['ACCEPTED. Source agreed to cooperate. Motivation confirmed as genuine.','ACCEPTED after negotiation. Terms: regular financial compensation and eventual resettlement guarantee.','ACCEPTED. Source volunteered additional information during recruitment meeting as a sign of good faith.']) ,
+        numSources > 2 ? ('Additional recruitment: ASSET-' + R(2, numSources) + ' successfully recruited via ' + P(RECRUIT_METHODS) + '. Total active sources: ' + numSources + '.') :
+          'ASSET-2 development progressing. Follow-up meeting scheduled. Assessment: high probability of eventual recruitment.',
+        'Clandestine infrastructure established: ' + P(INFRA_TYPES) + '. Additionally: ' + P(INFRA_TYPES) + '.',
+        'First intelligence product received from ASSET-1. Content: ' + P(['internal government communications regarding military deployments','classified diplomatic correspondence revealing policy positions','security service organizational chart and personnel details','financial records linking state institutions to covert operations','technical specifications of communications monitoring systems']) + '.',
+        elites.length ? eliteCombatOrSupport(elites[0],
+          elites[0].fullName + ' conducted the primary recruitment meeting. ' + P(['Rapport was exceptional — source expressed full confidence in the handler.','Handled the recruitment with textbook tradecraft. No security indicators.','Managed a complex pitch under difficult conditions — nearby surveillance required an improvised venue change.']),
+          elites[0].fullName + ' vetted all source reporting against existing intelligence holdings. Assessment: ' + P(['high-confidence, corroborated by independent reporting.','significant new intelligence with no contradictions in existing holdings.','consistent with known patterns — reliability rated PROBABLE.'])) : 'All recruitment activities conducted per standard tradecraft protocols. No security incidents.',
+        'Exfiltration of case officers commenced. Cover platform will remain operational for ongoing source handling. Station handover to permanent resident officer initiated.',
+      ])});
+
+      var assess = 'Network expansion operation in ' + city + ', ' + country + ' (' + theaterName + ' theater) achieved all objectives. ' +
+        numSources + ' human intelligence sources successfully recruited and producing. Cover platform operational and sustainable. ' +
+        'Clandestine infrastructure — including dead drops, safe houses, and secure communications — established and tested. ' +
+        (elites.length ? eliteCombatOrSupport(elites[0],
+          elites[0].fullName + ' was instrumental in the recruitment phase, personally handling the primary source pitch. ',
+          elites[0].fullName + ' provided critical vetting and analytical support from the operations center, ensuring source reliability. ') : '') +
+        'Intelligence products already received include reporting on ' + P(['military dispositions','government policy deliberations','security service operations','financial networks','diplomatic communications']) + '. ' +
+        theaterName + ' theater intelligence coverage has been significantly upgraded. ' + unitShort(units) + ' performance rated EXCEPTIONAL.';
+
+      return headerSection(m, true) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    } else {
+      var entries = [];
+      entries.push({ day: opStart, events: dayEvents([
+        unitShort(units) + ' team deployed to ' + city + ' under cover. Cover platform: ' + P(COVER_PLATFORMS) + '.',
+        'Initial area assessment. Case officers began target environment mapping and counter-surveillance routines.',
+        elites.length ? eliteCombatOrSupport(elites[0],
+          elites[0].fullName + ' embedded with the team. Assumed operational role.',
+          elites[0].fullName + ' linked to operations center for remote support coordination.') : cs + ' team leader established operational protocols.',
+      ])});
+      entries.push({ day: cd, events: dayEvents([
+        P(['Cover platform compromised. Local security services visited the office with pointed questions about staff backgrounds. Team initiated emergency protocols.',
+           'SIGINT detected encrypted communication mentioning the team\'s cover identities. Source unknown. Immediate threat assessment: HIGH.',
+           'Counter-surveillance detected hostile monitoring of the lead case officer. Professional surveillance team — likely local CI or a rival service.',
+           'Primary recruitment target failed to appear at scheduled meeting. Subsequent SIGINT indicated the target reported the contact to security services.',
+           'Local security conducted an unannounced inspection of the cover platform premises. While no evidence was found, the operational environment is now hostile.']),
+        P(['Emergency meeting with ASSET-1 candidate. Source was visibly nervous and ' + P(['refused further contact','claimed to have been approached by security services','demanded immediate extraction — cover potentially blown','did not recognize the case officer, indicating a possible double']) + '.',
+           'Attempt to establish infrastructure at the designated safe house location found the property under surveillance. Backup locations similarly compromised.',
+           'The team\'s primary communications channel showed signs of interception. Emergency cipher change enacted.']),
+        'Team leader ordered operational wind-down. All recruitment activities suspended. Cover stories activated for withdrawal.',
+        'Emergency exfiltration of all personnel via ' + P(['commercial flights under backup identities','overland route to neighboring country','diplomatic extraction through the embassy','maritime pickup arranged by station']) + '. All team members accounted for. ' + P(['Cover platform abandoned — likely burned.','Cover identities may be compromised.','Equipment cache left in place — sanitized of attribution.','Local assets notified to go dormant.']),
+      ])});
+
+      var assess = 'The network expansion operation in ' + city + ', ' + country + ' (' + theaterName + ') has failed. ' +
+        P(['The cover platform was compromised by local counter-intelligence.','Hostile surveillance was detected before recruitment could be completed.','A recruitment target reported the approach to security services.','The operational environment deteriorated beyond acceptable risk levels.']) + ' ' +
+        'No sources were successfully recruited. All personnel have been safely extracted but cover identities used in this operation should be considered burned. ' +
+        (elites.length ? eliteCombatOrSupport(elites[0],
+          elites[0].fullName + ' was deployed but the compromised environment prevented effective operations. ',
+          elites[0].fullName + ' detected early indicators of compromise from the operations center, enabling timely extraction. ') : '') +
+        theaterName + ' theater intelligence coverage remains at pre-operation levels. A new approach — using different cover, personnel, and entry points — will be required before re-attempting network development. ' +
+        unitShort(units) + ' execution was professional — the failure is attributed to the hostile operating environment, not personnel performance.';
+
+      return headerSection(m, false) + deployedSection(units, elites, m) +
+        '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
+    }
+  }
+
   // ===========================================================================
   // TYPE MAPPING
   // ===========================================================================
@@ -1328,7 +1424,7 @@
     FAVOR_MIL_RESCUE: gen_FAVOR_EXTRACT,
     FAVOR_MIL_SIGINT: gen_FAVOR_SIGINT_INSTALL,
     FAVOR_MIL_STRIKE: gen_FAVOR_ACTION,
-    NETWORK_EXPANSION: gen_ORG,
+    NETWORK_EXPANSION: gen_NETWORK_EXPANSION,
     COUNTER_ESPIONAGE: gen_COUNTERINTEL,
   };
 
