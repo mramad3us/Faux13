@@ -449,6 +449,11 @@ function spawnPlotMission(plot) {
     }
   }
 
+  // Infiltrated orgs: inside asset reveals all intel on spawned missions
+  if (plot.infiltrated && m.intelFields) {
+    for (var ri = 0; ri < m.intelFields.length; ri++) m.intelFields[ri].revealed = true;
+  }
+
   // Escalate threat based on arc progress
   var progress = step / Math.max(1, plot.totalSteps - 1);
   var escalation = Math.floor(progress * 2);
@@ -715,6 +720,19 @@ hook('render:after', function () {
   // Ensure infiltrated field exists on old saves
   for (var i = 0; i < G.plots.length; i++) {
     if (G.plots[i].infiltrated === undefined) G.plots[i].infiltrated = false;
+  }
+  // Reveal all intel on missions linked to infiltrated orgs (fix for old saves)
+  if (G.missions && G.plots) {
+    var infiltratedIds = {};
+    for (var ip = 0; ip < G.plots.length; ip++) {
+      if (G.plots[ip].infiltrated) infiltratedIds[G.plots[ip].id] = true;
+    }
+    for (var im = 0; im < G.missions.length; im++) {
+      var mm = G.missions[im];
+      if (mm.plotId && infiltratedIds[mm.plotId] && mm.intelFields && mm.status !== 'COMPLETED' && mm.status !== 'FAILED') {
+        for (var fi = 0; fi < mm.intelFields.length; fi++) mm.intelFields[fi].revealed = true;
+      }
+    }
   }
 });
 
