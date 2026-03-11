@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.2.4';
+const GAME_VERSION = '3.2.5';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -2280,6 +2280,15 @@ const HVT_HARDNESS = {
   ELITE:    { level: 4, label: 'ELITE',    color: '#c0392b', cooldown: [40, 90], threatMod: 1 },
 };
 
+// Vague estimate of cooldown duration — never reveal exact days to the player
+function vagueEstimate(days) {
+  if (days <= 5)  return 'a few days';
+  if (days <= 12) return 'one to two weeks';
+  if (days <= 25) return 'several weeks';
+  if (days <= 50) return 'a month or more';
+  return 'an extended period — possibly months';
+}
+
 function classifyHvtHardness(role) {
   if (!role) return 'MODERATE';
   const r = role.toLowerCase();
@@ -2663,10 +2672,10 @@ function registerOrUpdateHvtFailed(m) {
       linked.cooldownUntil = G.day + randInt(...hCfg.cooldown);
       relocateHvt(linked);
       const cooldownDays = linked.cooldownUntil - G.day;
-      addLog(`TARGET ALERT: "${linked.alias}" has gone to ground. Operations suspended for ~${cooldownDays} days.`, 'log-warn');
+      addLog(`TARGET ALERT: "${linked.alias}" has gone to ground. Our analysts estimate it will take ${vagueEstimate(cooldownDays)} to reacquire.`, 'log-warn');
       hvtBriefingPopup('goneToGround', linked, {
         codename: m.codename,
-        detail: `Target classification: ${hCfg.label}. Estimated time underground: ${cooldownDays} days. Operations against this target are suspended until D${linked.cooldownUntil}.`,
+        detail: `Target classification: ${hCfg.label}. Our services estimate it will take ${vagueEstimate(cooldownDays)} to reestablish a track on this target.`,
       });
     }
   }
@@ -2779,7 +2788,7 @@ window.spawnHvtMission = function(hvtId, typeId) {
   if (!h) return;
   // Block if target is in cooldown
   if (h.cooldownUntil && G.day < h.cooldownUntil) {
-    addLog(`"${h.alias}" has gone to ground. Operations unavailable for ${h.cooldownUntil - G.day} more days.`, 'log-warn');
+    addLog(`"${h.alias}" has gone to ground. Our analysts estimate it will take ${vagueEstimate(h.cooldownUntil - G.day)} to reacquire.`, 'log-warn');
     return;
   }
   spawnMission(typeId);
@@ -3848,7 +3857,7 @@ function renderThreats() {
   const buildCard = h => {
     const typeBadge = `<span class="threat-type-badge ${h.type === 'HVT' ? 'hvt-badge' : 'org-badge'}">${h.type}</span>`;
     const hCfg = h.type === 'HVT' ? (HVT_HARDNESS[h.hardness || 'MODERATE'] || HVT_HARDNESS.MODERATE) : null;
-    const hardnessBadge = hCfg ? `<span class="threat-hardness-badge" style="color:${hCfg.color};border-color:${hCfg.color}" data-tip="Target classification: ${hCfg.label}&#10;Cooldown on failure: ${hCfg.cooldown[0]}-${hCfg.cooldown[1]} days&#10;Threat modifier: ${hCfg.threatMod >= 0 ? '+' : ''}${hCfg.threatMod}">${hCfg.label}</span>` : '';
+    const hardnessBadge = hCfg ? `<span class="threat-hardness-badge" style="color:${hCfg.color};border-color:${hCfg.color}" data-tip="Target classification: ${hCfg.label}&#10;Threat modifier: ${hCfg.threatMod >= 0 ? '+' : ''}${hCfg.threatMod}">${hCfg.label}</span>` : '';
 
     // Status chip
     const statusChipMap = {
@@ -3998,7 +4007,7 @@ function renderThreats() {
       : 'threat-card-neutralized';
 
     const cooldownHtml = cooldownActive
-      ? `<div class="threat-cooldown">TARGET UNDERGROUND — ${h.cooldownUntil - G.day} days remaining</div>`
+      ? `<div class="threat-cooldown">TARGET UNDERGROUND — est. ${vagueEstimate(h.cooldownUntil - G.day)}</div>`
       : '';
 
     return `<div class="threat-card ${cardCls}">
@@ -4230,8 +4239,8 @@ function showHelp() {
 
       <div class="help-section">
         <div class="help-section-title">SURVEILLANCE & FAILED OPS</div>
-        <p>Failing an <strong>abduct</strong> or <strong>eliminate</strong> operation on a TRACKED HVT causes <strong>loss of surveillance</strong>. The target reverts to ACTIVE and enters a <strong>cooldown period</strong> based on their hardness classification (see HVT Hardness). During cooldown the target is underground and all operations are suspended.</p>
-        <p style="margin-top:8px">Failing any HVT-linked operation — including surveillance — also triggers the cooldown. Harder targets stay underground longer.</p>
+        <p>Failing an <strong>abduct</strong> or <strong>eliminate</strong> operation on a TRACKED HVT causes <strong>loss of surveillance</strong>. The target reverts to ACTIVE, relocates to a new city, and goes underground. During this period, all operations against the target are suspended. Your analysts will provide a rough estimate of how long it will take to reacquire the target.</p>
+        <p style="margin-top:8px">Failing any HVT-linked operation — including surveillance — also triggers the underground period. Harder targets are more difficult to reacquire.</p>
         <p style="margin-top:8px">Similarly, a failed <strong>org takedown</strong> burns your infiltration — the inside asset is compromised and the organization must be re-infiltrated from scratch before another takedown attempt.</p>
       </div>
 
