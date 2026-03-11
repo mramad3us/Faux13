@@ -714,6 +714,9 @@ function spawnInfiltrationHvt(plot) {
     interrogationCount: 0,
     surveillanceEstablished: false,
     handedTo: null,
+    linkedPlotId: plot.id,
+    factionId: plot.factionId || null,
+    hvtIntelType: false,
   });
 
   var locationText = city + ', ' + country;
@@ -829,6 +832,65 @@ hook('day:pre', function () {
         buttonLabel: 'ACKNOWLEDGED',
       });
     }
+  }
+
+  // Tracked HVTs with faction/ORG affiliation: 10% daily chance to yield Intel + spawn new HVT
+  for (var ti = 0; ti < (G.hvts || []).length; ti++) {
+    var th = G.hvts[ti];
+    if (th.status !== 'TRACKED') continue;
+    if (!th.factionId && !th.linkedPlotId) continue;
+    if (Math.random() >= 0.10) continue;
+
+    var intelYield = randInt(1, 3);
+    G.intel = (G.intel || 0) + intelYield;
+    G.intelLifetime = (G.intelLifetime || 0) + intelYield;
+
+    // Spawn a new ACTIVE HVT from the same network
+    var newAlias = pick(INFILTRATION_HVT_ALIASES);
+    var rolePool = ['courier', 'cell coordinator', 'logistics handler', 'communications officer', 'recruiter', 'financial facilitator', 'safe house operator', 'weapons specialist'];
+    var linkedPlot = th.linkedPlotId ? G.plots.find(function (p) { return p.id === th.linkedPlotId; }) : null;
+    var newRole;
+    if (linkedPlot) {
+      var orgRoles = INFILTRATION_HVT_ROLES[linkedPlot.orgType] || rolePool;
+      newRole = pick(orgRoles);
+    } else {
+      newRole = pick(rolePool);
+    }
+
+    var newHvtId = 'H' + (++G.hvtIdCounter);
+    var newCity = th.knownFields ? th.knownFields.city : null;
+    var newCountry = th.knownFields ? th.knownFields.country : null;
+    G.hvts.push({
+      id: newHvtId, type: 'HVT', alias: newAlias, role: newRole,
+      org: th.org || 'Unknown Network',
+      threat: Math.min((th.threat || 2), 5),
+      location: th.location || 'FOREIGN', status: 'ACTIVE',
+      knownFields: { city: newCity, country: newCountry },
+      gaps: ['Identity requires verification', 'Current location unconfirmed', 'Role within network unconfirmed'],
+      linkedMissionIds: [], addedDay: G.day,
+      detainedAt: null, detainedDay: null, interrogationCount: 0,
+      surveillanceEstablished: false, handedTo: null,
+      factionId: th.factionId || null, hvtIntelType: th.hvtIntelType || false,
+      linkedPlotId: th.linkedPlotId || null,
+    });
+
+    addLog('SIGINT INTERCEPT: Surveillance on "' + th.alias + '" picked up contact with "' + newAlias + '" (+' + intelYield + ' Intel). New target added.', 'log-info');
+
+    var TRACKED_INTEL_MESSAGES = [
+      'Our surveillance package on "' + th.alias + '" intercepted a coded communication with an unknown individual. Signals analysis and pattern-of-life tracking have identified this contact as <strong>"' + newAlias + '"</strong> — a <strong>' + newRole + '</strong> operating within the same network. The intercepted traffic suggests an active operational relationship.',
+      'Passive monitoring of "' + th.alias + '" recorded a clandestine meeting at a previously unknown location. The other participant has been identified through facial recognition as <strong>"' + newAlias + '"</strong>, believed to serve as a <strong>' + newRole + '</strong>. This confirms the network is larger than initially assessed.',
+      'Technical collection devices deployed against "' + th.alias + '" captured references to an associate: <strong>"' + newAlias + '"</strong>. Cross-referencing with existing intelligence databases suggests this individual functions as a <strong>' + newRole + '</strong> within the organization. Recommend immediate tracking.',
+      'The observation team on "' + th.alias + '" reported a dead-drop exchange with an unidentified operative. Subsequent follow-up identified the contact as <strong>"' + newAlias + '"</strong>, assessed to be a <strong>' + newRole + '</strong>. The dead-drop contents suggest ongoing coordination on active operations.',
+    ];
+
+    queueBriefingPopup({
+      title: 'SURVEILLANCE INTELLIGENCE',
+      category: 'SIGNALS INTERCEPT',
+      subtitle: '"' + th.alias + '" — Network Contact Identified',
+      accent: 'rgba(52, 152, 219, 0.9)',
+      body: '<p>' + pick(TRACKED_INTEL_MESSAGES) + '</p><p>+' + intelYield + ' Intel acquired. New target <strong>"' + newAlias + '"</strong> added to the threat tracker as ACTIVE.</p>',
+      buttonLabel: 'ACKNOWLEDGED',
+    });
   }
 });
 

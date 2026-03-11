@@ -2291,6 +2291,17 @@ const HVT_POPUP_TEXT = {
     category: 'DETAINEE TRANSFERRED',
     accent: 'rgba(41, 128, 185, 0.9)',
   },
+  released: {
+    intros: [
+      'The cell door opened and the detainee walked out — bewildered, blinking, but alive. They don\'t know they\'re still inside our world. Every step they take from now on is being watched.',
+      'We let them go. Not out of mercy, but out of calculation. A released target returns to their network, their contacts, their habits — and we\'ll be watching every move.',
+      'The subject was released from custody under controlled conditions. They believe they escaped through a bureaucratic oversight. In reality, they\'re now the most valuable surveillance asset we have.',
+      'Freedom — or the illusion of it. The detainee has been released into an environment we control. Every phone they pick up, every door they walk through, every face they meet — catalogued.',
+      'The release was staged to perfection. The subject has no reason to suspect continued monitoring. We\'re obviously still keeping an eye on them — but now they\'ll lead us to the rest.',
+    ],
+    category: 'CONTROLLED RELEASE',
+    accent: 'rgba(52, 152, 219, 0.9)',
+  },
   lostSurveillance: {
     intros: [
       'The operation went wrong — and the target knows it. Within hours of the failed attempt, the subject abandoned all known patterns. Safehouses emptied, phones discarded, contacts scattered. Our surveillance network is blind.',
@@ -2722,22 +2733,49 @@ window.interrogateTarget = function(hvtId) {
     return;
   }
   h.interrogationCount++;
-  // Spawn a follow-up mission based on HVT location
-  const followTypeId = h.location === 'DOMESTIC' ? pick(['DOMESTIC_HVT', 'DOMESTIC_TERROR', 'COUNTER_INTEL'])
-                                                  : pick(['FOREIGN_HVT', 'ASSET_RESCUE', 'RENDITION']);
-  spawnMission(followTypeId);
-  const spawnedM = G.missions[0];
-  if (spawnedM) {
-    spawnedM.interrogationBonus = true;
-    spawnedM.intelBonus = true;
-    // Reveal all intel fields
-    if (spawnedM.intelFields) spawnedM.intelFields.forEach(f => { f.revealed = true; });
-    spawnedM.initialReport = `[INTERROGATION INTELLIGENCE — Session ${h.interrogationCount}/3 — ${h.alias}]\n\n` + spawnedM.initialReport;
-    const interrogIntel = randInt(3, 5);
-    G.intel = (G.intel || 0) + interrogIntel;
-    G.intelLifetime = (G.intelLifetime || 0) + interrogIntel;
-    addLog(`Interrogation session ${h.interrogationCount}/3: ${h.alias} yielded intelligence (+${interrogIntel} Intel). New mission spawned: OP ${spawnedM.codename}.`, 'log-info');
+  const interrogIntel = randInt(3, 5);
+  G.intel = (G.intel || 0) + interrogIntel;
+  G.intelLifetime = (G.intelLifetime || 0) + interrogIntel;
+
+  // 60% chance to reveal a new HVT from the same network
+  if (Math.random() < 0.60) {
+    const newAlias = pick(HANDLER_ALIASES);
+    const orgLabel = h.org || 'Unknown Network';
+    const newRole = pick(['logistics coordinator', 'communications handler', 'safe house operator', 'courier', 'recruiter', 'financial facilitator', 'cell commander', 'weapons specialist']);
+    const newId = `H${++G.hvtIdCounter}`;
+    const city = h.knownFields?.city || null;
+    const country = h.knownFields?.country || null;
+    const newHvt = {
+      id: newId, type: 'HVT', alias: newAlias, role: newRole,
+      org: orgLabel, threat: Math.min((h.threat || 2) + 1, 5),
+      location: h.location || 'FOREIGN', status: 'ACTIVE',
+      knownFields: { city: city, country: country },
+      gaps: ['Identity requires verification', 'Current location unconfirmed', 'Security detail unknown'],
+      linkedMissionIds: [], addedDay: G.day,
+      detainedAt: null, detainedDay: null, interrogationCount: 0,
+      surveillanceEstablished: false, handedTo: null,
+      factionId: h.factionId || null, hvtIntelType: h.hvtIntelType || false,
+      linkedPlotId: h.linkedPlotId || null,
+    };
+    G.hvts.push(newHvt);
+    addLog(`Interrogation session ${h.interrogationCount}/3: ${h.alias} yielded intelligence (+${interrogIntel} Intel). New target revealed: "${newAlias}" — ${newRole}.`, 'log-info');
+    hvtBriefingPopup('newTarget', newHvt, { detail: `Revealed during interrogation session ${h.interrogationCount}/3 of "${h.alias}". Same network: ${orgLabel}.` });
+  } else {
+    addLog(`Interrogation session ${h.interrogationCount}/3: ${h.alias} yielded intelligence (+${interrogIntel} Intel). No new leads.`, 'log-info');
   }
+  render();
+};
+
+window.releaseTarget = function(hvtId) {
+  const h = G.hvts.find(x => x.id === hvtId);
+  if (!h || h.status !== 'DETAINED') return;
+  h.status = 'TRACKED';
+  h.surveillanceEstablished = true;
+  h.trackedDay = G.day;
+  h.trackedExpiry = G.day + randInt(20, 40);
+  h.detainedAt = null;
+  addLog(`CONTROLLED RELEASE: "${h.alias}" released from custody. Surveillance reactivated.`, 'log-info');
+  hvtBriefingPopup('released', h, { detail: 'Subject released under controlled conditions. Tracking package deployed — surveillance window: ' + (h.trackedExpiry - G.day) + ' days.' });
   render();
 };
 
@@ -3721,9 +3759,11 @@ function renderThreats() {
         <div class="threat-interrogate-count">${interrogCount}/3 SESSIONS</div>
         <div class="threat-handover-row">
           <button class="btn-threat-action ${interrogCount >= 3 ? 'unavail' : ''}" onclick="interrogateTarget('${h.id}')"
-            data-tip="Conduct interrogation session. Spawns follow-up mission with full intel. Max 3 sessions.">
+            data-tip="Conduct interrogation session. Yields Intel + 60% chance to reveal a new HVT from the same network. Max 3 sessions.">
             INTERROGATE ${interrogCount}/3
           </button>
+          <button class="btn-threat-action" onclick="releaseTarget('${h.id}')"
+            data-tip="Release target and reinstate surveillance. Subject returns to TRACKED status — useful for passive intelligence gathering.">RELEASE</button>
           <button class="btn-threat-action danger" onclick="executeTarget('${h.id}')"
             data-tip="Execute the target. +3-7 confidence.">EXECUTE</button>
         </div>
