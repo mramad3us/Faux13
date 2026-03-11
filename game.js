@@ -3467,8 +3467,9 @@ function renderAgenciesInPane(paneEl) {
 
 // Render geopolitics in reading pane
 function renderGeoInPane(paneEl) {
+  // Ensure geo-panel is up-to-date before copying (it normally updates in render:after, after the reading pane)
+  if (typeof renderGeoPanel === 'function') renderGeoPanel();
   const geoEl = document.getElementById('geo-panel');
-  // The geopolitics module renders into geo-panel via hooks, just copy its content
   paneEl.innerHTML = `
     <div class="email-body">
       <div class="dc-section-title">GLOBAL THEATER STATUS</div>
