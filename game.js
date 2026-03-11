@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.0.3';
+const GAME_VERSION = '3.0.4';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -533,7 +533,7 @@ function initPhaseFields(m) {
 function spawnMission(forcedType) {
   const inbox = G.missions.filter(m =>
     ['INCOMING', 'INVESTIGATING', 'READY', 'PHASE_COMPLETE'].includes(m.status));
-  if (inbox.length >= 6) return;
+  if (inbox.length >= 30) return;
 
   const typeId = forcedType || pick(Object.keys(MISSION_TYPES));
   const tmpl   = MISSION_TYPES[typeId];
