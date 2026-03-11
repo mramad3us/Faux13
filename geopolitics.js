@@ -859,7 +859,7 @@ window.createPlotInTheater = function (theaterId) {
 // RENDER: GEOPOLITICS PANEL
 // =============================================================================
 
-function renderGeoPanel() {
+window.renderGeoPanel = function renderGeoPanel() {
   var panel = document.getElementById('geo-panel');
   if (!panel || !G.geo) return;
 
@@ -922,7 +922,7 @@ function renderGeoPanel() {
   }
 
   panel.innerHTML = html;
-}
+};
 
 hook('render:after', function () {
   renderGeoPanel();
