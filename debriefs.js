@@ -340,7 +340,7 @@
       ])});
       // Day 2 (or same day if 2-day op): The assault
       var assaultDay = execDays > 1 ? opStart + Math.max(1, execDays - 1) : opStart;
-      entries.push({ day: assaultDay, events: dayEvents([
+      entries.push({ day: assaultDay, events: assaultEvents([
         'Final intelligence update received. All ' + cellSize + ' subjects confirmed present at target location. GO authorization received from Director.',
         cs + ' assault element departed staging area. ' + R(3,6) + ' vehicles in convoy. Radio silence enforced. ETA to target: ' + R(8,25) + ' minutes.',
         'Outer cordon established by ' + (actionUnits(units)[0] ? actionUnits(units)[0].short : 'support') + ' team. ' + R(4,8) + ' positions covering all egress points. Local law enforcement discreetly diverted from the area of operations.',
@@ -355,7 +355,7 @@
         'Sensitive site exploitation team entered the building. Evidence recovery initiated. Items catalogued on-site include: ' + evidence + '. Additionally recovered: ' + evidence2 + '.',
         'All ' + cellSize + ' detainees processed, photographed, and biometrically registered. "' + alias + '" positively identified via facial recognition database match. Transport to secure holding facility arranged.',
         'Area of operations fully sanitized. No forensic evidence of agency involvement left on-site. ' + cs + ' team and all support elements returned to base. Operation concluded.',
-      ])});
+      ], units)});
       var assess = 'The operation against the ' + group + ' cell in ' + city + ' achieved all objectives. The planned ' + attackType + ' against ' + target + ' has been permanently disrupted. ' + cellSize + ' operatives are in custody, including cell leader "' + alias + '". ' +
         'Intelligence exploitation of seized materials is the immediate priority — ' + evidence + ' are expected to yield significant insights into the wider network. ' +
         (elites.length ? eliteCombatOrSupport(elites[0],
@@ -377,7 +377,7 @@
         actionUnits(units).length > 1 ? actionUnits(units)[1].short + ' counter-surveillance team completed sweep of approach routes. Routes assessed as clear.' : 'Counter-surveillance sweep completed. Approach routes assessed as viable.',
       ])});
       var failDay = execDays > 1 ? opStart + Math.max(1, execDays - 1) : opStart;
-      entries.push({ day: failDay, events: dayEvents([
+      entries.push({ day: failDay, events: assaultEvents([
         'GO authorization received. ' + cs + ' assault element departed staging area. Radio silence enforced.',
         'SIGINT FLASH: Target communications went dark approximately ' + R(15,40) + ' minutes before planned H-hour. All monitored devices simultaneously deactivated. This is a critical indicator of compromise.',
         cs + ' arrived at target location. Outer cordon established. Immediate observation revealed: ' + P(['lights extinguished in the building','a vehicle departing the rear of the property at speed','the front door standing open','no signs of occupancy','evidence of hasty evacuation visible through windows']) + '.',
@@ -388,7 +388,7 @@
         'Forensic exploitation team entered. Limited evidence recovered: ' + P(['a single discarded phone (being analyzed)','partial fingerprints on door handles','residual chemical traces','a few scraps of burned paper','nothing of intelligence value — the site was thoroughly sanitized']) + '.',
         'SIGINT attempted to reacquire target communications. Negative contact. All known numbers and devices are offline.',
         'All teams recalled to staging area. Area of operations abandoned. ' + P(AFTERMATH_F),
-      ])});
+      ], units)});
       var assess = 'The operation failed to achieve its objectives. ' + compromiseReason + ' The cell led by "' + alias + '" evacuated the target location before the assault element could arrive. ' +
         'The planned ' + attackType + ' against ' + target + ' remains a credible and active threat. All ' + cellSize + ' subjects are unlocated and should be considered mobile and aware. ' +
         (elites.length ? eliteCombatOrSupport(elites[0],
