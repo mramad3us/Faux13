@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.0.6';
+const GAME_VERSION = '3.0.7';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -2372,7 +2372,11 @@ function registerOrUpdateHvt(m) {
       if (h) {
         h.surveillanceEstablished = true;
         h.gaps = [];
-        if (h.status === 'ACTIVE') h.status = 'TRACKED';
+        if (h.status === 'ACTIVE') {
+          h.status = 'TRACKED';
+          h.trackedDay = G.day;
+          h.trackedExpiry = G.day + randInt(20, 40);
+        }
         addLog(`Surveillance established on ${h.alias}.`, 'log-info');
         hvtBriefingPopup('tracked', h, { codename: m.codename });
       }
@@ -2416,6 +2420,8 @@ function registerOrUpdateHvt(m) {
     }
     if (newSt === 'TRACKED') {
       h.surveillanceEstablished = true;
+      h.trackedDay = G.day;
+      h.trackedExpiry = G.day + randInt(20, 40);
     }
     h.gaps = [];
     const popupType = newSt === 'DETAINED' ? 'detained' : newSt === 'TRACKED' ? 'tracked' : 'neutralized';
@@ -2442,6 +2448,8 @@ function registerOrUpdateHvt(m) {
     detainedDay:  newStatus === 'DETAINED' ? G.day : null,
     interrogationCount: 0,
     surveillanceEstablished: newStatus === 'TRACKED',
+    trackedDay: newStatus === 'TRACKED' ? G.day : null,
+    trackedExpiry: newStatus === 'TRACKED' ? G.day + randInt(20, 40) : null,
     handedTo: null,
     factionId: null,
     hvtIntelType: false,

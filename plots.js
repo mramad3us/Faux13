@@ -771,6 +771,65 @@ hook('day:pre', function () {
       spawnInfiltrationHvt(ip);
     }
   }
+
+  // HVT surveillance expiry: TRACKED → ACTIVE when surveillance package expires
+  for (var hi = 0; hi < (G.hvts || []).length; hi++) {
+    var hvt = G.hvts[hi];
+    if (hvt.status !== 'TRACKED' || !hvt.trackedExpiry) continue;
+    if (G.day >= hvt.trackedExpiry) {
+      hvt.status = 'ACTIVE';
+      hvt.surveillanceEstablished = false;
+      hvt.trackedDay = null;
+      hvt.trackedExpiry = null;
+      hvt.gaps = ['Location unconfirmed', 'Current pattern of life unknown', 'Security posture reassessment needed'];
+      addLog('INTEL DECAY: Surveillance on "' + hvt.alias + '" has gone stale. Target reverted to ACTIVE — re-establish tracking.', 'log-warn');
+      var DECAY_MESSAGES = [
+        'Our surveillance package on "' + hvt.alias + '" has expired. The target has shifted patterns — last known routine is no longer reliable. The observation team reports the subject has adopted new counter-surveillance measures, changed vehicles, and altered daily routes. We need a fresh surveillance operation to re-establish tracking.',
+        'Intelligence on "' + hvt.alias + '" is degrading beyond operational usefulness. The target appears to have relocated from the last known safe house. Electronic signatures have gone cold and physical surveillance assets lost contact ' + randInt(3, 8) + ' days ago. A new surveillance mission is required to reacquire.',
+        'The tracking data on "' + hvt.alias + '" is now considered stale. Our observation posts have been rotated out per protocol and the replacement team reports the target\'s pattern of life has changed significantly. Previous intelligence should be treated as unreliable. Recommend re-tasking surveillance resources.',
+        'Operational window on "' + hvt.alias + '" has closed. The subject\'s security detail has been refreshed and our technical collection devices at the last known location are no longer producing. The target is effectively dark. A new surveillance package must be deployed before we can resume operations.',
+      ];
+      queueBriefingPopup({
+        title: 'SURVEILLANCE EXPIRY',
+        category: 'INTELLIGENCE DECAY',
+        subtitle: '"' + hvt.alias + '" — Tracking Lost',
+        accent: 'rgba(243, 156, 18, 0.9)',
+        body: '<p>' + pick(DECAY_MESSAGES) + '</p>',
+        buttonLabel: 'ACKNOWLEDGED',
+      });
+    }
+  }
+
+  // ORG infiltration decay: yearly check, 20% chance to lose infiltration
+  if (G.day % 365 === 0 && G.day > 1) {
+    for (var oi = 0; oi < G.plots.length; oi++) {
+      var org = G.plots[oi];
+      if (org.status !== 'ACTIVE' || !org.infiltrated) continue;
+      if (Math.random() >= 0.20) continue;
+      org.infiltrated = false;
+      // Update linked HVT
+      var orgHvt = G.hvts ? G.hvts.find(function (h) { return h.linkedPlotId === org.id; }) : null;
+      if (orgHvt && orgHvt.knownFields) {
+        delete orgHvt.knownFields.infiltration;
+      }
+      var INFIL_LOST_REASONS = [
+        'Our inside asset within ' + org.orgName + ' has gone silent. The last scheduled contact was missed ' + randInt(5, 14) + ' days ago, and fallback protocols have gone unanswered. Assessment: the organization conducted routine security tightening and our operative was either identified or forced out. The infiltration must be considered burned.',
+        org.orgName + ' has undergone a major internal restructuring. Key personnel have been rotated, compartmentalization protocols have been tightened, and our compromised contact no longer has access to sensitive operations. The infiltration advantage is lost. A new penetration operation would need to start from scratch.',
+        'Counter-intelligence within ' + org.orgName + ' has purged several suspected informants. While we have no confirmation our asset was specifically identified, all communications channels have been severed and safe house protocols compromised. We must assume the worst and mark the infiltration as lost.',
+        'The individual we turned inside ' + org.orgName + ' has departed the organization. Debriefing indicates they were reassigned to a position with no operational value. Our intelligence access has evaporated. The organization\'s internal structure has shifted enough that a fresh infiltration will be required.',
+        org.orgName + ' has implemented new encrypted communication systems and physical security measures that our surveillance infrastructure cannot penetrate. The technical apparatus placed during the original infiltration is no longer producing intelligence. Without a new insertion, we are operating blind.',
+      ];
+      addLog('INFILTRATION LOST: Inside asset in ' + org.orgName + ' compromised. Infiltration status revoked.', 'log-fail');
+      queueBriefingPopup({
+        title: 'INFILTRATION COMPROMISED',
+        category: 'INTELLIGENCE LOSS',
+        subtitle: org.orgName + ' — Asset Burned',
+        accent: 'rgba(231, 76, 60, 0.9)',
+        body: '<p>' + pick(INFIL_LOST_REASONS) + '</p><p>The +10% operational bonus for ' + org.orgName + ' is no longer in effect. Weekly intelligence from the inside asset has ceased. A new infiltration operation must be authorized to restore access.</p>',
+        buttonLabel: 'ACKNOWLEDGED',
+      });
+    }
+  }
 });
 
 // ---- Track mission resolution ----
