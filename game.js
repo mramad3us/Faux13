@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.0.12';
+const GAME_VERSION = '3.0.13';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -2814,7 +2814,12 @@ window.interrogateTarget = function(hvtId) {
     addLog(`${h.alias}: maximum interrogation sessions reached.`, 'log-warn');
     return;
   }
+  if (h.interrogationCooldown && G.day < h.interrogationCooldown) {
+    addLog(`${h.alias}: subject needs recovery time. Next session available in ${h.interrogationCooldown - G.day} days.`, 'log-warn');
+    return;
+  }
   h.interrogationCount++;
+  h.interrogationCooldown = G.day + 7;
   const interrogIntel = randInt(3, 5);
   G.intel = (G.intel || 0) + interrogIntel;
   G.intelLifetime = (G.intelLifetime || 0) + interrogIntel;
@@ -3846,9 +3851,9 @@ function renderThreats() {
         <div class="detention-info">HELD AT: ${h.detainedAt || '—'} · Day ${daysCustody} in custody</div>
         <div class="threat-interrogate-count">${interrogCount}/3 SESSIONS</div>
         <div class="threat-handover-row">
-          <button class="btn-threat-action ${interrogCount >= 3 ? 'unavail' : ''}" onclick="interrogateTarget('${h.id}')"
-            data-tip="Conduct interrogation session. Yields Intel + 60% chance to reveal a new HVT from the same network. Max 3 sessions.">
-            INTERROGATE ${interrogCount}/3
+          <button class="btn-threat-action ${interrogCount >= 3 || (h.interrogationCooldown && G.day < h.interrogationCooldown) ? 'unavail' : ''}" onclick="interrogateTarget('${h.id}')"
+            data-tip="${h.interrogationCooldown && G.day < h.interrogationCooldown ? 'Subject recovering. Next session in ' + (h.interrogationCooldown - G.day) + ' days.' : 'Conduct interrogation session. Yields Intel + 60% chance to reveal a new HVT from the same network. Max 3 sessions. 7-day cooldown between sessions.'}">
+            INTERROGATE ${interrogCount}/3${h.interrogationCooldown && G.day < h.interrogationCooldown ? ' (' + (h.interrogationCooldown - G.day) + 'd)' : ''}
           </button>
           <button class="btn-threat-action" onclick="releaseTarget('${h.id}')"
             data-tip="Release target and reinstate surveillance. Subject returns to TRACKED status — useful for passive intelligence gathering.">RELEASE</button>
