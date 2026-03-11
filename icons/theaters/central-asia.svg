@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="white">
+  <!-- himalayan mountain peaks -->
+  <path d="M0 58l14-30 6 10 12-32 12 26 6-12 14 38z"/>
+  <!-- snow caps (cutout effect via lighter peaks) -->
+  <path d="M26 18l6-12 6 12-3 6h-6z" fill="white" opacity="0.3"/>
+</svg>

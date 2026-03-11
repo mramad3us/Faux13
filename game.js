@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.0.14';
+const GAME_VERSION = '3.1.1';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -263,16 +263,57 @@ const FOREIGN_CITIES = [
 ];
 
 const CODENAME_ADJ = [
-  'IRON', 'SHADOW', 'BLACK', 'SILENT', 'STEEL', 'CRIMSON', 'GOLDEN', 'BROKEN', 'DARK',
-  'SWIFT', 'BURNING', 'COLD', 'GHOST', 'WHITE', 'SILVER', 'STONE', 'BLIND', 'FALLEN',
-  'OBSIDIAN', 'PHANTOM', 'STERLING', 'FROZEN', 'AMBER', 'AZURE', 'SCARLET', 'MIDNIGHT', 'TITAN',
-  'CHROME', 'ONYX', 'COPPER', 'COBALT', 'EMBER', 'GRANITE', 'JADE', 'INDIGO', 'ROUGE', 'VIOLET', 'THORN', 'HOLLOW',
+  // metals & materials
+  'IRON', 'STEEL', 'CHROME', 'COPPER', 'COBALT', 'TITANIUM', 'NICKEL', 'TUNGSTEN', 'PLATINUM', 'BRASS',
+  'GRANITE', 'OBSIDIAN', 'ONYX', 'FLINT', 'MARBLE', 'BASALT', 'SLATE', 'QUARTZ', 'CARBON', 'KEVLAR',
+  // colors & light
+  'CRIMSON', 'GOLDEN', 'SILVER', 'SCARLET', 'AMBER', 'AZURE', 'INDIGO', 'ROUGE', 'VIOLET', 'IVORY',
+  'SABLE', 'VERMILLION', 'OCHRE', 'CERULEAN', 'TAWNY', 'RUSSET', 'UMBER', 'SEPIA', 'PEWTER', 'GILDED',
+  // weather & nature
+  'FROZEN', 'BURNING', 'COLD', 'SWIFT', 'THUNDER', 'ARCTIC', 'BOREAL', 'ARID', 'TORRID', 'TROPIC',
+  'COASTAL', 'ALPINE', 'POLAR', 'TIDAL', 'LUNAR', 'SOLAR', 'STELLAR', 'ORBITAL', 'VOLCANIC', 'SEISMIC',
+  // qualities & conditions
+  'SILENT', 'SHADOW', 'PHANTOM', 'GHOST', 'FALLEN', 'STERLING', 'MIDNIGHT', 'TITAN', 'EMBER', 'THORN',
+  'RAPID', 'COVERT', 'LETHAL', 'PRIMAL', 'SAVAGE', 'FIERCE', 'ROGUE', 'FERAL', 'DIRE', 'STARK',
+  'GRIM', 'HARD', 'BRUTE', 'LEAN', 'KEEN', 'BOLD', 'DEFT', 'PRIME', 'GRAND', 'NOBLE',
+  // tactical
+  'FORWARD', 'FINAL', 'TOTAL', 'DOUBLE', 'TRIPLE', 'HEAVY', 'LIGHT', 'LONG', 'SHORT', 'CROSS',
+  'COUNTER', 'OVER', 'UNDER', 'OUTER', 'INNER', 'UPPER', 'LOWER', 'FIRST', 'SECOND', 'THIRD',
+  // terrain & cardinal
+  'NORTH', 'SOUTH', 'EAST', 'WEST', 'SUMMIT', 'VALLEY', 'RIDGE', 'DELTA', 'MESA', 'CANYON',
+  'STEPPE', 'TUNDRA', 'TAIGA', 'SAHEL', 'DUNE', 'REEF', 'SHOAL', 'CAPE', 'FJORD', 'STRAIT',
+  // ancient & mythic
+  'ROMAN', 'SPARTAN', 'TROJAN', 'VIKING', 'SAXON', 'CELTIC', 'GOTHIC', 'MONGOL', 'AZTEC', 'NORSE',
+  'OLYMPIAN', 'TITAN', 'IRON', 'PRAETORIAN', 'CENTURION', 'LEGION', 'IMPERIAL', 'ROYAL', 'CRUSADER', 'TEMPLAR',
+  // additional variety
+  'JADE', 'CORAL', 'OPAL', 'GARNET', 'TOPAZ', 'BERYL', 'AGATE', 'JASPER', 'PYRITE', 'ZIRCON',
+  'CIPHER', 'SIGNAL', 'VECTOR', 'MATRIX', 'VERTEX', 'APEX', 'ZENITH', 'NADIR', 'FULCRUM', 'NEXUS',
 ];
 const CODENAME_NOUN = [
-  'FALCON', 'HAMMER', 'DAWN', 'TIDE', 'SERPENT', 'ARROW', 'STORM', 'SHIELD',
-  'WOLF', 'LANCE', 'STAR', 'ANVIL', 'BLADE', 'CROWN', 'GATE', 'RAVEN', 'TOWER', 'MIRROR', 'VEIL', 'FIST',
-  'DAGGER', 'TEMPEST', 'SPECTER', 'ORACLE', 'SOVEREIGN', 'CITADEL', 'TEMPLAR', 'PHANTOM',
-  'BASTION', 'WARDEN', 'GAVEL', 'REAPER', 'CONDOR', 'VIPER', 'HAWK', 'WRAITH', 'WARLOCK', 'VECTOR', 'CROSSBOW', 'MANTIS',
+  // predators & animals
+  'FALCON', 'WOLF', 'RAVEN', 'CONDOR', 'VIPER', 'HAWK', 'MANTIS', 'SERPENT', 'PANTHER', 'JAGUAR',
+  'OSPREY', 'KESTREL', 'MERLIN', 'HARRIER', 'RAPTOR', 'COBRA', 'MAMBA', 'PYTHON', 'SCORPION', 'WOLVERINE',
+  'LYNX', 'COUGAR', 'STALLION', 'HORNET', 'BARRACUDA', 'MARLIN', 'STINGRAY', 'HAMMERHEAD', 'ORCA', 'GRYPHON',
+  'JACKAL', 'HYENA', 'MONGOOSE', 'PEREGRINE', 'GOSHAWK', 'SHRIKE', 'IBIS', 'HERON', 'CRANE', 'SWIFT',
+  // weapons & tools
+  'HAMMER', 'ARROW', 'LANCE', 'ANVIL', 'BLADE', 'DAGGER', 'CROSSBOW', 'SABRE', 'CLAYMORE', 'HALBERD',
+  'PIKE', 'JAVELIN', 'TOMAHAWK', 'TRIDENT', 'MACE', 'FLAIL', 'MUSKET', 'MORTAR', 'CANNON', 'TREBUCHET',
+  'BAYONET', 'GAUNTLET', 'RAMPART', 'PALISADE', 'BULWARK', 'FORTRESS', 'REDOUBT', 'PARAPET', 'STOCKADE', 'BATTLEMENT',
+  // weather & forces
+  'STORM', 'TEMPEST', 'THUNDER', 'AVALANCHE', 'BLIZZARD', 'CYCLONE', 'TYPHOON', 'MONSOON', 'TORNADO', 'MAELSTROM',
+  'INFERNO', 'WILDFIRE', 'FIRESTORM', 'HAILSTORM', 'WHIRLWIND', 'GALE', 'SQUALL', 'DELUGE', 'TORRENT', 'CASCADE',
+  // structures & features
+  'TOWER', 'GATE', 'SHIELD', 'CROWN', 'STAR', 'CITADEL', 'BASTION', 'RAMPART', 'SPIRE', 'VAULT',
+  'BUNKER', 'KEEP', 'TURRET', 'BRIDGE', 'BEACON', 'OUTPOST', 'WATCHTOWER', 'CHECKPOINT', 'PERIMETER', 'STRONGHOLD',
+  // people & roles
+  'WARDEN', 'REAPER', 'WRAITH', 'SPECTER', 'WARLOCK', 'SENTINEL', 'PALADIN', 'RANGER', 'MARSHAL', 'GUARDIAN',
+  'HUNTER', 'STALKER', 'TRACKER', 'SCOUT', 'PIONEER', 'PATHFINDER', 'DRAGOON', 'HUSSAR', 'LANCER', 'GRENADIER',
+  // abstract & tactical
+  'FIST', 'TALON', 'CLAW', 'TUSK', 'FANG', 'BARB', 'SPUR', 'EDGE', 'POINT', 'APEX',
+  'SURGE', 'SALVO', 'VOLLEY', 'BROADSIDE', 'ONSLAUGHT', 'REPRISAL', 'GAMBIT', 'OVERTURE', 'PRELUDE', 'CRESCENDO',
+  // geographic
+  'SUMMIT', 'GLACIER', 'CANYON', 'PLATEAU', 'RIDGE', 'RAVINE', 'GORGE', 'CRATER', 'CALDERA', 'ARCHIPELAGO',
+  'PENINSULA', 'ISTHMUS', 'TRIBUTARY', 'ESTUARY', 'WATERSHED', 'HEADLAND', 'PROMONTORY', 'ESCARPMENT', 'MORAINE', 'PINNACLE',
 ];
 
 // =============================================================================
@@ -332,11 +373,14 @@ function resolveVars(varsTemplate, baseVars) {
 }
 
 function generateCodename() {
-  for (let i = 0; i < 100; i++) {
+  // Build set of currently active codenames (missions + HVT-linked ops)
+  const active = new Set();
+  for (const m of G.missions) active.add(m.codename);
+  for (let i = 0; i < 200; i++) {
     const c = `${pick(CODENAME_ADJ)} ${pick(CODENAME_NOUN)}`;
-    if (!G.usedCodenames.has(c)) { G.usedCodenames.add(c); return c; }
+    if (!active.has(c)) return c;
   }
-  return `OP ${G.missionIdCounter}`;
+  return `OP-${G.missionIdCounter}`;
 }
 
 // =============================================================================
@@ -1064,9 +1108,24 @@ function completePhase(m, result, msg) {
 }
 
 const HANDLER_ALIASES = [
-  'RAVEN', 'VOSTOK', 'CARDINAL', 'MERCURY', 'FULCRUM', 'NIGHTSHADE',
-  'TYPHON', 'GREMLIN', 'SABLE', 'KINGPIN', 'ONYX', 'MAGPIE',
+  // tradecraft & botanical codenames (no animals, no "THE X", no objects)
+  'NIGHTSHADE', 'MERCURY', 'FULCRUM', 'GREMLIN', 'KINGPIN', 'MAGPIE',
+  'VOSTOK', 'CALICO', 'HEMLOCK', 'BELLADONNA', 'FOXGLOVE', 'OLEANDER',
+  'ACONITE', 'DIGITALIS', 'CURARE', 'STRYCHNINE', 'ARSENIC', 'RICIN',
+  'SAFFRON', 'CINNABAR', 'QUICKSILVER', 'GALLIUM', 'RADIUM', 'CESIUM',
+  'MERIDIAN', 'AZIMUTH', 'VERTEX', 'TANGENT', 'PARALLAX', 'PERIHELION',
+  'SOLSTICE', 'EQUINOX', 'APOGEE', 'PERIGEE', 'ECLIPSE', 'TRANSIT',
+  'RUBICON', 'VOLGA', 'DANUBE', 'TIGRIS', 'EUPHRATES', 'GANGES',
+  'BOSPHORUS', 'DARDANELLES', 'GIBRALTAR', 'SUEZ', 'PANAMA', 'HORMUZ',
+  'ALCHEMY', 'CRUCIBLE', 'CATALYST', 'REAGENT', 'ISOTOPE', 'FISSION',
+  'CORONA', 'AURORA', 'NEBULA', 'QUASAR', 'PULSAR', 'MAGNETAR',
 ];
+
+function pickUniqueAlias(pool) {
+  const used = new Set(G.hvts.map(h => h.alias));
+  const avail = pool.filter(a => !used.has(a));
+  return pick(avail.length > 0 ? avail : pool);
+}
 
 function spawnFollowUpMission(m, phase) {
   const intelText = pick(phase.followUpIntelTexts || []);
@@ -1075,7 +1134,7 @@ function spawnFollowUpMission(m, phase) {
 
   // Register the identified target as an ACTIVE HVT in the threats tab
   const handlerRole = m.fillVars?.handler_description || 'foreign intelligence officer — identity obtained through interrogation';
-  const alias = pick(HANDLER_ALIASES);
+  const alias = pickUniqueAlias(HANDLER_ALIASES);
   const followUpMission = G.missions[0]; // spawnMission unshifts
   const hvtId = `H${++G.hvtIdCounter}`;
   G.hvts.push({
@@ -2358,7 +2417,9 @@ const HVT_POPUP_TEXT = {
 function hvtBriefingPopup(type, h, extra) {
   var cfg = HVT_POPUP_TEXT[type];
   if (!cfg) return;
-  var intro = pick(cfg.intros);
+  var intros = cfg.intros;
+  if (!extra?.codename) intros = intros.filter(function(t) { return t.indexOf('{codename}') === -1; }) || intros;
+  var intro = pick(intros.length ? intros : cfg.intros);
   if (extra?.codename) intro = intro.replace(/\{codename\}/g, extra.codename);
   if (h.alias) intro = intro.replace(/\{alias\}/g, h.alias);
   if (h.role) intro = intro.replace(/\{role\}/g, h.role);
@@ -2826,7 +2887,7 @@ window.interrogateTarget = function(hvtId) {
 
   // 60% chance to reveal a new HVT from the same network
   if (Math.random() < 0.60) {
-    const newAlias = pick(HANDLER_ALIASES);
+    const newAlias = pickUniqueAlias(HANDLER_ALIASES);
     const orgLabel = h.org || 'Unknown Network';
     const newRole = pick(['logistics coordinator', 'communications handler', 'safe house operator', 'courier', 'recruiter', 'financial facilitator', 'cell commander', 'weapons specialist']);
     const newId = `H${++G.hvtIdCounter}`;
@@ -4069,18 +4130,18 @@ function showHelp() {
         <p>The world is divided into 8 <strong>theaters of operation</strong>, each with a base volatility reflecting real-world instability. The <strong>GEO</strong> tab shows all theaters with their current risk level (1–5) and any active geopolitical events.</p>
         <p style="margin-top:8px"><strong>Theaters</strong> (ordered by volatility):</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:4px;font-size:10px">
-          <div><span style="color:#e67e22">☪</span> Middle East <span style="color:var(--text-dim)">(highest)</span></div>
-          <div><span style="color:#9b59b6">⛰</span> Central/South Asia</div>
-          <div><span style="color:#27ae60">◆</span> Africa</div>
-          <div><span style="color:#3498db">⚔</span> Eastern Europe</div>
-          <div><span style="color:#e74c3c">🐉</span> East Asia & Pacific</div>
-          <div><span style="color:#f39c12">⚡</span> Latin America</div>
-          <div><span style="color:#2980b9">⊕</span> Western Europe</div>
-          <div><span style="color:#1abc9c">★</span> North America <span style="color:var(--text-dim)">(lowest)</span></div>
+          <div><span class="geo-svg-icon" style="width:12px;height:12px;color:#e67e22"><svg viewBox="0 0 64 64" fill="currentColor"><path d="M8 50h48v-8c0-16-10-28-24-34C18 14 8 26 8 42z"/><rect x="6" y="50" width="52" height="6" rx="1"/><rect x="31" y="4" width="2" height="6"/><path d="M36 11a5 5 0 11-8 0 3.5 3.5 0 108 0z"/></svg></span> Middle East <span style="color:var(--text-dim)">(highest)</span></div>
+          <div><span class="geo-svg-icon" style="width:12px;height:12px;color:#9b59b6"><svg viewBox="0 0 64 64" fill="currentColor"><path d="M0 58l14-30 6 10 12-32 12 26 6-12 14 38z"/></svg></span> Central/South Asia</div>
+          <div><span class="geo-svg-icon" style="width:12px;height:12px;color:#27ae60"><svg viewBox="0 0 64 64" fill="currentColor"><ellipse cx="32" cy="20" rx="28" ry="16"/><rect x="30" y="34" width="4" height="22"/><rect x="22" y="56" width="20" height="4" rx="2"/></svg></span> Africa</div>
+          <div><span class="geo-svg-icon" style="width:12px;height:12px;color:#3498db"><svg viewBox="0 0 64 64" fill="currentColor"><rect x="22" y="34" width="20" height="22" rx="1"/><path d="M20 34h24c0-10-3-16-6-20 1-4-1-8-6-12-5 4-7 8-6 12-3 4-6 10-6 20z"/></svg></span> Eastern Europe</div>
+          <div><span class="geo-svg-icon" style="width:12px;height:12px;color:#e74c3c"><svg viewBox="0 0 64 64" fill="currentColor"><path d="M32 4L10 18h44z"/><path d="M32 20L14 32h36z"/><path d="M32 34L18 44h28z"/><rect x="28" y="44" width="8" height="14"/></svg></span> East Asia & Pacific</div>
+          <div><span class="geo-svg-icon" style="width:12px;height:12px;color:#f39c12"><svg viewBox="0 0 64 64" fill="currentColor"><path d="M2 58h60v-10H50V38H42V28H22v10H14v10H2z"/><rect x="28" y="18" width="8" height="10"/></svg></span> Latin America</div>
+          <div><span class="geo-svg-icon" style="width:12px;height:12px;color:#2980b9"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 58V26L32 6 52 26v32"/><line x1="12" y1="38" x2="52" y2="38"/><line x1="32" y1="58" x2="32" y2="38"/><circle cx="32" cy="22" r="7"/></svg></span> Western Europe</div>
+          <div><span class="geo-svg-icon" style="width:12px;height:12px;color:#1abc9c"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M32 4L8 16v16c0 16 10 24 24 28 14-4 24-12 24-28V16z"/><path d="M32 20l3.5 7 7.5 1-5.5 5 1.5 7.5L32 36l-7 4.5 1.5-7.5-5.5-5 7.5-1z" fill="currentColor" stroke="none"/></svg></span> North America <span style="color:var(--text-dim)">(lowest)</span></div>
         </div>
         <p style="margin-top:8px"><strong>Geopolitical events</strong> are long-term crises (weeks to months) that reshape the threat landscape:</p>
         <div style="font-size:10px;line-height:1.6;margin-top:4px">
-          <strong>⚔ Regional War</strong> · <strong>⚑ Proxy Conflict</strong> · <strong>🔥 Insurgency</strong> · <strong>👁 Intelligence War</strong> · <strong>⟁ Cyber Campaign</strong> · <strong>☢ Arms Race</strong> · <strong>⚠ Civil Unrest</strong> · <strong>⚖ Regime Change</strong> · <strong>⚓ Naval Standoff</strong>
+          <strong><span class="geo-svg-icon" style="width:10px;height:10px"><svg viewBox="0 0 64 64" fill="currentColor"><path d="M32 4l5 16 14-10-6 16 16 2-14 10 10 14-16-6-9 14-9-14-16 6 10-14-14-10 16-2-6-16 14 10z"/></svg></span> Regional War</strong> · <strong><span class="geo-svg-icon" style="width:10px;height:10px"><svg viewBox="0 0 64 64" fill="currentColor"><path d="M4 32l14-12v8h6v8H18v8z"/><path d="M60 32L46 20v8h-6v8h6v8z"/><rect x="30" y="12" width="4" height="40" rx="1"/></svg></span> Proxy Conflict</strong> · <strong><span class="geo-svg-icon" style="width:10px;height:10px"><svg viewBox="0 0 64 64" fill="currentColor"><path d="M32 2c-10 14-20 22-20 34a20 20 0 0040 0C52 24 42 16 32 2z"/></svg></span> Insurgency</strong> · <strong><span class="geo-svg-icon" style="width:10px;height:10px"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3"><path d="M2 32s12-22 30-22 30 22 30 22-12 22-30 22S2 32 2 32z"/><circle cx="32" cy="32" r="11"/><circle cx="32" cy="32" r="4" fill="currentColor" stroke="none"/></svg></span> Intelligence War</strong> · <strong><span class="geo-svg-icon" style="width:10px;height:10px"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="56" height="40" rx="3"/><path d="M16 20l10 8-10 8"/><line x1="30" y1="36" x2="46" y2="36"/><path d="M22 56h20M32 46v10"/></svg></span> Cyber Campaign</strong> · <strong><span class="geo-svg-icon" style="width:10px;height:10px"><svg viewBox="0 0 64 64" fill="currentColor"><path d="M32 2c-5 10-8 20-8 32h16c0-12-3-22-8-32z"/><rect x="24" y="34" width="16" height="12" rx="1"/><path d="M20 52l4-6v6z"/><path d="M44 52l-4-6v6z"/><path d="M28 46h8v10l-4 6-4-6z"/></svg></span> Arms Race</strong> · <strong><span class="geo-svg-icon" style="width:10px;height:10px"><svg viewBox="0 0 64 64" fill="currentColor"><rect x="4" y="26" width="10" height="12" rx="1"/><path d="M14 22l30-14v48L14 42z"/><path d="M50 22c5 5 5 15 0 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M56 14c8 8 8 28 0 36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span> Civil Unrest</strong> · <strong><span class="geo-svg-icon" style="width:10px;height:10px"><svg viewBox="0 0 64 64" fill="currentColor"><g transform="rotate(-20 32 36)"><path d="M10 48h44V30l-11 8-11-14-11 14-11-8z"/><rect x="10" y="48" width="44" height="6" rx="1"/><circle cx="16" cy="30" r="3"/><circle cx="32" cy="20" r="3"/><circle cx="48" cy="30" r="3"/></g></svg></span> Regime Change</strong> · <strong><span class="geo-svg-icon" style="width:10px;height:10px"><svg viewBox="0 0 64 64" fill="currentColor"><path d="M4 40h56l-8 14H12z"/><rect x="24" y="28" width="18" height="12" rx="1"/><rect x="14" y="32" width="10" height="8" rx="1"/><rect x="30" y="16" width="4" height="12"/></svg></span> Naval Standoff</strong>
         </div>
         <p style="margin-top:8px"><strong>Effects of active crises:</strong></p>
         <div style="font-size:10px;line-height:1.7;margin-top:2px">

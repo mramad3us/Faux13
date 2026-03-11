@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="white">
+  <!-- acacia tree silhouette -->
+  <ellipse cx="32" cy="20" rx="28" ry="16"/>
+  <rect x="30" y="34" width="4" height="22"/>
+  <rect x="22" y="56" width="20" height="4" rx="2"/>
+</svg>

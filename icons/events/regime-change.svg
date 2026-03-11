@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="white">
+  <!-- falling/tilted crown -->
+  <g transform="rotate(-20 32 36)">
+    <path d="M10 48h44V30l-11 8-11-14-11 14-11-8z"/>
+    <rect x="10" y="48" width="44" height="6" rx="1"/>
+    <circle cx="16" cy="30" r="3"/>
+    <circle cx="32" cy="20" r="3"/>
+    <circle cx="48" cy="30" r="3"/>
+  </g>
+</svg>

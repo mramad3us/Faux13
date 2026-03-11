@@ -108,24 +108,81 @@ const PLOT_ORG_TYPES = [
 // =============================================================================
 
 const ORG_NAME_ADJ = [
-  'BLACK', 'RED', 'IRON', 'CRIMSON', 'PALE', 'SCARLET', 'GREY', 'DARK',
-  'SILENT', 'COLD', 'DEEP', 'HOLLOW', 'BURNING', 'STEEL', 'BROKEN',
-  'BLIND', 'SLEEPING', 'SUNKEN', 'FROZEN', 'SILVER',
+  // sinister & atmospheric (no overlap with mission CODENAME_ADJ)
+  'BLACK', 'RED', 'PALE', 'GREY', 'DARK', 'DEEP', 'HOLLOW', 'BROKEN',
+  'BLIND', 'SLEEPING', 'SUNKEN', 'WHITE', 'HIDDEN', 'LOST', 'DEAD',
+  'VEILED', 'NAMELESS', 'FACELESS', 'ENDLESS', 'ANCIENT',
+  'ETERNAL', 'FORSAKEN', 'WRETCHED', 'SILENT', 'BLEEDING',
+  'CROOKED', 'TWISTED', 'SEVERED', 'BURIED', 'DROWNED',
+  'SCARRED', 'BLIGHTED', 'WITHERED', 'ASHEN', 'LEADEN',
+  'SHATTERED', 'RUSTED', 'CORRODED', 'TARNISHED', 'ROTTING',
+  'SHROUDED', 'UNSEEN', 'UNSPOKEN', 'UNKNOWN', 'UNNAMED',
+  'PHANTOM', 'SPECTRAL', 'INFERNAL', 'ABYSSAL', 'NOCTURNAL',
+  'FADING', 'DYING', 'THIRSTING', 'STARVING', 'FESTERING',
+  'SMOLDERING', 'CRAWLING', 'CREEPING', 'WRITHING', 'GATHERING',
+  'RISING', 'FALLING', 'WANING', 'SPREADING', 'REACHING',
+  'PATIENT', 'RESTLESS', 'RUTHLESS', 'MERCILESS', 'RELENTLESS',
+  'BITTER', 'SAVAGE', 'CRUEL', 'VICIOUS', 'CUNNING',
 ];
 
 const ORG_NAME_NOUN = [
-  'CRESCENT', 'COLUMN', 'DAWN', 'HORIZON', 'DIRECTIVE', 'MERIDIAN',
+  // organizations & abstract concepts (no overlap with mission CODENAME_NOUN)
+  'CRESCENT', 'COLUMN', 'HORIZON', 'DIRECTIVE', 'MERIDIAN',
   'SYNDICATE', 'COVENANT', 'NETWORK', 'CIRCLE', 'FRONT', 'VANGUARD',
-  'TIDE', 'AXIS', 'ECLIPSE', 'ORCHID', 'COMPASS', 'MIRROR',
+  'AXIS', 'ECLIPSE', 'ORCHID', 'COMPASS', 'MIRROR',
   'PROTOCOL', 'CIRCUIT', 'VEIL', 'LATTICE',
+  'HAND', 'EYE', 'VOICE', 'SHADOW', 'THRONE',
+  'DOCTRINE', 'MANDATE', 'DECREE', 'EDICT', 'TRIBUNAL',
+  'CONCLAVE', 'ASSEMBLY', 'COUNCIL', 'CONGRESS', 'PARLIAMENT',
+  'ORDER', 'BROTHERHOOD', 'FELLOWSHIP', 'GUILD', 'CHAPTER',
+  'LEGION', 'BRIGADE', 'CADRE', 'CELL', 'CABAL',
+  'HARVEST', 'DOMINION', 'EMPIRE', 'SOVEREIGNTY', 'HEGEMONY',
+  'PACT', 'ACCORD', 'COMPACT', 'ALLIANCE', 'CONSORTIUM',
+  'FOUNDATION', 'INSTITUTE', 'BUREAU', 'MINISTRY', 'DIRECTORATE',
+  'TIDE', 'CURRENT', 'UNDERTOW', 'RIPTIDE', 'DRIFT',
+  'THRESHOLD', 'PASSAGE', 'CORRIDOR', 'GATEWAY', 'CONDUIT',
+  'WEB', 'SPIRAL', 'LABYRINTH', 'MAZE', 'NEXUS',
+  'DAWN', 'DUSK', 'TWILIGHT', 'MIDNIGHT', 'SOLSTICE',
+  'EMBER', 'CINDER', 'SPARK', 'FURNACE', 'CRUCIBLE',
+  'SERPENT', 'SPIDER', 'SCORPION', 'LOCUST', 'MOTH',
+  'ROOT', 'BRANCH', 'THORN', 'VINE', 'CANOPY',
+  'SHROUD', 'MASK', 'VEIL', 'CLOAK', 'MANTLE',
+  'SIGNAL', 'CIPHER', 'CODEX', 'ARCHIVE', 'LEDGER',
+  'WOUND', 'FRACTURE', 'SCAR', 'BLIGHT', 'PLAGUE',
 ];
 
 const FILE_CODENAMES = [
+  // mythological & legendary figures (unique to this pool)
   'CARDINAL', 'PHOENIX', 'CERBERUS', 'LEVIATHAN', 'CHIMERA',
   'PROMETHEUS', 'LAZARUS', 'PANDORA', 'OUROBOROS', 'MINOTAUR',
   'TYPHON', 'BASILISK', 'NIGHTFALL', 'ICARUS', 'MEDUSA',
-  'HYDRA', 'KRAKEN', 'ARGUS', 'ORACLE', 'SIBYL',
-  'JANUS', 'NEMESIS', 'THANATOS', 'ATLAS', 'CHARON',
+  'HYDRA', 'KRAKEN', 'ARGUS', 'SIBYL', 'JANUS',
+  'NEMESIS', 'THANATOS', 'ATLAS', 'CHARON', 'ORPHEUS',
+  // greek & roman
+  'HERMES', 'ARES', 'ATHENA', 'HADES', 'POSEIDON',
+  'APOLLO', 'ARTEMIS', 'HEPHAESTUS', 'DEMETER', 'PERSEPHONE',
+  'ACHILLES', 'ODYSSEUS', 'HECTOR', 'AJAX', 'PERSEUS',
+  'THESEUS', 'DAEDALUS', 'MINOS', 'SISYPHUS', 'TANTALUS',
+  'CYCLOPS', 'CENTAUR', 'SIREN', 'HARPY', 'SPHINX',
+  // norse & celtic
+  'ODIN', 'THOR', 'LOKI', 'FENRIR', 'SURTUR',
+  'HEIMDALL', 'BALDUR', 'TYR', 'FREYA', 'VALKYRIE',
+  'MIDGARD', 'RAGNAROK', 'BIFROST', 'YGGDRASIL', 'JORMUNGANDR',
+  // mesopotamian & egyptian
+  'ANUBIS', 'OSIRIS', 'HORUS', 'THOTH', 'SOBEK',
+  'AMMIT', 'SEKHMET', 'BASTET', 'MARDUK', 'TIAMAT',
+  'GILGAMESH', 'ENKIDU', 'ISHTAR', 'MOLOCH', 'BAAL',
+  // legendary creatures & concepts
+  'BEHEMOTH', 'GOLEM', 'DJINN', 'IFRIT', 'WENDIGO',
+  'REVENANT', 'SPECTER', 'BANSHEE', 'WRAITH', 'LICH',
+  'MANTICORE', 'WYVERN', 'DRAKE', 'GARGOYLE', 'COCKATRICE',
+  'NAGA', 'RAKSHASA', 'YAKSHA', 'ASURA', 'KITSUNE',
+  'TENGU', 'ONI', 'JOTUNN', 'DRAUGR', 'EINHERJAR',
+  // additional mythic
+  'STYX', 'LETHE', 'ACHERON', 'TARTARUS', 'ELYSIUM',
+  'COLOSSUS', 'TITAN', 'ORACLE', 'PYTHIA', 'CASSANDRA',
+  'DELPHI', 'AVALON', 'CAMELOT', 'VALHALLA', 'SHANGRI-LA',
+  'NIRVANA', 'ARCADIA', 'HYPERION', 'CALYPSO', 'CIRCE',
 ];
 
 const _usedOrgNames = new Set();
@@ -151,10 +208,27 @@ function generateFileName() {
 // =============================================================================
 
 const LEADER_ALIASES = [
+  // "THE [title]" format — ominous role-based names
   'THE ARCHITECT', 'THE DIRECTOR', 'THE HANDLER', 'THE BROKER',
   'THE ENGINEER', 'THE SHEPHERD', 'THE CONDUCTOR', 'THE COURIER',
   'THE GHOST', 'THE BANKER', 'THE SURGEON', 'THE WATCHER',
   'THE PROFESSOR', 'THE PILGRIM', 'THE GARDENER', 'THE BISHOP',
+  'THE ACCOUNTANT', 'THE CHEMIST', 'THE COLLECTOR', 'THE COMMISSIONER',
+  'THE DENTIST', 'THE DOCTOR', 'THE ELECTRICIAN', 'THE FISHERMAN',
+  'THE GENERAL', 'THE GOVERNOR', 'THE HISTORIAN', 'THE INNKEEPER',
+  'THE JUDGE', 'THE KEEPER', 'THE LIBRARIAN', 'THE LOCKSMITH',
+  'THE MECHANIC', 'THE NAVIGATOR', 'THE OPERATOR', 'THE PHARMACIST',
+  'THE QUARTERMASTER', 'THE REGISTRAR', 'THE SCULPTOR', 'THE TAILOR',
+  'THE UNDERTAKER', 'THE VINTNER', 'THE WEAVER', 'THE BUTCHER',
+  'THE CARPENTER', 'THE CLOCKMAKER', 'THE FERRYMAN', 'THE GLAZIER',
+  'THE JEWELER', 'THE MAGISTRATE', 'THE NOTARY', 'THE ORACLE',
+  'THE PATRIARCH', 'THE RECTOR', 'THE SEXTON', 'THE TREASURER',
+  'THE USHER', 'THE VICEROY', 'THE WARDEN', 'THE ZEALOT',
+  'THE APOSTLE', 'THE CONFESSOR', 'THE DEACON', 'THE ELDER',
+  'THE HERMIT', 'THE INQUISITOR', 'THE MONK', 'THE PREACHER',
+  'THE REVEREND', 'THE SCRIBE', 'THE ABBOT', 'THE CARDINAL',
+  'THE CHANCELLOR', 'THE CONSUL', 'THE PROVOST', 'THE REGENT',
+  'THE STEWARD', 'THE ADJUTANT', 'THE AUDITOR', 'THE BAILIFF',
 ];
 
 const LIEUTENANT_ROLES = [
@@ -193,7 +267,7 @@ function createPlot() {
     }
   }
 
-  const leaderAlias = pick(LEADER_ALIASES);
+  const leaderAlias = pickUniqueAlias(LEADER_ALIASES);
   const lieutenants = [];
   const ltCount = randInt(2, 4);
   for (let i = 0; i < ltCount; i++) {
@@ -276,7 +350,7 @@ hook('geo:spawnOrg', function (data) {
   var city = loc.city;
   var country = loc.country;
 
-  var leaderAlias = pick(LEADER_ALIASES);
+  var leaderAlias = pickUniqueAlias(LEADER_ALIASES);
   var lieutenants = [];
   var ltCount = randInt(2, 4);
   for (var i = 0; i < ltCount; i++) {
@@ -658,9 +732,21 @@ hook('calcProb:modify', function (data) {
 // ---- Infiltration intel: surface new HVT from inside asset ----
 
 const INFILTRATION_HVT_ALIASES = [
-  'JACKAL', 'VIPER', 'SCORPION', 'FALCON', 'HYENA', 'COBRA',
-  'LYNX', 'MANTIS', 'CONDOR', 'HORNET', 'SCARAB', 'PANTHER',
-  'RAPTOR', 'PYTHON', 'WOLVERINE', 'BARRACUDA',
+  // animal codenames — predators & dangerous creatures
+  'JACKAL', 'VIPER', 'SCORPION', 'HYENA', 'COBRA', 'LYNX',
+  'MANTIS', 'HORNET', 'SCARAB', 'PANTHER', 'PYTHON', 'WOLVERINE',
+  'BARRACUDA', 'MAMBA', 'TAIPAN', 'ADDER', 'ASP', 'KRAIT',
+  'SIDEWINDER', 'COPPERHEAD', 'DIAMONDBACK', 'BUSHMASTER', 'FER-DE-LANCE', 'BOOMSLANG',
+  'LEOPARD', 'CHEETAH', 'OCELOT', 'PUMA', 'CARACAL', 'SERVAL',
+  'DINGO', 'COYOTE', 'FOX', 'BADGER', 'WEASEL', 'MARTEN',
+  'OSPREY', 'VULTURE', 'BUZZARD', 'KITE', 'OWL', 'NIGHTHAWK',
+  'WASP', 'BEETLE', 'CENTIPEDE', 'TARANTULA', 'WIDOW', 'RECLUSE',
+  'PIRANHA', 'MORAY', 'LAMPREY', 'REMORA', 'GROUPER', 'TRIGGERFISH',
+  'MONGOOSE', 'STOAT', 'FERRET', 'MINK', 'OTTER', 'FISHER',
+  'IGUANA', 'MONITOR', 'GECKO', 'SKINK', 'BASILISK', 'KOMODO',
+  'CICADA', 'CRICKET', 'LOCUST', 'FIREFLY', 'MOTH', 'DRAGONFLY',
+  'PELICAN', 'CORMORANT', 'ALBATROSS', 'GANNET', 'TERN', 'PETREL',
+  'MUSKOX', 'BUFFALO', 'BOAR', 'BISON', 'RHINO', 'HIPPO',
 ];
 
 var INFILTRATION_HVT_ROLES = {
@@ -679,7 +765,7 @@ var INFILTRATION_INTEL_BODIES = [
 ];
 
 function spawnInfiltrationHvt(plot) {
-  var alias = pick(INFILTRATION_HVT_ALIASES);
+  var alias = pickUniqueAlias(INFILTRATION_HVT_ALIASES);
   var roles = INFILTRATION_HVT_ROLES[plot.orgType] || INFILTRATION_HVT_ROLES.terrorist_network;
   var role = pick(roles);
 
@@ -873,7 +959,7 @@ hook('day:pre', function () {
     G.intelLifetime = (G.intelLifetime || 0) + intelYield;
 
     // Spawn a new ACTIVE HVT from the same network
-    var newAlias = pick(INFILTRATION_HVT_ALIASES);
+    var newAlias = pickUniqueAlias(INFILTRATION_HVT_ALIASES);
     var rolePool = ['courier', 'cell coordinator', 'logistics handler', 'communications officer', 'recruiter', 'financial facilitator', 'safe house operator', 'weapons specialist'];
     var linkedPlot = th.linkedPlotId ? G.plots.find(function (p) { return p.id === th.linkedPlotId; }) : null;
     var newRole;

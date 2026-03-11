@@ -460,9 +460,22 @@ window.transferHvtToFaction = function (hvtId, factionId) {
 // =============================================================================
 
 var FOREIGN_OPERATIVE_ALIASES = [
-  'CHAMELEON', 'SHADOW', 'FROST', 'SPARROW', 'RIDDLE', 'NEEDLE',
-  'COMPASS', 'WHISPER', 'DRIFT', 'CURRENT', 'ANCHOR', 'SOCKET',
-  'PRISM', 'GAUGE', 'STATIC', 'SPLICE', 'THREAD', 'LENS',
+  // objects, tools, instruments — no overlap with animal/mythological/botanical pools
+  'NEEDLE', 'COMPASS', 'ANCHOR', 'SOCKET', 'PRISM', 'GAUGE',
+  'STATIC', 'SPLICE', 'THREAD', 'LENS', 'RIDDLE', 'WHISPER',
+  'DRIFT', 'CURRENT', 'FROST', 'SHADOW', 'MIRROR', 'ANVIL',
+  'CHISEL', 'HAMMER', 'FULCRUM', 'LEVER', 'PISTON', 'VALVE',
+  'TURBINE', 'DYNAMO', 'CONDUIT', 'FILAMENT', 'CIRCUIT', 'RELAY',
+  'BEACON', 'LANTERN', 'FLARE', 'STROBE', 'SIGNAL', 'CIPHER',
+  'CODEX', 'LEDGER', 'BRACKET', 'RIVET', 'CLAMP', 'TOGGLE',
+  'PENDULUM', 'METRONOME', 'SEXTANT', 'ASTROLABE', 'BAROMETER', 'CALIPER',
+  'CRUCIBLE', 'RETORT', 'ALEMBIC', 'BELLOWS', 'TONGS', 'SPINDLE',
+  'SHUTTLE', 'BOBBIN', 'THIMBLE', 'AWNING', 'TRELLIS', 'LATTICE',
+  'KEYSTONE', 'LINTEL', 'BUTTRESS', 'PARAPET', 'RAMPART', 'BASTION',
+  'DRAWBRIDGE', 'PORTCULLIS', 'TURRET', 'SPIRE', 'PINNACLE', 'CUPOLA',
+  'VESTIBULE', 'ALCOVE', 'GROTTO', 'CISTERN', 'AQUEDUCT', 'CONDENSER',
+  'FLYWHEEL', 'CAMSHAFT', 'CRANKPIN', 'GASKET', 'MANIFOLD', 'CARBURETOR',
+  'SOLENOID', 'CAPACITOR', 'RESISTOR', 'TRANSISTOR', 'DIODE', 'INDUCTOR',
 ];
 
 var FOREIGN_OPERATIVE_ROLES = [
@@ -484,7 +497,7 @@ hook('day:post', function () {
   var srcFactionId = pick(factionIds);
   var srcFaction = FACTIONS[srcFactionId];
 
-  var alias = pick(FOREIGN_OPERATIVE_ALIASES);
+  var alias = pickUniqueAlias(FOREIGN_OPERATIVE_ALIASES);
   var role = pick(FOREIGN_OPERATIVE_ROLES);
   var city = pick(G.cfg.domesticCities);
 
@@ -635,7 +648,7 @@ window.renderNetworkBar = function (theaterId) {
 
   var html = '<div class="geo-network-section">';
   html += '<div class="geo-network-row geo-network-player">' +
-    '<span class="geo-network-label geo-network-label-you" style="color:' + (playerFaction ? playerFaction.color : 'var(--green)') + '" data-tip="' + playerTip + '">' + (playerFaction ? playerFaction.icon + ' ' + playerFaction.shortName : 'YOU') + '</span>' +
+    '<span class="geo-network-label geo-network-label-you" style="color:' + (playerFaction ? playerFaction.color : 'var(--green)') + '" data-tip="' + playerTip + '">' + (playerFaction ? playerFaction.shortName : 'YOU') + '</span>' +
     '<div class="geo-network-bar"><div class="geo-network-fill" style="width:' + health + '%;background:' + fillColor + '"></div></div>' +
     '<span class="geo-network-val">' + health + '%' + floorStr + '</span>' +
     modStr +
@@ -659,7 +672,7 @@ window.renderNetworkBar = function (theaterId) {
       var aiHomeTheater = THEATERS[f.homeTheater] ? THEATERS[f.homeTheater].name : f.homeTheater;
       var aiTip = f.name + '&#10;Home: ' + aiHomeTheater + '&#10;Agencies: ' + f.agencies;
       html += '<div class="geo-network-row geo-network-ai">' +
-        '<span class="geo-network-label" style="color:' + f.color + '" data-tip="' + aiTip + '">' + f.icon + ' ' + f.shortName + '</span>' +
+        '<span class="geo-network-label" style="color:' + f.color + '" data-tip="' + aiTip + '">' + f.shortName + '</span>' +
         '<div class="geo-network-bar"><div class="geo-network-fill" style="width:' + aiHealth + '%;background:' + f.color + ';opacity:' + (aiIsHome ? '0.8' : '0.5') + '"></div></div>' +
         '<span class="geo-network-val">' + aiHealth + '%</span>' +
       '</div>';

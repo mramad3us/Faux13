@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="white">
+  <!-- mosque dome -->
+  <path d="M8 50h48v-8c0-16-10-28-24-34C18 14 8 26 8 42z"/>
+  <rect x="6" y="50" width="52" height="6" rx="1"/>
+  <!-- crescent on spike -->
+  <rect x="31" y="4" width="2" height="6"/>
+  <path d="M36 11a5 5 0 11-8 0 3.5 3.5 0 108 0z"/>
+</svg>

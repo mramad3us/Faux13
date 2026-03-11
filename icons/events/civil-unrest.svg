@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="white">
+  <!-- megaphone with sound waves -->
+  <rect x="4" y="26" width="10" height="12" rx="1"/>
+  <path d="M14 22l30-14v48L14 42z"/>
+  <path d="M50 22c5 5 5 15 0 20" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <path d="M56 14c8 8 8 28 0 36" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
+</svg>

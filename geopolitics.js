@@ -6,6 +6,36 @@
 
 (function () {
 
+// --- Inline SVG icons (source files in icons/theaters/ and icons/events/) ---
+var GEO_ICONS = {
+  // theaters (source: icons/theaters/*.svg)
+  'middle-east':     '<svg viewBox="0 0 64 64" fill="currentColor"><path d="M8 50h48v-8c0-16-10-28-24-34C18 14 8 26 8 42z"/><rect x="6" y="50" width="52" height="6" rx="1"/><rect x="31" y="4" width="2" height="6"/><path d="M36 11a5 5 0 11-8 0 3.5 3.5 0 108 0z"/></svg>',
+  'eastern-europe':  '<svg viewBox="0 0 64 64" fill="currentColor"><rect x="22" y="34" width="20" height="22" rx="1"/><path d="M20 34h24c0-10-3-16-6-20 1-4-1-8-6-12-5 4-7 8-6 12-3 4-6 10-6 20z"/><rect x="31" y="0" width="2" height="6"/><circle cx="32" cy="0" r="2.5"/></svg>',
+  'central-asia':    '<svg viewBox="0 0 64 64" fill="currentColor"><path d="M0 58l14-30 6 10 12-32 12 26 6-12 14 38z"/><path d="M26 18l6-12 6 12-3 6h-6z" opacity="0.3"/></svg>',
+  'east-asia':       '<svg viewBox="0 0 64 64" fill="currentColor"><path d="M32 4L10 18h44z"/><path d="M32 20L14 32h36z"/><path d="M32 34L18 44h28z"/><rect x="28" y="44" width="8" height="14"/><rect x="24" y="58" width="16" height="4" rx="1"/></svg>',
+  'africa':          '<svg viewBox="0 0 64 64" fill="currentColor"><ellipse cx="32" cy="20" rx="28" ry="16"/><rect x="30" y="34" width="4" height="22"/><rect x="22" y="56" width="20" height="4" rx="2"/></svg>',
+  'latin-america':   '<svg viewBox="0 0 64 64" fill="currentColor"><path d="M2 58h60v-10H50V38H42V28H22v10H14v10H2z"/><rect x="28" y="18" width="8" height="10"/></svg>',
+  'western-europe':  '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 58V26L32 6 52 26v32"/><line x1="12" y1="38" x2="52" y2="38"/><line x1="32" y1="58" x2="32" y2="38"/><circle cx="32" cy="22" r="7"/></svg>',
+  'north-america':   '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M32 4L8 16v16c0 16 10 24 24 28 14-4 24-12 24-28V16z"/><path d="M32 20l3.5 7 7.5 1-5.5 5 1.5 7.5L32 36l-7 4.5 1.5-7.5-5.5-5 7.5-1z" fill="currentColor" stroke="none"/></svg>',
+  // events (source: icons/events/*.svg)
+  'regional-war':    '<svg viewBox="0 0 64 64" fill="currentColor"><path d="M32 4l5 16 14-10-6 16 16 2-14 10 10 14-16-6-9 14-9-14-16 6 10-14-14-10 16-2-6-16 14 10z"/></svg>',
+  'proxy-conflict':  '<svg viewBox="0 0 64 64" fill="currentColor"><path d="M4 32l14-12v8h6v8H18v8z"/><path d="M60 32L46 20v8h-6v8h6v8z"/><rect x="30" y="12" width="4" height="40" rx="1"/></svg>',
+  'insurgency':      '<svg viewBox="0 0 64 64" fill="currentColor"><path d="M32 2c-10 14-20 22-20 34a20 20 0 0040 0C52 24 42 16 32 2z"/></svg>',
+  'intelligence-war':'<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3"><path d="M2 32s12-22 30-22 30 22 30 22-12 22-30 22S2 32 2 32z"/><circle cx="32" cy="32" r="11"/><circle cx="32" cy="32" r="4" fill="currentColor" stroke="none"/></svg>',
+  'cyber-campaign':  '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="56" height="40" rx="3"/><path d="M16 20l10 8-10 8"/><line x1="30" y1="36" x2="46" y2="36"/><path d="M22 56h20M32 46v10"/></svg>',
+  'arms-race':       '<svg viewBox="0 0 64 64" fill="currentColor"><path d="M32 2c-5 10-8 20-8 32h16c0-12-3-22-8-32z"/><rect x="24" y="34" width="16" height="12" rx="1"/><path d="M20 52l4-6v6z"/><path d="M44 52l-4-6v6z"/><path d="M28 46h8v10l-4 6-4-6z"/></svg>',
+  'civil-unrest':    '<svg viewBox="0 0 64 64" fill="currentColor"><rect x="4" y="26" width="10" height="12" rx="1"/><path d="M14 22l30-14v48L14 42z"/><path d="M50 22c5 5 5 15 0 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M56 14c8 8 8 28 0 36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+  'regime-change':   '<svg viewBox="0 0 64 64" fill="currentColor"><g transform="rotate(-20 32 36)"><path d="M10 48h44V30l-11 8-11-14-11 14-11-8z"/><rect x="10" y="48" width="44" height="6" rx="1"/><circle cx="16" cy="30" r="3"/><circle cx="32" cy="20" r="3"/><circle cx="48" cy="30" r="3"/></g></svg>',
+  'naval-standoff':  '<svg viewBox="0 0 64 64" fill="currentColor"><path d="M4 40h56l-8 14H12z"/><rect x="24" y="28" width="18" height="12" rx="1"/><rect x="14" y="32" width="10" height="8" rx="1"/><rect x="30" y="16" width="4" height="12"/><path d="M34 16h14" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 58c4-4 8-4 12 0s8 4 12 0 8-4 12 0 8 4 12 0 8-4 12 0" fill="none" stroke="currentColor" stroke-width="2.5"/></svg>',
+};
+
+// --- Helper: render a colored inline SVG icon ---
+function geoIcon(iconKey, color, size) {
+  var s = size || 16;
+  var svg = GEO_ICONS[iconKey] || '';
+  return '<span class="geo-svg-icon" style="width:' + s + 'px;height:' + s + 'px;color:' + color + '">' + svg + '</span>';
+}
+
 // =============================================================================
 // THEATER DEFINITIONS
 // =============================================================================
@@ -15,7 +45,7 @@ var THEATERS = {
     id: 'MIDDLE_EAST',
     name: 'Middle East',
     shortName: 'MENA',
-    icon: '☪',
+    iconKey: 'middle-east',
     volatility: 0.85, // highest — perpetual instability
     baseRisk: 3,
     color: '#e67e22',
@@ -43,7 +73,7 @@ var THEATERS = {
     id: 'EASTERN_EUROPE',
     name: 'Eastern Europe',
     shortName: 'E.EUR',
-    icon: '⚔',
+    iconKey: 'eastern-europe',
     volatility: 0.55,
     baseRisk: 2,
     color: '#3498db',
@@ -70,7 +100,7 @@ var THEATERS = {
     id: 'CENTRAL_ASIA',
     name: 'Central & South Asia',
     shortName: 'C/S.ASIA',
-    icon: '⛰',
+    iconKey: 'central-asia',
     volatility: 0.70,
     baseRisk: 3,
     color: '#9b59b6',
@@ -95,7 +125,7 @@ var THEATERS = {
     id: 'EAST_ASIA',
     name: 'East Asia & Pacific',
     shortName: 'E.ASIA',
-    icon: '🐉',
+    iconKey: 'east-asia',
     volatility: 0.40,
     baseRisk: 2,
     color: '#e74c3c',
@@ -122,7 +152,7 @@ var THEATERS = {
     id: 'AFRICA',
     name: 'Africa',
     shortName: 'AFRICA',
-    icon: '◆',
+    iconKey: 'africa',
     volatility: 0.60,
     baseRisk: 2,
     color: '#27ae60',
@@ -151,7 +181,7 @@ var THEATERS = {
     id: 'LATIN_AMERICA',
     name: 'Latin America',
     shortName: 'LATAM',
-    icon: '⚡',
+    iconKey: 'latin-america',
     volatility: 0.35,
     baseRisk: 1,
     color: '#f39c12',
@@ -177,7 +207,7 @@ var THEATERS = {
     id: 'WESTERN_EUROPE',
     name: 'Western Europe',
     shortName: 'W.EUR',
-    icon: '⊕',
+    iconKey: 'western-europe',
     volatility: 0.15,
     baseRisk: 1,
     color: '#2980b9',
@@ -202,7 +232,7 @@ var THEATERS = {
     id: 'NORTH_AMERICA',
     name: 'North America',
     shortName: 'N.AM',
-    icon: '★',
+    iconKey: 'north-america',
     volatility: 0.08,
     baseRisk: 1,
     color: '#1abc9c',
@@ -232,7 +262,7 @@ var THEATER_IDS = Object.keys(THEATERS);
 var GEO_EVENT_TYPES = {
   REGIONAL_WAR: {
     label: 'REGIONAL WAR',
-    icon: '⚔',
+    iconKey: 'regional-war',
     severity: 5,
     durationRange: [60, 180], // days
     riskBoost: 3,
@@ -255,7 +285,7 @@ var GEO_EVENT_TYPES = {
   },
   PROXY_CONFLICT: {
     label: 'PROXY CONFLICT',
-    icon: '⚑',
+    iconKey: 'proxy-conflict',
     severity: 4,
     durationRange: [45, 150],
     riskBoost: 2,
@@ -276,7 +306,7 @@ var GEO_EVENT_TYPES = {
   },
   INSURGENCY: {
     label: 'INSURGENCY',
-    icon: '🔥',
+    iconKey: 'insurgency',
     severity: 3,
     durationRange: [40, 120],
     riskBoost: 2,
@@ -297,7 +327,7 @@ var GEO_EVENT_TYPES = {
   },
   INTELLIGENCE_WAR: {
     label: 'INTELLIGENCE WAR',
-    icon: '👁',
+    iconKey: 'intelligence-war',
     severity: 3,
     durationRange: [30, 120],
     riskBoost: 2,
@@ -318,7 +348,7 @@ var GEO_EVENT_TYPES = {
   },
   CYBER_CAMPAIGN: {
     label: 'CYBER CAMPAIGN',
-    icon: '⟁',
+    iconKey: 'cyber-campaign',
     severity: 2,
     durationRange: [20, 90],
     riskBoost: 1,
@@ -338,7 +368,7 @@ var GEO_EVENT_TYPES = {
   },
   ARMS_RACE: {
     label: 'ARMS RACE',
-    icon: '☢',
+    iconKey: 'arms-race',
     severity: 3,
     durationRange: [60, 200],
     riskBoost: 2,
@@ -358,7 +388,7 @@ var GEO_EVENT_TYPES = {
   },
   CIVIL_UNREST: {
     label: 'CIVIL UNREST',
-    icon: '⚠',
+    iconKey: 'civil-unrest',
     severity: 2,
     durationRange: [15, 60],
     riskBoost: 1,
@@ -378,7 +408,7 @@ var GEO_EVENT_TYPES = {
   },
   REGIME_CHANGE: {
     label: 'REGIME CHANGE',
-    icon: '⚖',
+    iconKey: 'regime-change',
     severity: 4,
     durationRange: [20, 80],
     riskBoost: 2,
@@ -399,7 +429,7 @@ var GEO_EVENT_TYPES = {
   },
   NAVAL_STANDOFF: {
     label: 'NAVAL STANDOFF',
-    icon: '⚓',
+    iconKey: 'naval-standoff',
     severity: 3,
     durationRange: [15, 60],
     riskBoost: 2,
@@ -529,7 +559,7 @@ function generateGeoEvent(theaterId) {
     typeId: typeId,
     theaterId: theaterId,
     label: tmpl.label,
-    icon: tmpl.icon,
+    iconKey: tmpl.iconKey,
     severity: tmpl.severity,
     headline: headline,
     startDay: G.day,
@@ -555,7 +585,7 @@ function generateGeoEvent(theaterId) {
   // Show briefing popup
   var detailCard =
     '<div style="margin-top:12px;padding:8px 10px;border:1px solid ' + theater.color + '33;border-left:3px solid ' + theater.color + '99;border-radius:4px;background:' + theater.color + '0d">' +
-      '<div style="font-size:11px;font-weight:700;letter-spacing:0.5px;color:' + theater.color + '">' + tmpl.icon + ' ' + tmpl.label + '</div>' +
+      '<div style="font-size:11px;font-weight:700;letter-spacing:0.5px;color:' + theater.color + ';display:flex;align-items:center;gap:4px">' + geoIcon(tmpl.iconKey, theater.color, 12) + ' ' + tmpl.label + '</div>' +
       '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">THEATER: ' + theater.name + ' · SEVERITY: ' + '■'.repeat(tmpl.severity) + '□'.repeat(5 - tmpl.severity) + '</div>' +
       '<div style="font-size:9px;margin-top:3px;color:var(--text-dim)">EST. DURATION: ' + duration + ' DAYS</div>' +
       '<div style="font-size:10px;color:var(--text-hi);margin-top:4px;line-height:1.4">' + headline + '</div>' +
@@ -894,7 +924,7 @@ window.renderGeoPanel = function renderGeoPanel() {
         var tmpl = GEO_EVENT_TYPES[te.typeId];
         var progress = Math.min(100, Math.round(((G.day - te.startDay) / te.duration) * 100));
         eventsHtml += '<div class="geo-event-entry">' +
-          '<div class="geo-event-label">' + (tmpl ? tmpl.icon : '') + ' ' + te.label + '</div>' +
+          '<div class="geo-event-label">' + (tmpl && tmpl.iconKey ? geoIcon(tmpl.iconKey, theater.color, 11) + ' ' : '') + te.label + '</div>' +
           '<div class="geo-event-progress-wrap">' +
             '<div class="geo-event-progress-fill" style="width:' + progress + '%;background:' + theater.color + '"></div>' +
           '</div>' +
@@ -910,7 +940,7 @@ window.renderGeoPanel = function renderGeoPanel() {
 
     html += '<div class="geo-theater-card' + (theaterEvents.length > 0 ? ' geo-theater-active' : '') + '" style="--theater-color:' + theater.color + '">' +
       '<div class="geo-theater-header">' +
-        '<span class="geo-theater-icon" style="color:' + theater.color + '">' + theater.icon + '</span>' +
+        '<span class="geo-theater-icon">' + geoIcon(theater.iconKey, theater.color, 16) + '</span>' +
         '<span class="geo-theater-name">' + theater.name + factionBadge + '</span>' +
         '<span class="geo-risk-badge ' + riskClass + '">' + riskLabel + '</span>' +
       '</div>' +

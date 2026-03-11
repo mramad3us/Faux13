@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="white">
+  <!-- missile / rocket -->
+  <path d="M32 2c-5 10-8 20-8 32h16c0-12-3-22-8-32z"/>
+  <rect x="24" y="34" width="16" height="12" rx="1"/>
+  <path d="M20 52l4-6v6z"/>
+  <path d="M44 52l-4-6v6z"/>
+  <path d="M28 46h8v10l-4 6-4-6z"/>
+</svg>

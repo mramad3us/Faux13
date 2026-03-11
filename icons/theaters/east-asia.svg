@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="white">
+  <!-- pagoda with curved roofs -->
+  <path d="M32 4L10 18h44z"/>
+  <path d="M32 20L14 32h36z"/>
+  <path d="M32 34L18 44h28z"/>
+  <rect x="28" y="44" width="8" height="14"/>
+  <rect x="24" y="58" width="16" height="4" rx="1"/>
+</svg>
