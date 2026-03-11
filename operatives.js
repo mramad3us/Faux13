@@ -291,7 +291,7 @@ hook('operation:resolved', function (data) {
   for (var c = 0; c < (G.eliteUnits || []).length; c++) {
     if (G.eliteUnits[c].alive) aliveCount++;
   }
-  if (aliveCount >= 6) return;
+  if (aliveCount >= 7) return;
 
   // Pick a dept that was used in the op, excluding depts that already have an active elite
   var depts = (m.assignedExecDepts || []).filter(function (d) {
