@@ -37,6 +37,8 @@
       '.db-asset-type { color:var(--text-dim); }' +
       '.db-asset-elite { border-color:rgba(46,204,113,0.3); background:rgba(46,204,113,0.04); }' +
       '.db-asset-elite .db-asset-dept { color:var(--green); }' +
+      '.db-asset-ally { border-color:rgba(52,152,219,0.3); background:rgba(52,152,219,0.04); }' +
+      '.db-asset-ally .db-asset-dept { color:var(--teal,#00c8b4); }' +
       '.db-meta { font-family:var(--font-mono); font-size:10px; color:var(--text-muted); padding:4px 18px 12px; border-bottom:1px solid var(--border); }' +
       '.db-day { font-family:var(--font-disp); font-size:11px; font-weight:700; letter-spacing:1px; color:var(--teal,#00c8b4); padding:10px 18px 4px; }' +
       '.db-event { font-family:var(--font-mono); font-size:11px; line-height:1.7; color:var(--text); padding:3px 18px 3px 36px; position:relative; }' +
@@ -150,6 +152,115 @@
     return out;
   }
 
+  // ===========================================================================
+  // ALLIED AGENCY SUPPORT — flavor text for partner agency assets
+  // ===========================================================================
+
+  function getAgencySupport(m) {
+    return (m && m.agencySupport) ? m.agencySupport : [];
+  }
+
+  // Categorize support by operational role
+  var ALLY_TACTICAL_IDS = [
+    'FBI_HRT','CIA_PARA','JSOC_T1','MARINE_QRF',
+    'MI5_CT','SIS_PARA','SAS_ELEMENT','SBS_MARITIME',
+    'SDAT_SUPPORT','DGSE_ACTION','GIGN_ASSAULT','COS_SPECIAL'
+  ];
+  var ALLY_SIGINT_IDS = [
+    'FBI_SURV','CIA_SIGNAL',
+    'SIS_SIGINT','DGSI_CYBER','DGSE_TECH'
+  ];
+  // Everything else (intelField bonuses) is intel category
+
+  function allyCategory(s) {
+    if (ALLY_TACTICAL_IDS.indexOf(s.supportId) >= 0) return 'tactical';
+    if (ALLY_SIGINT_IDS.indexOf(s.supportId) >= 0) return 'sigint';
+    return 'intel';
+  }
+
+  function allyLine(s) {
+    var lbl = s.label || s.supportId;
+    var cat = allyCategory(s);
+    if (cat === 'tactical') return P([
+      lbl + ' operators arrived at the staging area under separate cover. Their team lead integrated with the field commander for final coordination.',
+      lbl + ' element attached to the assault force during the approach phase. Operators moved with rehearsed precision — zero comms, hand signals only.',
+      lbl + ' conducted a parallel breach on the secondary entry point, splitting the target\'s attention and collapsing resistance from two axes.',
+      lbl + ' provided overwatch and close-quarter clearance support during the critical breach phase. Their presence visibly stiffened the assault team\'s confidence.',
+      lbl + ' element assumed point during building clearance. Room-to-room transitions executed in under ' + R(3,6) + ' seconds per door.',
+      lbl + ' operators secured the primary objective within moments of H-hour. Economy of violence — no wasted rounds, no hesitation.',
+    ]);
+    if (cat === 'sigint') return P([
+      lbl + ' established a supplementary electronic surveillance net around the target area, intercepting ' + R(4,15) + ' additional signals.',
+      lbl + ' provided real-time communications monitoring throughout the operation. Target frequencies identified and tracked continuously.',
+      lbl + ' intercept capability detected counter-surveillance transmissions ' + R(10,30) + ' minutes before H-hour, enabling the field team to adjust approach.',
+      lbl + ' ran continuous spectrum analysis across the operational area. All hostile communications mapped and logged for post-op exploitation.',
+    ]);
+    // intel category
+    return P([
+      lbl + ' provided a pre-operation intelligence package that filled ' + R(1,3) + ' critical gaps in the target profile.',
+      lbl + ' shared classified source reporting that confirmed target disposition and security posture ahead of the assault.',
+      lbl + ' intelligence contribution was integrated into the final operational brief. Their assessment of target behavior patterns proved accurate.',
+      lbl + ' supplemented the agency\'s own holdings with ' + P(['signals intercepts','human source reporting','imagery analysis','pattern-of-life data','financial intelligence']) + ' that sharpened the targeting picture.',
+    ]);
+  }
+
+  function allyFailLine(s) {
+    var lbl = s.label || s.supportId;
+    var cat = allyCategory(s);
+    if (cat === 'tactical') return P([
+      lbl + ' element was deployed but never made contact with the target. Operators extracted cleanly alongside the primary assault force.',
+      lbl + ' operators arrived at the objective only to find the site abandoned. Their expertise was not at fault — the intelligence was.',
+      lbl + ' cleared their assigned sector without incident. The target had already evacuated before H-hour.',
+    ]);
+    if (cat === 'sigint') return P([
+      lbl + ' detected a burst transmission from the target area approximately ' + R(20,45) + ' minutes before H-hour — a possible tip-off that could not be interdicted in time.',
+      lbl + ' monitoring revealed all target communications went dark simultaneously, indicating prior warning. Analysis of the intercept gap is ongoing.',
+    ]);
+    return P([
+      lbl + ' pre-operation intelligence package did not indicate the target had been warned. The source of the compromise lies elsewhere in the chain.',
+      lbl + ' shared reporting is being re-evaluated in light of the operation\'s outcome. No fault has been attributed to their contribution at this time.',
+    ]);
+  }
+
+  function allyEvents(m, success) {
+    var allies = getAgencySupport(m);
+    if (!allies.length) return [];
+    var out = [];
+    for (var i = 0; i < allies.length; i++) {
+      out.push(success ? allyLine(allies[i]) : allyFailLine(allies[i]));
+    }
+    return out;
+  }
+
+  // Inject allied support events into timeline (after internal support, before breach)
+  function withAlliedSupport(eventArray, m, success, afterIndex) {
+    var ae = allyEvents(m, success);
+    if (!ae.length) return eventArray;
+    var pos = (afterIndex !== undefined ? afterIndex : 3);
+    if (pos > eventArray.length) pos = eventArray.length;
+    var out = eventArray.slice(0, pos);
+    for (var i = 0; i < ae.length; i++) out.push(ae[i]);
+    for (var j = pos; j < eventArray.length; j++) out.push(eventArray[j]);
+    return out;
+  }
+
+  // Assessment blurb for allied support contribution
+  function allyAssessment(m, success) {
+    var allies = getAgencySupport(m);
+    if (!allies.length) return '';
+    var labels = allies.map(function(a) { return a.label || a.supportId; });
+    var listStr = labels.length === 1 ? labels[0] : labels.slice(0, -1).join(', ') + ' and ' + labels[labels.length - 1];
+    if (success) return P([
+      'Inter-agency coordination with ' + listStr + ' was seamless — their contribution materially improved the operation\'s outcome. ',
+      'Partner support from ' + listStr + ' proved valuable. The relationship investment paid dividends on the ground. ',
+      'Allied support from ' + listStr + ' integrated smoothly into the operational plan. Joint effectiveness rated HIGH. ',
+    ]);
+    return P([
+      'Despite the outcome, coordination with ' + listStr + ' functioned as designed. The failure was not attributable to partner support. ',
+      listStr + ' support was professional throughout. The inter-agency relationship remains intact despite the operational result. ',
+    ]);
+  }
+
   // Get attached elite units
   // Check if an elite unit is from a support (non-combat) department
   function isEliteSupport(eu) {
@@ -246,8 +357,13 @@
   // First few events (approach, staging) can be spaced wider, then the
   // assault itself runs in 3-10 minute gaps, then exfil slightly wider
   // If units provided, auto-inject support department contributions after event 2
+  // Module-level debrief context — set by generateDebrief, read by assaultEvents
+  var _dbMission = null;
+  var _dbSuccess = false;
+
   function assaultEvents(events, units) {
     if (units) events = withSupport(events, units);
+    if (_dbMission) events = withAlliedSupport(events, _dbMission, _dbSuccess);
     // Start in the early hours (0100-0400 typical for night raids)
     var hour = R(1, 4);
     var min = R(0, 3) * 15;
@@ -291,6 +407,12 @@
       var eStars = typeof starsDisplay === 'function' ? starsDisplay(elites[j]) : '';
       rows += '<div class="db-asset-row db-asset-elite"><span class="db-asset-dept">' + elites[j].fullName + (eStars ? ' ' + eStars : '') + '</span><span class="db-asset-type">' + elites[j].deptName + ' — ' + eTitle + '</span></div>';
     }
+    var allies = getAgencySupport(m);
+    for (var k = 0; k < allies.length; k++) {
+      var cat = allyCategory(allies[k]);
+      var catLabel = cat === 'tactical' ? 'TACTICAL' : cat === 'sigint' ? 'SIGINT' : 'INTELLIGENCE';
+      rows += '<div class="db-asset-row db-asset-ally"><span class="db-asset-dept">' + (allies[k].label || allies[k].supportId) + '</span><span class="db-asset-type">ALLIED — ' + catLabel + '</span></div>';
+    }
     var budget = m.assignedBudget ? '$' + m.assignedBudget + 'M' : 'CLASSIFIED';
     var prob = m.successProb ? m.successProb + '%' : '—';
     return '<div class="db-section-title">DEPLOYED ASSETS</div>' +
@@ -299,7 +421,8 @@
   }
 
   function assessmentSection(text) {
-    return '<div class="db-section-title">ASSESSMENT</div><div class="db-assessment">' + text + '</div>';
+    var allyText = allyAssessment(_dbMission, _dbSuccess);
+    return '<div class="db-section-title">ASSESSMENT</div><div class="db-assessment">' + text + allyText + '</div>';
   }
 
   // ===========================================================================
@@ -1465,6 +1588,10 @@
     var mtype = m.typeId || m.missionType || m.type;
     var gen = GENERATORS[mtype];
     if (!gen) return '';
+
+    // Set module-level context for allied support injection
+    _dbMission = m;
+    _dbSuccess = success;
 
     var units = getUnits(m);
     var elites = getElites(m);
