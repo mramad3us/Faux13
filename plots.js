@@ -721,6 +721,17 @@ hook('render:after', function () {
   for (var i = 0; i < G.plots.length; i++) {
     if (G.plots[i].infiltrated === undefined) G.plots[i].infiltrated = false;
   }
+  // Reveal all org intel on infiltrated plots (fix for old saves)
+  for (var ipl = 0; ipl < G.plots.length; ipl++) {
+    var iplot = G.plots[ipl];
+    if (iplot.infiltrated && iplot.knownIntel) {
+      iplot.knownIntel.objective = true;
+      iplot.knownIntel.leader = true;
+      iplot.knownIntel.strength = true;
+      if (iplot.lieutenants) iplot.lieutenants.forEach(function (l) { l.known = true; });
+      revealPlotIntel(iplot, true);
+    }
+  }
   // Reveal all intel on missions linked to infiltrated orgs (fix for old saves)
   if (G.missions && G.plots) {
     var infiltratedIds = {};
@@ -1061,6 +1072,12 @@ hook('operation:resolved', function (data) {
     var hvtInf = G.hvts.find(function (h) { return h.linkedPlotId === plot.id; });
     if (data.success) {
       plot.infiltrated = true;
+      // Inside asset reveals all org intel
+      plot.knownIntel.objective = true;
+      plot.knownIntel.leader = true;
+      plot.knownIntel.strength = true;
+      plot.lieutenants.forEach(function (l) { l.known = true; });
+      revealPlotIntel(plot, true);
       if (hvtInf) hvtInf.knownFields.infiltration = 'ACTIVE — inside asset producing intelligence';
       addLog(
         'FILE ' + plot.fileName + ': Infiltration established. ' +
