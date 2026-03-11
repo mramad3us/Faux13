@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.0.8';
+const GAME_VERSION = '3.0.9';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -3762,7 +3762,8 @@ function renderThreats() {
     const opBusy = hasActiveMission || hasActiveOrgOp;
     const busyTip = 'An operation targeting this threat is already in progress.';
 
-    // Status-specific action sections
+    // Cooldown & status-specific action sections
+    const cooldownActive = h.cooldownUntil && G.day < h.cooldownUntil;
     let actionSection = '';
 
     if (opBusy) {
@@ -3854,7 +3855,6 @@ function renderThreats() {
       ? 'threat-card-active'
       : 'threat-card-neutralized';
 
-    const cooldownActive = h.cooldownUntil && G.day < h.cooldownUntil;
     const cooldownHtml = cooldownActive
       ? `<div class="threat-cooldown">TARGET UNDERGROUND — ${h.cooldownUntil - G.day} days remaining</div>`
       : '';
