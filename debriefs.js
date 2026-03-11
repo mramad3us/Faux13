@@ -1275,22 +1275,51 @@
         '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
     } else {
       var entries = [];
-      entries.push({ day: f.opStart, events: dayEvents([
-        f.agencyName + ' ' + taskDesc + ' request accepted. ' + unitShort(units) + ' assigned.',
-      ])});
-      entries.push({ day: f.cd, events: assaultEvents([
-        cs + ' team deployed to ' + f.city + '. ' + weather + '.',
-        P(['Target was not at the specified location.','Operational conditions were non-viable — '+P(['unexpected security presence','civilian density too high','intelligence was inaccurate','equipment failure at a critical moment'])+'.','Operation was compromised during execution. Immediate withdrawal.','Target had been alerted. Location was abandoned.']),
-        (elites.length ? eliteCombatOrSupport(elites[0],
-          elites[0].fullName + ' organized the withdrawal.',
-          elites[0].fullName + ' confirmed no pursuit via signals monitoring.') : 'Team leader called abort.') + ' ' + P(AFTERMATH_F),
-      ], units)});
 
-      var assess = 'The ' + taskDesc + ' operation for ' + f.agencyName + ' has failed. Objectives were not achieved. ' +
-        (elites.length ? eliteCombatOrSupport(elites[0],
-          elites[0].fullName + ' ensured safe withdrawal. ',
-          elites[0].fullName + ' confirmed no lasting compromise. ') : '') +
-        'This failure will negatively impact the relationship with ' + f.agencyName + '. ' + P(AFTERMATH_F);
+      if (isStrike) {
+        // Strike intelligence failure: analytical/collection failure, not a field raid
+        entries.push({ day: f.opStart, events: dayEvents([
+          f.agencyName + ' ' + taskDesc + ' request accepted. ' + unitShort(units) + ' assigned. Target: ' + target + ' in ' + f.city + '.',
+          'Intelligence collection initiated. SIGINT tasked against known communications signatures. HUMINT sources activated in ' + f.city + ' region.',
+          (elites.length ? eliteCombatOrSupport(elites[0],
+            elites[0].fullName + ' assigned as lead analyst for target package compilation.',
+            elites[0].fullName + ' coordinating multi-source intelligence fusion from the operations center.') : 'Senior analyst designated as package lead.'),
+          P(['Initial SIGINT collection returned degraded product — target appears to have changed communication patterns.','HUMINT reporting on target movements was inconsistent with satellite imagery analysis.','Preliminary target location assessment proved inconclusive. Multiple possible sites identified.','Source reporting on target security posture contained significant gaps.']),
+        ])});
+        entries.push({ day: f.cd, events: dayEvents([
+          P(['Target has relocated from the last confirmed position. All collection must be re-baselined.','SIGINT intercepts indicate target is aware of potential monitoring — communications have gone encrypted on an unknown system.','HUMINT source in ' + f.city + ' went silent after the last scheduled reporting window. Status unknown.','Satellite pass over the target area was obscured by weather. Imagery inconclusive for ' + R(2,4) + ' consecutive collection windows.']),
+          P(['Cross-referencing available intelligence: confidence level insufficient for strike authorization. Multiple data points contradict each other.','Target pattern-of-life analysis incomplete — only ' + R(20,40) + '% of required observation windows captured.','Collateral damage assessment cannot be completed without confirmed target coordinates. Package is below ' + f.agencyName + ' minimum threshold.','Environmental assessment reveals ' + P(['a school','a hospital','a residential block','a diplomatic compound']) + ' within the blast radius of the probable target location. Strike authorization unlikely without further refinement.']),
+          'Intelligence package assessed as INSUFFICIENT CONFIDENCE for strike authorization. ' + f.agencyName + ' notified.',
+          (elites.length ? eliteCombatOrSupport(elites[0],
+            elites[0].fullName + ' flagged critical gaps in the target package that could not be resolved within the operational window.',
+            elites[0].fullName + ' confirmed the analytical assessment: intelligence does not meet strike threshold.') : 'Lead analyst confirmed: targeting data does not meet required confidence level.'),
+        ])});
+
+        var assess = 'The strike intelligence operation for ' + f.agencyName + ' has failed to produce a viable targeting package. ' +
+          P(['Target location could not be confirmed with sufficient precision.','Intelligence sources provided contradictory reporting on target whereabouts.','The target adopted counter-surveillance measures that degraded our collection capability.','Collection gaps in the operational window prevented completion of the required assessments.']) + ' ' +
+          (elites.length ? eliteCombatOrSupport(elites[0],
+            elites[0].fullName + ' identified the intelligence shortfalls early, preventing delivery of a flawed package. ',
+            elites[0].fullName + ' confirmed no lasting compromise to sources or methods. ') : '') +
+          'This failure will negatively impact the relationship with ' + f.agencyName + '. A new collection cycle would be required before re-attempting the target package.';
+      } else {
+        // Detention / disruption failure: physical field operation
+        entries.push({ day: f.opStart, events: dayEvents([
+          f.agencyName + ' ' + taskDesc + ' request accepted. ' + unitShort(units) + ' assigned.',
+        ])});
+        entries.push({ day: f.cd, events: assaultEvents([
+          cs + ' team deployed to ' + f.city + '. ' + weather + '.',
+          P(['Target was not at the specified location.','Operational conditions were non-viable — '+P(['unexpected security presence','civilian density too high','intelligence was inaccurate','equipment failure at a critical moment'])+'.','Operation was compromised during execution. Immediate withdrawal.','Target had been alerted. Location was abandoned.']),
+          (elites.length ? eliteCombatOrSupport(elites[0],
+            elites[0].fullName + ' organized the withdrawal.',
+            elites[0].fullName + ' confirmed no pursuit via signals monitoring.') : 'Team leader called abort.') + ' ' + P(AFTERMATH_F),
+        ], units)});
+
+        var assess = 'The ' + taskDesc + ' operation for ' + f.agencyName + ' has failed. Objectives were not achieved. ' +
+          (elites.length ? eliteCombatOrSupport(elites[0],
+            elites[0].fullName + ' ensured safe withdrawal. ',
+            elites[0].fullName + ' confirmed no lasting compromise. ') : '') +
+          'This failure will negatively impact the relationship with ' + f.agencyName + '. ' + P(AFTERMATH_F);
+      }
 
       return headerSection(m, false) + deployedSection(units, elites, m) +
         '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
