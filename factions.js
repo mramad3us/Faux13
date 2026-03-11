@@ -394,7 +394,12 @@ window.spawnNetworkExpansion = function (theaterId) {
   if (!theater) return;
   var loc = pick(theater.cities);
 
+  var countBefore = G.missions.length;
   spawnMission('NETWORK_EXPANSION');
+  if (G.missions.length === countBefore) {
+    addLog('Cannot spawn network expansion — mission inbox is full.', 'log-warn');
+    return;
+  }
   var newest = G.missions[0];
   if (newest) {
     newest.networkTheaterId = theaterId;
