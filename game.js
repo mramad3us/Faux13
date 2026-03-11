@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.0.13';
+const GAME_VERSION = '3.0.14';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -3014,17 +3014,20 @@ function renderFolderSidebar() {
     const badgeHtml = count > 0
       ? `<span class="folder-badge ${hasUrgent ? 'folder-badge-urgent' : ''}">${count}</span>`
       : '';
+    const iconHtml = f.iconImg
+      ? `<img class="folder-icon-img" src="${f.iconImg}" alt="${f.label}">`
+      : `<span class="folder-icon ${f.iconCls || ''}">${f.icon}</span>`;
     return `<div class="folder-item ${isActive ? 'active' : ''}" onclick="switchFolder('${f.id}')">
-      <span class="folder-icon ${f.iconCls || ''}">${f.icon}</span>
+      ${iconHtml}
       <span class="folder-label">${f.label}</span>
       ${badgeHtml}
     </div>`;
   }).join('') + '<div class="folder-divider"></div>' +
   `<div class="folder-item ${G.currentFolder === 'depts' ? 'active' : ''}" onclick="switchFolder('depts')">
-    <span class="folder-icon">👥</span><span class="folder-label">Departments</span>
+    <img class="folder-icon-img" src="icons/departments.png" alt="Departments"><span class="folder-label">Departments</span>
   </div>` +
   `<div class="folder-item ${G.currentFolder === 'roster' ? 'active' : ''}" onclick="switchFolder('roster')">
-    <span class="folder-icon">★</span><span class="folder-label">Elite Roster</span>
+    <img class="folder-icon-img" src="icons/elite-roster.png" alt="Elite Roster"><span class="folder-label">Elite Roster</span>
     ${(G.eliteUnits?.filter(u => u.alive).length || 0) > 0 ? `<span class="folder-badge">${G.eliteUnits.filter(u => u.alive).length}</span>` : ''}
   </div>`;
 }
