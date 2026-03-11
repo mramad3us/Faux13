@@ -1328,6 +1328,8 @@
     FAVOR_MIL_RESCUE: gen_FAVOR_EXTRACT,
     FAVOR_MIL_SIGINT: gen_FAVOR_SIGINT_INSTALL,
     FAVOR_MIL_STRIKE: gen_FAVOR_ACTION,
+    NETWORK_EXPANSION: gen_ORG,
+    COUNTER_ESPIONAGE: gen_COUNTERINTEL,
   };
 
   // ===========================================================================

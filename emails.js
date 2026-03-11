@@ -31,7 +31,14 @@ const EMAIL_SENDERS = {
 function getEmailSender(m, status) {
   if (!m) return EMAIL_SENDERS.OPS_CENTER;
   if (status === 'INCOMING' || status === 'new') {
-    if (m.location === 'FOREIGN') return EMAIL_SENDERS.STATION;
+    if (m.location === 'FOREIGN') {
+      // Use theater-specific station name if available
+      var theaterId = m.theaterId || (typeof getMissionTheaterId === 'function' ? getMissionTheaterId(m) : null);
+      if (theaterId && typeof THEATERS !== 'undefined' && THEATERS[theaterId]) {
+        return { name: 'Station Chief', desk: THEATERS[theaterId].name + ' Station' };
+      }
+      return EMAIL_SENDERS.STATION;
+    }
     if (m.typeId?.includes('COUNTER')) return EMAIL_SENDERS.COUNTER_INTEL;
     if (m.typeId?.includes('HVT')) return EMAIL_SENDERS.FIELD_OPS;
     return EMAIL_SENDERS.ANALYSIS;

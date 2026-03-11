@@ -903,13 +903,20 @@ function renderGeoPanel() {
       }
     }
 
+    // Network health bar + faction badge + actions (from factions.js)
+    var networkHtml = typeof window.renderNetworkBar === 'function' ? window.renderNetworkBar(tid) : '';
+    var factionBadge = typeof window.renderFactionBadge === 'function' ? window.renderFactionBadge(tid) : '';
+    var actionsHtml = typeof window.renderTheaterActions === 'function' ? window.renderTheaterActions(tid) : '';
+
     html += '<div class="geo-theater-card' + (theaterEvents.length > 0 ? ' geo-theater-active' : '') + '" style="--theater-color:' + theater.color + '">' +
       '<div class="geo-theater-header">' +
         '<span class="geo-theater-icon" style="color:' + theater.color + '">' + theater.icon + '</span>' +
-        '<span class="geo-theater-name">' + theater.name + '</span>' +
+        '<span class="geo-theater-name">' + theater.name + factionBadge + '</span>' +
         '<span class="geo-risk-badge ' + riskClass + '">' + riskLabel + '</span>' +
       '</div>' +
       '<div class="geo-risk-bars">' + riskBars + '</div>' +
+      networkHtml +
+      actionsHtml +
       (eventsHtml ? '<div class="geo-events-list">' + eventsHtml + '</div>' : '') +
     '</div>';
   }

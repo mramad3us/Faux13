@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '2.2.0';
+const GAME_VERSION = '3.0.0';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -13,6 +13,7 @@ const COUNTRIES = {
   USA: {
     name: 'United States', agency: 'Special Activities Agency',
     acronym: 'SAA', flag: '🇺🇸',
+    factionId: 'FIVE_EYES_CORE', homeTheaterId: 'NORTH_AMERICA',
     leader: 'POTUS', leaderTitle: 'the President', leaderFormal: 'Mr. President',
     currency: '$', currencySymbol: '$',
     budget: 60, confidence: 70,
@@ -53,6 +54,7 @@ const COUNTRIES = {
   UK: {
     name: 'United Kingdom', agency: 'Joint Covert Operations Bureau',
     acronym: 'JCOB', flag: '🇬🇧',
+    factionId: 'EUROPEAN_ACCORD', homeTheaterId: 'WESTERN_EUROPE',
     leader: 'the Prime Minister', leaderTitle: 'the Prime Minister', leaderFormal: 'Prime Minister',
     currency: '£', currencySymbol: '£',
     budget: 40, confidence: 65,
@@ -92,6 +94,7 @@ const COUNTRIES = {
   FRANCE: {
     name: 'France', agency: 'Direction Spéciale des Opérations',
     acronym: 'DSO', flag: '🇫🇷',
+    factionId: 'EUROPEAN_ACCORD', homeTheaterId: 'WESTERN_EUROPE',
     leader: 'the Président', leaderTitle: 'the Président de la République', leaderFormal: 'Monsieur le Président',
     currency: '€', currencySymbol: '€',
     budget: 25, confidence: 60,
@@ -403,7 +406,7 @@ function startGame(countryCode) {
   G = {
     country: countryCode, cfg,
     day: 1, budget: cfg.budget, confidence: cfg.confidence,
-    xp: 0, xpThisMonth: 0,
+    xp: 0, xpThisMonth: 0, intel: 0, intelLifetime: 0,
     monthOpsCompleted: 0, monthOpsSucceeded: 0, lastRecapDay: 0,
     missions: [], depts: initDepts(cfg), log: [],
     intelMessages: [], intelIdCounter: 0,
@@ -963,8 +966,11 @@ function resolveOperation(m) {
       G.opsSucceeded++;
       G.monthOpsSucceeded++;
       gainXP(m.threat * 3, `OP ${m.codename} success`);
+      const intelGain = Math.ceil(m.threat / 2);
+      G.intel = (G.intel || 0) + intelGain;
+      G.intelLifetime = (G.intelLifetime || 0) + intelGain;
       registerOrUpdateHvt(m);
-      addLog(`SUCCESS: OP ${m.codename}. +${confGain}% confidence.`, 'log-success');
+      addLog(`SUCCESS: OP ${m.codename}. +${confGain}% confidence, +${intelGain} Intel.`, 'log-success');
     } else {
       m.status = 'FAILURE';
       m._resultNew = true; // flag for result-reveal animation
@@ -2437,7 +2443,13 @@ function registerOrUpdateHvt(m) {
     interrogationCount: 0,
     surveillanceEstablished: newStatus === 'TRACKED',
     handedTo: null,
+    factionId: null,
+    hvtIntelType: false,
   };
+  // Assign faction for intelligence-type HVTs
+  if (typeof window.assignHvtFaction === 'function') {
+    window.assignHvtFaction(entry, m.typeId, m.country);
+  }
   G.hvts.push(entry);
   // Only show pop-up for targets that remain active threats — neutralized-on-arrival needs no fanfare
   if (newStatus !== 'NEUTRALIZED') {
@@ -2490,8 +2502,14 @@ function registerOrUpdateHvtFailed(m) {
     interrogationCount: 0,
     surveillanceEstablished: false,
     handedTo: null,
+    factionId: null,
+    hvtIntelType: false,
   });
-  hvtBriefingPopup('newTargetFailed', G.hvts[G.hvts.length - 1], { codename: m.codename });
+  var failEntry = G.hvts[G.hvts.length - 1];
+  if (typeof window.assignHvtFaction === 'function') {
+    window.assignHvtFaction(failEntry, m.typeId, m.country);
+  }
+  hvtBriefingPopup('newTargetFailed', failEntry, { codename: m.codename });
 }
 
 window.openHvtMissionModal = function(hvtId) {
@@ -2707,7 +2725,10 @@ window.interrogateTarget = function(hvtId) {
     // Reveal all intel fields
     if (spawnedM.intelFields) spawnedM.intelFields.forEach(f => { f.revealed = true; });
     spawnedM.initialReport = `[INTERROGATION INTELLIGENCE — Session ${h.interrogationCount}/3 — ${h.alias}]\n\n` + spawnedM.initialReport;
-    addLog(`Interrogation session ${h.interrogationCount}/3: ${h.alias} yielded intelligence. New mission spawned: OP ${spawnedM.codename}.`, 'log-info');
+    const interrogIntel = randInt(3, 5);
+    G.intel = (G.intel || 0) + interrogIntel;
+    G.intelLifetime = (G.intelLifetime || 0) + interrogIntel;
+    addLog(`Interrogation session ${h.interrogationCount}/3: ${h.alias} yielded intelligence (+${interrogIntel} Intel). New mission spawned: OP ${spawnedM.codename}.`, 'log-info');
   }
   render();
 };
@@ -2775,7 +2796,7 @@ function renderStatusBar() {
 }
 
 // Track previous values for targeted stat-flash animations
-let _prevConf = null, _prevBudget = null, _prevXp = null;
+let _prevConf = null, _prevBudget = null, _prevXp = null, _prevIntel = null;
 
 function flashStat(el, direction) {
   if (!el) return;
@@ -2820,6 +2841,13 @@ function renderHeader() {
     if (_prevXp !== null && G.xp !== _prevXp) flashStat(statXp, G.xp - _prevXp);
   }
   _prevXp = G.xp;
+
+  const statIntel = document.getElementById('stat-intel');
+  if (statIntel) {
+    statIntel.textContent = `${G.intel || 0}`;
+    if (_prevIntel !== null && (G.intel || 0) !== _prevIntel) flashStat(statIntel, (G.intel || 0) - _prevIntel);
+  }
+  _prevIntel = G.intel || 0;
 
   // Hidden compat elements
   const confEl = document.getElementById('res-conf');
@@ -3690,11 +3718,12 @@ function renderThreats() {
           <button class="btn-threat-action danger" onclick="executeTarget('${h.id}')"
             data-tip="Execute the target. +3-7 confidence.">EXECUTE</button>
         </div>
-        ${handoverBtns ? `<div class="threat-handover-row">${handoverBtns}</div>` : ''}`;
+        ${handoverBtns ? `<div class="threat-handover-row">${handoverBtns}</div>` : ''}
+        ${typeof window.renderFactionTransferBtns === 'function' ? window.renderFactionTransferBtns(h) : ''}`;
     } else if (h.status === 'ELIMINATED') {
       actionSection = `<div class="threat-fate-badge threat-status-eliminated" style="padding:3px 8px">ELIMINATED — D${h.addedDay}</div>`;
     } else if (h.status === 'HANDED_OVER') {
-      const agName = G.cfg?.partnerAgencies?.[h.handedTo]?.name || h.handedTo || '—';
+      const agName = G.cfg?.partnerAgencies?.[h.handedTo]?.name || (typeof FACTIONS !== 'undefined' && FACTIONS[h.handedTo] ? FACTIONS[h.handedTo].name : null) || h.handedTo || '—';
       actionSection = `<div class="threat-fate-badge threat-status-handed-over" style="padding:3px 8px">Transferred to ${agName}</div>`;
     }
 

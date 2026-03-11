@@ -2853,4 +2853,128 @@ const MISSION_TYPES = {
     },
   },
 
+  // =============================================================================
+  // NETWORK EXPANSION (player-initiated from theater card)
+  // =============================================================================
+
+  NETWORK_EXPANSION: {
+    label: 'NETWORK EXPANSION',
+    category: 'INTELLIGENCE OPERATIONS',
+    location: 'FOREIGN',
+    hasSuspects: false,
+    urgencyRange: [20, 35],
+    threatRange: [2, 4],
+    invDaysRange: [3, 5],
+    execDaysRange: [4, 7],
+    budgetRange: [8, 16],
+    invDepts: ['ANALYSIS', 'HUMINT', 'SIGINT'],
+    execDepts: ['FOREIGN_OPS', 'HUMINT'],
+    invDeptEfficiency: { ANALYSIS: 60, HUMINT: 90, SIGINT: 65 },
+    agencyJustification: '{agency} requires expanded human intelligence coverage in the {theater_name} theater. Current network penetration is insufficient for adequate threat detection and operational support. Authorization is requested for a clandestine recruitment and infrastructure development program in {city}, {country}.',
+    opNarrative: 'Foreign Operations establishes a cover platform in {city}. HUMINT handlers identify and develop potential sources within the local intelligence, military, and political establishments. The recruitment cycle — spot, assess, develop, recruit — is executed methodically over the operational window. Supporting infrastructure (safe houses, dead drops, communications protocols) is established in parallel.',
+    initialReports: [
+      'Station assessment: intelligence coverage in {theater_name} theater is below operational threshold. Recommend network expansion operation in {city}, {country}.',
+      'Current HUMINT penetration in {country} is rated INADEQUATE. Source development operation in {city} is recommended to address coverage gaps.',
+      '{theater_name} theater coverage deficient. Asset recruitment operation in {city}, {country} will expand intelligence collection capability.',
+      'Intelligence gap identified in {theater_name}. Clandestine network development in {city}, {country} authorized for planning.',
+      'Source network in {country} is thin. Recommend establishing new collection platform in {city} to support theater operations.',
+    ],
+    fullReports: [
+      'NETWORK EXPANSION BRIEF \u2014 OP {codename}\n\nObjective: Establish human intelligence collection network in {city}, {country}.\n\nTarget environment: {theater_name} theater. Current penetration: LOW.\n\nApproach: Cover platform establishment, source identification and recruitment, dead-drop and communications infrastructure.\n\nTimeline: {urgency_days} days. Budget: {budget_range}.',
+      'NETWORK EXPANSION BRIEF \u2014 OP {codename}\n\nTheater: {theater_name}. Location: {city}, {country}.\n\nCurrent intelligence coverage in this area is insufficient. This operation will develop new sources within local power structures and establish supporting clandestine infrastructure.\n\nRecommended approach: gradual recruitment through established cover, supported by SIGINT targeting.',
+    ],
+    successMsgs: [
+      'Network established. Three new sources recruited in {city}. Collection infrastructure operational. {theater_name} theater coverage significantly improved.',
+      'Operation complete. Source network in {country} is now active and producing. Dead-drop chain and secure communications established. Theater coverage upgraded.',
+      'Recruitment cycle successful. Multiple assets now reporting from {city}. Cover platforms secure. {theater_name} intelligence capability enhanced.',
+      'Network expansion achieved. New collection streams active in {country}. Safe house chain and exfiltration protocols in place. Coverage rating: ADEQUATE.',
+    ],
+    failureMsgs: [
+      'Cover platform compromised in {city}. Lead recruiter identified by local CI. All assets burned. Network expansion failed.',
+      'Operation blown. Local security services arrested the principal agent in {country}. Recruitment program terminated. Coverage gap remains.',
+      'Source development unsuccessful. Target environment in {city} proved hostile. No viable assets recruited. {theater_name} coverage unchanged.',
+      'Cover story collapsed. Two officers detained briefly before diplomatic extraction. Network infrastructure abandoned. Operation failed.',
+    ],
+    confSuccess: [2, 5], confFail: [-3, -6],
+    intelFields: [
+      { key: 'cover_status', label: 'COVER PLATFORM' },
+      { key: 'recruitment_targets', label: 'RECRUITMENT TARGETS' },
+      { key: 'local_ci_assessment', label: 'LOCAL CI POSTURE' },
+    ],
+    intelFieldValues: {
+      cover_status: [
+        'Cover platform established and operational — commercial front company registered',
+        'Cover identity prepared — final documentation pending',
+      ],
+      recruitment_targets: [
+        'Three viable candidates identified — motivation and access profiles characterized',
+        'Target environment mapped — specific recruitment candidates not yet confirmed',
+      ],
+      local_ci_assessment: [
+        'Local counter-intelligence capability assessed as LIMITED — favorable operational environment',
+        'Local CI posture MODERATE — additional precautions required',
+      ],
+    },
+    vars: {
+      theater_name: ['the target theater'],
+    },
+  },
+
+  // =============================================================================
+  // COUNTER-ESPIONAGE (spawned when foreign operative detected on home soil)
+  // =============================================================================
+
+  COUNTER_ESPIONAGE: {
+    label: 'COUNTER-ESPIONAGE',
+    category: 'COUNTER-INTELLIGENCE',
+    location: 'DOMESTIC',
+    hasSuspects: false,
+    urgencyRange: [12, 20],
+    threatRange: [2, 4],
+    invDaysRange: [2, 4],
+    execDaysRange: [2, 4],
+    budgetRange: [4, 10],
+    invDepts: ['COUNTER_INTEL', 'ANALYSIS', 'SIGINT'],
+    execDepts: ['FIELD_OPS', 'COUNTER_INTEL'],
+    invDeptEfficiency: { COUNTER_INTEL: 90, ANALYSIS: 65, SIGINT: 75 },
+    agencyJustification: 'A foreign intelligence operative has been identified operating on domestic soil. This individual is conducting espionage activities that directly threaten national security. {agency} counter-intelligence authority permits apprehension and interrogation of foreign intelligence officers operating illegally within our jurisdiction.',
+    opNarrative: 'Counter-Intelligence establishes surveillance on the identified operative. Field Operations prepares a quiet arrest plan — the operative must be taken cleanly, without public exposure or diplomatic incident. The goal is capture, not confrontation.',
+    initialReports: [
+      'Counter-Intelligence has identified a foreign operative — "{alias}" — conducting intelligence activities in {city}. Recommend immediate surveillance and apprehension.',
+      'Foreign intelligence officer detected in {city}. Designated "{alias}". Assessment: active collection operation against domestic targets. Recommend CI response.',
+      'SIGINT intercepts confirm foreign intelligence activity in {city}. Operative "{alias}" identified. Counter-espionage operation authorized for planning.',
+    ],
+    fullReports: [
+      'COUNTER-ESPIONAGE BRIEF \u2014 OP {codename}\n\nTarget: "{alias}", foreign intelligence operative.\nLocation: {city}.\n\nThe target is conducting unauthorized intelligence collection on domestic soil. Assessment indicates active source recruitment and technical collection against government targets.\n\nObjective: Apprehend, interrogate, and exploit for counter-intelligence value.',
+    ],
+    successMsgs: [
+      '"{alias}" apprehended in {city}. Clean arrest — no public exposure. Operative in custody for interrogation. Significant counter-intelligence value expected.',
+      'Foreign operative "{alias}" captured during a dead-drop servicing in {city}. Communications equipment and source lists seized. Now in secure custody.',
+      '"{alias}" taken into custody at a controlled location. The operative offered no resistance. Initial debrief indicates extensive intelligence on foreign service operations.',
+    ],
+    failureMsgs: [
+      '"{alias}" evaded arrest in {city}. Operative detected surveillance and activated an emergency exfiltration plan. Believed to have left the country.',
+      'Operation compromised. "{alias}" destroyed all materials before CI team could intervene. Operative claimed diplomatic immunity and was expelled.',
+      '"{alias}" was not present at expected location. Intelligence suggests the operative was warned. Foreign service likely extracted their officer.',
+    ],
+    confSuccess: [4, 8], confFail: [-3, -6],
+    intelFields: [
+      { key: 'operative_identity', label: 'OPERATIVE IDENTITY' },
+      { key: 'collection_targets', label: 'COLLECTION TARGETS' },
+    ],
+    intelFieldValues: {
+      operative_identity: [
+        'Identity confirmed — operating under diplomatic cover',
+        'Probable identification — cover status unclear',
+      ],
+      collection_targets: [
+        'Collection targets identified — government defense programs',
+        'Target set unknown — appears broad-spectrum collection',
+      ],
+    },
+    vars: {
+      alias: ['the target'],
+    },
+  },
+
 };
