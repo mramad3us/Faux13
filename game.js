@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.2.2';
+const GAME_VERSION = '3.2.3';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -4141,7 +4141,7 @@ function showHelp() {
 
       <div class="help-section">
         <div class="help-section-title">ELITE UNITS</div>
-        <p>As departments gain experience, elite specialist units can be created — dedicated teams attached to specific operations for a probability bonus. Maximum 7 active elite units at any time; duplicate department types are not permitted (e.g., only one SIGINT elite can be active).</p>
+        <p>As departments gain experience, elite specialist units can be created — dedicated teams attached to specific operations for a probability bonus. Maximum ${MAX_ELITE_UNITS} active elite units at any time; duplicate department types are not permitted (e.g., only one SIGINT elite can be active).</p>
         <p style="margin-top:8px"><strong>Cooldown:</strong> After deployment, an elite unit is unavailable for 7 days. Plan assignments carefully.</p>
         <p style="margin-top:8px"><strong>Risk of loss:</strong> When an operation with attached elite units fails, those units may be lost permanently:</p>
         <div class="help-flow" style="margin-top:6px">

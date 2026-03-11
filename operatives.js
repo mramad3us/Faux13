@@ -182,6 +182,7 @@ function notifyPromotion(unit, opCodename) {
 // =============================================================================
 
 var ELITE_COOLDOWN_DAYS = 7;
+var MAX_ELITE_UNITS = 7;
 
 function isEliteOnCooldown(unit) {
   if (!unit.lastDeployedDay) return false;
@@ -291,7 +292,7 @@ hook('operation:resolved', function (data) {
   for (var c = 0; c < (G.eliteUnits || []).length; c++) {
     if (G.eliteUnits[c].alive) aliveCount++;
   }
-  if (aliveCount >= 7) return;
+  if (aliveCount >= MAX_ELITE_UNITS) return;
 
   // Pick a dept that was used in the op, excluding depts that already have an active elite
   var depts = (m.assignedExecDepts || []).filter(function (d) {
@@ -676,7 +677,7 @@ function renderRoster() {
 
   if (alive.length > 0) {
     var legendaryCount = alive.filter(function(u) { return u.stars >= 3; }).length;
-    var rosterLabel = legendaryCount > 0 ? 'ACTIVE UNITS (' + alive.length + '/6)' : 'ACTIVE ELITE UNITS (' + alive.length + '/6)';
+    var rosterLabel = legendaryCount > 0 ? 'ACTIVE UNITS (' + alive.length + '/' + MAX_ELITE_UNITS + ')' : 'ACTIVE ELITE UNITS (' + alive.length + '/' + MAX_ELITE_UNITS + ')';
     html += '<div class="roster-section-hdr">' + rosterLabel + '</div>';
     for (var i = 0; i < alive.length; i++) html += renderEliteCard(alive[i]);
   }
