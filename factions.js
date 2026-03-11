@@ -401,17 +401,19 @@ window.spawnNetworkExpansion = function (theaterId) {
     newest.city = loc.city;
     newest.country = loc.country;
     newest.location = 'FOREIGN';
-    // Re-stamp text fields with correct location
+    // Update fillVars with correct theater location
     if (newest.fillVars) {
       newest.fillVars.city = loc.city;
       newest.fillVars.country = loc.country;
       newest.fillVars.theater_name = theater.name;
     }
-    var textFields = ['initialReport', 'fullReport', 'opNarrative'];
-    for (var i = 0; i < textFields.length; i++) {
-      if (newest[textFields[i]] && newest.fillVars) {
-        newest[textFields[i]] = fillTemplate(newest[textFields[i]], newest.fillVars);
-      }
+    // Re-generate text from original templates (spawnMission already baked wrong city)
+    var tmpl = MISSION_TYPES.NETWORK_EXPANSION;
+    if (tmpl && newest.fillVars) {
+      newest.initialReport = fillTemplate(pick(tmpl.initialReports), newest.fillVars);
+      newest.fullReport = fillTemplate(pick(tmpl.fullReports), newest.fillVars);
+      if (tmpl.opNarrative) newest.opNarrative = fillTemplate(tmpl.opNarrative, newest.fillVars);
+      if (tmpl.agencyJustification) newest.agencyJustification = fillTemplate(tmpl.agencyJustification, newest.fillVars);
     }
     addLog('Network expansion operation authorized: ' + theater.name + ' theater. OP ' + newest.codename + '.', 'log-info');
   }
