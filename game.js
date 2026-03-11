@@ -3024,10 +3024,10 @@ function renderFolderSidebar() {
     </div>`;
   }).join('') + '<div class="folder-divider"></div>' +
   `<div class="folder-item ${G.currentFolder === 'depts' ? 'active' : ''}" onclick="switchFolder('depts')">
-    <img class="folder-icon-img" src="icons/departments.png" alt="Departments"><span class="folder-label">Departments</span>
+    <img class="folder-icon-img" src="icons/departments.svg" alt="Departments"><span class="folder-label">Departments</span>
   </div>` +
   `<div class="folder-item ${G.currentFolder === 'roster' ? 'active' : ''}" onclick="switchFolder('roster')">
-    <img class="folder-icon-img" src="icons/elite-roster.png" alt="Elite Roster"><span class="folder-label">Elite Roster</span>
+    <img class="folder-icon-img" src="icons/elite-roster.svg" alt="Elite Roster"><span class="folder-label">Elite Roster</span>
     ${(G.eliteUnits?.filter(u => u.alive).length || 0) > 0 ? `<span class="folder-badge">${G.eliteUnits.filter(u => u.alive).length}</span>` : ''}
   </div>`;
 }

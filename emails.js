@@ -187,12 +187,12 @@ function getEventSender(event) {
 
 // --- Folder definitions ---
 const MAIL_FOLDERS = [
-  { id: 'inbox',    label: 'Inbox',        iconImg: 'icons/inbox.png' },
-  { id: 'pending',  label: 'Pending',      iconImg: 'icons/pending.png' },
-  { id: 'active',   label: 'Active Ops',   iconImg: 'icons/active.png' },
-  { id: 'results',  label: 'Results',      iconImg: 'icons/results.png' },
-  { id: 'threats',  label: 'Threat Files', iconImg: 'icons/threats.png' },
-  { id: 'agencies', label: 'Agencies',     iconImg: 'icons/agencies.png' },
-  { id: 'geo',      label: 'World Intel',  iconImg: 'icons/world-intel.png' },
-  { id: 'archive',  label: 'Archive',      iconImg: 'icons/archive.png' },
+  { id: 'inbox',    label: 'Inbox',        iconImg: 'icons/inbox.svg' },
+  { id: 'pending',  label: 'Pending',      iconImg: 'icons/pending.svg' },
+  { id: 'active',   label: 'Active Ops',   iconImg: 'icons/active.svg' },
+  { id: 'results',  label: 'Results',      iconImg: 'icons/results.svg' },
+  { id: 'threats',  label: 'Threat Files', iconImg: 'icons/threats.svg' },
+  { id: 'agencies', label: 'Agencies',     iconImg: 'icons/agencies.svg' },
+  { id: 'geo',      label: 'World Intel',  iconImg: 'icons/world-intel.svg' },
+  { id: 'archive',  label: 'Archive',      iconImg: 'icons/archive.svg' },
 ];
