@@ -967,6 +967,8 @@ input[type="range"] { accent-color: var(--accent); }
 .dc-badge.location-domestic { background: var(--purple-dim); color: var(--purple); }
 .dc-badge.dc-badge-linked { background: var(--teal-dim, rgba(0,200,180,0.12)); color: var(--teal, #00c8b4); border: 1px solid var(--teal, #00c8b4); }
 .dc-badge.dc-badge-linked:hover { background: rgba(0,200,180,0.25); }
+.dc-badge.dc-badge-netmod-pos { background: rgba(46,204,113,0.12); color: var(--green, #2ecc71); border: 1px solid rgba(46,204,113,0.4); }
+.dc-badge.dc-badge-netmod-neg { background: rgba(231,76,60,0.12); color: var(--red, #e84848); border: 1px solid rgba(231,76,60,0.4); }
 
 .dc-section { margin-top: 16px; }
 .dc-section-title {

@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.2.7';
+const GAME_VERSION = '3.2.8';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -1465,6 +1465,29 @@ function calcOpProb(m, budget, depts, selectedSupport) {
   return clamp(p, 10, 92);
 }
 
+// Network modifier badge for mission cards and op config
+function networkModBadge(m) {
+  if (typeof getMissionTheaterId !== 'function' || typeof getNetworkModifier !== 'function') return '';
+  const tid = getMissionTheaterId(m);
+  if (!tid) return '';
+  const mod = getNetworkModifier(tid);
+  if (mod === 0) return '';
+  const theater = typeof THEATERS !== 'undefined' && THEATERS[tid] ? THEATERS[tid].name : tid;
+  if (mod > 0) return `<span class="dc-badge dc-badge-netmod dc-badge-netmod-pos" data-tip="Network strength in ${theater} provides a bonus to operations.">NETWORK: +${mod}%</span>`;
+  return `<span class="dc-badge dc-badge-netmod dc-badge-netmod-neg" data-tip="Weak network presence in ${theater} penalizes operations.">NETWORK: ${mod}%</span>`;
+}
+
+function networkModNote(m) {
+  if (typeof getMissionTheaterId !== 'function' || typeof getNetworkModifier !== 'function') return '';
+  const tid = getMissionTheaterId(m);
+  if (!tid) return '';
+  const mod = getNetworkModifier(tid);
+  if (mod === 0) return '';
+  const theater = typeof THEATERS !== 'undefined' && THEATERS[tid] ? THEATERS[tid].name : tid;
+  if (mod > 0) return `<div class="op-penalty-note op-penalty-bonus">★ NETWORK ADVANTAGE: +${mod}% success probability. Strong presence in ${theater}.</div>`;
+  return `<div class="op-penalty-note op-penalty-blown">⚠ WEAK NETWORK: ${mod}% success probability. Insufficient presence in ${theater}.</div>`;
+}
+
 function openOperationModal(missionId) {
   const m = getMission(missionId);
   if (!m) return;
@@ -1548,7 +1571,7 @@ function openOperationModal(missionId) {
           <span class="op-config-title">CONFIGURE OPERATION</span>
           <button class="op-config-close" onclick="openOperationModal('${missionId}')">✕</button>
         </div>
-        ${penaltyNote}${intelNote}${blownNote}
+        ${penaltyNote}${intelNote}${blownNote}${networkModNote(m)}
         <div class="op-config-section anim-section" style="animation-delay:0.05s">
           <div class="modal-section-title">OPERATION PLAN</div>
           <div class="op-narrative">${m.opNarrative}</div>
@@ -3410,6 +3433,7 @@ function renderReadingPane() {
       <span class="dc-badge ${locCls}">${m.location === 'FOREIGN' ? `${m.city}, ${m.country}` : `${m.city} [DOMESTIC]`}</span>
       <span class="dc-badge">DEADLINE: ${m.urgencyLeft}d</span>
       ${linkedThreatBadge}
+      ${networkModBadge(m)}
     </div>
     ${renderPhaseRoadmap(m)}
   `;
