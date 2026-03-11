@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.2.5';
+const GAME_VERSION = '3.2.6';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -782,6 +782,41 @@ function advanceDay() {
             nm.category = nm.category.replace(/^(BUREAU|AGENCY|MILITARY) FAVOR/, sn + ' FAVOR');
           }
         }
+      }
+    }
+  }
+
+  // Check for HVTs resurfacing from underground cooldown
+  if (G.hvts) {
+    for (let hi = 0; hi < G.hvts.length; hi++) {
+      const hv = G.hvts[hi];
+      if (hv.cooldownUntil && hv.cooldownUntil === G.day && hv.status === 'ACTIVE') {
+        hv.cooldownUntil = null;
+        addLog(`TARGET REACQUIRED: "${hv.alias}" has resurfaced. Operations may resume.`, 'log-info');
+        const reacquireIntros = [
+          '"' + hv.alias + '" is back on the grid. After weeks of silence, our monitoring stations have picked up activity consistent with the target resuming normal operational patterns.',
+          'SIGINT has reacquired "' + hv.alias + '". A burst of communications from known associates suggests the target has resurfaced and resumed contact with their network. The window is reopening.',
+          'Pattern-of-life analysis has flagged a match. "' + hv.alias + '" was spotted by imagery analysts at a location consistent with their known operational area. The target is no longer underground.',
+          'After an extended absence, "' + hv.alias + '" has resurfaced. A trusted HUMINT source has confirmed sightings. The target appears to believe the danger has passed.',
+          'One of our watchers has made a positive identification. "' + hv.alias + '" was observed moving through ' + (hv.knownFields?.city || 'the operational area') + '. Counter-surveillance was minimal — the subject appears to have relaxed their guard.',
+          'Technical surveillance has reacquired "' + hv.alias + '". The target made a comms error — using a device flagged in our system. We now have a fresh intercept trail to follow.',
+          'Our analysts have confirmed that "' + hv.alias + '" has broken cover. Financial activity traced to known fronts indicates the target is once again operational. The hunt can resume.',
+          'A liaison service has passed intelligence confirming "' + hv.alias + '" has been sighted in ' + (hv.knownFields?.city || 'the region') + '. Multiple corroborating indicators suggest the target is no longer in hiding.',
+        ];
+        const reacquireClosers = [
+          'Operations against this target may now be resumed. Recommend immediate allocation of surveillance resources to re-establish a track before the subject moves again.',
+          'Our assessment: the target\'s security posture has degraded since going underground. This may represent our best opportunity to act before they tighten protocols again.',
+          'Intelligence collection priority for this target has been elevated to IMMEDIATE. All departments should be prepared to support rapid-response operations.',
+          'The target is mobile and potentially vulnerable. Time is a factor — extended delay risks another disappearance.',
+        ];
+        queueBriefingPopup({
+          title: 'TARGET REACQUIRED',
+          category: 'HVT ALERT',
+          subtitle: hv.alias + ' — ' + (hv.knownFields?.city || 'Location pending') + (hv.knownFields?.country ? ', ' + hv.knownFields.country : ''),
+          accent: 'var(--green)',
+          body: '<p>' + pick(reacquireIntros) + '</p><p>' + pick(reacquireClosers) + '</p>',
+          buttonLabel: 'ACKNOWLEDGED',
+        });
       }
     }
   }
