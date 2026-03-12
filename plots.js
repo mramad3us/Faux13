@@ -974,7 +974,7 @@ hook('day:pre', function () {
         category: 'INTELLIGENCE LOSS',
         subtitle: org.orgName + ' — Asset Burned',
         accent: 'rgba(231, 76, 60, 0.9)',
-        body: '<p>' + pick(INFIL_LOST_REASONS) + '</p><p>The +10% operational bonus for ' + org.orgName + ' is no longer in effect. Weekly intelligence from the inside asset has ceased. A new infiltration operation must be authorized to restore access.</p>',
+        body: '<p>' + pick(INFIL_LOST_REASONS) + '</p><p>Without eyes on the inside, our operational planning against ' + org.orgName + ' will be significantly degraded. We are back to working from external collection only — expect reduced accuracy on future operations targeting this network. A new infiltration operation must be authorized to restore the advantage we have lost.</p><p style="font-size:9px;color:var(--text-dim);margin-top:8px">Analyst note: infiltration bonus no longer applies to linked operations.</p>',
         buttonLabel: 'ACKNOWLEDGED',
       });
     }
@@ -1084,7 +1084,7 @@ hook('operation:resolved', function (data) {
       if (hvtInf) hvtInf.knownFields.infiltration = 'ACTIVE — inside asset producing intelligence';
       addLog(
         'FILE ' + plot.fileName + ': Infiltration established. ' +
-        plot.orgName + ' is now compromised from within. +10% on all linked ops.',
+        plot.orgName + ' is now compromised from within. Inside asset producing actionable intelligence.',
         'log-success'
       );
       gainXP(5, 'FILE ' + plot.fileName + ' infiltrated');
@@ -1223,7 +1223,7 @@ hook('render:after', function () {
     '<span class="plot-banner-progress">' + completedSteps + '/' + selPlot.totalSteps + ' operations</span>' +
     (selMission.isOrgInfiltration ? '<span class="plot-banner-climax" style="background:var(--purple)">INFILTRATION OP</span>' : '') +
     (selMission.isOrgTakedown ? '<span class="plot-banner-climax">TAKEDOWN OP</span>' : '') +
-    (selPlot.infiltrated ? '<span class="plot-banner-climax" style="background:var(--green-dim)">INFILTRATED +10%</span>' : '');
+    (selPlot.infiltrated ? '<span class="plot-banner-climax" style="background:var(--green-dim)" data-tip="Inside asset active. Operations against this network benefit from internal intelligence.">INFILTRATED — ASSET INSIDE</span>' : '');
 
   detailEl.insertBefore(banner, detailEl.firstChild);
 });
