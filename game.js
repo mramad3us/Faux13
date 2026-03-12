@@ -2966,6 +2966,7 @@ function renderHeader() {
 }
 
 let _prevFolderCounts = {};
+let _sidebarPillTop = null; // track pill position for slide animation
 function renderFolderSidebar() {
   const el = document.getElementById('sidebar');
   if (!el) return;
@@ -3004,6 +3005,29 @@ function renderFolderSidebar() {
     <img class="folder-icon-img" src="icons/elite-roster.svg" alt="Elite Roster"><span class="folder-label">Elite Roster</span>
     ${(G.eliteUnits?.filter(u => u.alive).length || 0) > 0 ? `<span class="folder-badge">${G.eliteUnits.filter(u => u.alive).length}</span>` : ''}
   </div>`;
+
+  // --- Sliding pill highlight ---
+  const activeItem = el.querySelector('.folder-item.active');
+  if (activeItem) {
+    const pill = document.createElement('div');
+    pill.className = 'sidebar-pill';
+    el.appendChild(pill);
+    const itemTop = activeItem.offsetTop;
+    const itemH = activeItem.offsetHeight;
+    // Set initial position instantly (from previous known position or current)
+    if (_sidebarPillTop !== null) {
+      pill.style.top = _sidebarPillTop + 'px';
+      pill.style.height = itemH + 'px';
+      // Force layout, then transition to new position
+      pill.offsetHeight;
+      pill.style.top = itemTop + 'px';
+    } else {
+      pill.style.transition = 'none';
+      pill.style.top = itemTop + 'px';
+      pill.style.height = itemH + 'px';
+    }
+    _sidebarPillTop = itemTop;
+  }
 
   // Pop-animate badges whose counts changed
   el.querySelectorAll('.folder-item').forEach(item => {
