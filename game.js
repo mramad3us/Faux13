@@ -4218,12 +4218,18 @@ function initTooltips() {
     if (el && el.dataset.tip) {
       tip.textContent = el.dataset.tip;
       tip.classList.add('visible');
-      const x = e.clientX + 16, y = e.clientY - 8;
       tip.style.left = '0px'; tip.style.top = '0px';
       requestAnimationFrame(() => {
         const tw = tip.offsetWidth, th = tip.offsetHeight;
-        tip.style.left = Math.min(x, window.innerWidth  - tw - 10) + 'px';
-        tip.style.top  = Math.max(8, Math.min(y, window.innerHeight - th - 10)) + 'px';
+        const preferX = e.clientX + 16;
+        const preferY = e.clientY - 8;
+        const lx = Math.min(preferX, window.innerWidth - tw - 10);
+        // Flip above cursor if tooltip would overflow bottom
+        const ly = (preferY + th + 10 > window.innerHeight)
+          ? e.clientY - th - 12
+          : preferY;
+        tip.style.left = Math.max(8, lx) + 'px';
+        tip.style.top  = Math.max(8, ly) + 'px';
       });
     } else {
       tip.classList.remove('visible');
