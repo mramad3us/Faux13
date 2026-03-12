@@ -2458,3 +2458,52 @@ input[type="range"] { accent-color: var(--accent); }
 .upgrade-row:hover {
   background: rgba(255,255,255,0.02);
 }
+
+/* ===== v4.2.0 — Apple-style transitions ===== */
+
+/* Modal close: scale down + fade out */
+@keyframes modalCloseAnim {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.92); }
+}
+.modal-closing .modal-box {
+  animation: modalCloseAnim 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+.modal-closing {
+  animation: fadeOut 0.25s ease forwards;
+  pointer-events: none;
+}
+@keyframes fadeOut {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Time-skip overlay fade out */
+.time-skip-out {
+  animation: fadeOut 0.35s ease forwards;
+  pointer-events: none;
+}
+.time-skip-out .time-skip-box {
+  animation: modalCloseAnim 0.35s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* Inline confirm collapse out */
+@keyframes inlineConfirmOut {
+  0%   { max-height: 120px; opacity: 1; }
+  50%  { opacity: 0; }
+  100% { max-height: 0; opacity: 0; margin: 0; padding: 0; }
+}
+.inline-confirm-out {
+  animation: inlineConfirmOut 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Reading pane crossfade */
+@keyframes rpFadeIn {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.rp-fade-in {
+  animation: rpFadeIn 0.2s ease-out both;
+}

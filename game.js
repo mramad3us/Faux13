@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '4.1.3';
+const GAME_VERSION = '4.2.0';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // config.js (COUNTRIES, DEPT_CONFIG, FOREIGN_CITIES, etc.) must precede this file
@@ -590,9 +590,14 @@ function advanceToNextEvent() {
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:4px">${formatGameDate(G.day)}</div>
       </div>
     `;
-    overlay.addEventListener('click', () => overlay.remove());
+    function dismissOverlay() {
+      if (overlay.classList.contains('time-skip-out')) return;
+      overlay.classList.add('time-skip-out');
+      setTimeout(() => overlay.remove(), 350);
+    }
+    overlay.addEventListener('click', dismissOverlay);
     document.body.appendChild(overlay);
-    setTimeout(() => overlay.remove(), 2500);
+    setTimeout(dismissOverlay, 2500);
   }
 }
 
@@ -910,13 +915,25 @@ window.confirmAction = function(btnEl, message, actionFn) {
     <div class="inline-confirm-inner">
       <div class="inline-confirm-msg">${message}</div>
       <div class="inline-confirm-actions">
-        <button class="btn-primary btn-sm" onclick="this.closest('.inline-confirm').remove(); if(window._pendingConfirmAction) window._pendingConfirmAction();">CONFIRM</button>
-        <button class="btn-neutral btn-sm" onclick="this.closest('.inline-confirm').remove(); window._pendingConfirmAction=null;">CANCEL</button>
+        <button class="btn-primary btn-sm" onclick="dismissConfirm(this, true)">CONFIRM</button>
+        <button class="btn-neutral btn-sm" onclick="dismissConfirm(this, false)">CANCEL</button>
       </div>
     </div>
   `;
   btnEl.parentElement.insertBefore(panel, btnEl.nextSibling);
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+// Animated dismiss for inline confirm panels
+window.dismissConfirm = function(btnEl, doAction) {
+  const panel = btnEl.closest('.inline-confirm');
+  if (!panel) return;
+  if (doAction && window._pendingConfirmAction) {
+    window._pendingConfirmAction();
+  }
+  window._pendingConfirmAction = null;
+  panel.classList.add('inline-confirm-out');
+  setTimeout(() => panel.remove(), 300);
 };
 
 // Follow a mission to whatever folder it now belongs in
@@ -3064,6 +3081,10 @@ function renderPhaseRoadmap(m) {
 function renderReadingPane() {
   const paneEl = document.getElementById('reading-pane');
   if (!paneEl) return;
+  // Apple-style crossfade: brief fade-in on each content swap
+  paneEl.classList.remove('rp-fade-in');
+  void paneEl.offsetHeight; // force reflow to restart animation
+  paneEl.classList.add('rp-fade-in');
 
   const folder = G.currentFolder;
 
@@ -4084,7 +4105,15 @@ function showHelp() {
 // =============================================================================
 
 function showModal()     { document.getElementById('modal-overlay').classList.remove('hidden'); }
-function hideModal()     { document.getElementById('modal-overlay').classList.add('hidden'); }
+function hideModal() {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay || overlay.classList.contains('hidden')) return;
+  overlay.classList.add('modal-closing');
+  setTimeout(() => {
+    overlay.classList.add('hidden');
+    overlay.classList.remove('modal-closing');
+  }, 250);
+}
 function closeModalBg(e) { if (e.target === document.getElementById('modal-overlay')) hideModal(); }
 
 // ---- Briefing messages — routed to inbox as intel messages ----
