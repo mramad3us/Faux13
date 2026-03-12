@@ -211,11 +211,11 @@ var _factionMigrated = false;
 hook('render:after', function () {
   if (_factionMigrated) return;
   _factionMigrated = true;
-  // Fix missing hardness on faction-spawned HVTs (pre-3.3.1)
+  // Reclassify all HVT hardness on load (ensures updated rules apply to old saves)
   if (G.hvts && typeof classifyHvtHardness === 'function') {
     for (var hi = 0; hi < G.hvts.length; hi++) {
       var hv = G.hvts[hi];
-      if (!hv.hardness && hv.role) hv.hardness = classifyHvtHardness(hv.role);
+      if (hv.role) hv.hardness = classifyHvtHardness(hv.role);
     }
   }
   if (G.intel === undefined) G.intel = 0;
