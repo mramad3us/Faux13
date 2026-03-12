@@ -1000,14 +1000,13 @@ hook('day:pre', function () {
     }
 
     var newHvtId = 'H' + (++G.hvtIdCounter);
-    var newCity = th.knownFields ? th.knownFields.city : null;
-    var newCountry = th.knownFields ? th.knownFields.country : null;
+    var spawnLoc = typeof pickHvtSpawnLocation === 'function' ? pickHvtSpawnLocation(th) : { city: th.knownFields ? th.knownFields.city : null, country: th.knownFields ? th.knownFields.country : null };
     G.hvts.push({
       id: newHvtId, type: 'HVT', alias: newAlias, role: newRole,
       org: th.org || 'Unknown Network',
       threat: Math.min((th.threat || 2), 5),
       location: th.location || 'FOREIGN', status: 'ACTIVE',
-      knownFields: { city: newCity, country: newCountry },
+      knownFields: { city: spawnLoc.city, country: spawnLoc.country },
       gaps: ['Identity requires verification', 'Current location unconfirmed', 'Role within network unconfirmed'],
       linkedMissionIds: [], addedDay: G.day,
       detainedAt: null, detainedDay: null, interrogationCount: 0,

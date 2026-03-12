@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.2.8';
+const GAME_VERSION = '3.2.9';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -2811,6 +2811,53 @@ function relocateHvt(h) {
   }
 }
 
+// Pick city/country for a spawned HVT based on source HVT's location.
+// 80% chance: same theater, different city. 20% chance: different theater entirely.
+function pickHvtSpawnLocation(sourceHvt) {
+  var oldCity = sourceHvt.knownFields ? sourceHvt.knownFields.city : null;
+  var sameTheater = Math.random() < 0.80;
+
+  if (sourceHvt.location === 'DOMESTIC' && G.cfg && G.cfg.domesticCities) {
+    // Domestic: always same theater (domestic), just different city
+    var domCandidates = G.cfg.domesticCities.filter(function(c) { return c !== oldCity; });
+    if (domCandidates.length > 0) { var c = pick(domCandidates); return { city: c, country: G.cfg.name }; }
+    return { city: oldCity, country: G.cfg ? G.cfg.name : null };
+  }
+
+  if (typeof THEATERS === 'undefined') return { city: oldCity, country: sourceHvt.knownFields ? sourceHvt.knownFields.country : null };
+
+  // Find source theater
+  var sourceTheaterId = null;
+  var theaterIds = Object.keys(THEATERS);
+  for (var i = 0; i < theaterIds.length; i++) {
+    var th = THEATERS[theaterIds[i]];
+    if (th.cities && th.cities.some(function(c) { return c.city === oldCity; })) {
+      sourceTheaterId = theaterIds[i];
+      break;
+    }
+  }
+
+  var candidates = [];
+  if (sameTheater && sourceTheaterId) {
+    // Same theater, different city
+    candidates = THEATERS[sourceTheaterId].cities.filter(function(c) { return c.city !== oldCity; });
+  }
+  if (!sameTheater || candidates.length === 0) {
+    // Different theater
+    var otherTheaters = theaterIds.filter(function(t) { return t !== sourceTheaterId && THEATERS[t].cities && THEATERS[t].cities.length > 0; });
+    if (otherTheaters.length > 0) {
+      var picked = pick(otherTheaters);
+      candidates = THEATERS[picked].cities;
+    }
+  }
+  // Fallback
+  if (candidates.length === 0 && typeof FOREIGN_CITIES !== 'undefined') {
+    candidates = FOREIGN_CITIES.filter(function(c) { return c.city !== oldCity; });
+  }
+  if (candidates.length > 0) { var loc = pick(candidates); return { city: loc.city, country: loc.country }; }
+  return { city: oldCity, country: sourceHvt.knownFields ? sourceHvt.knownFields.country : null };
+}
+
 function registerOrUpdateHvtFailed(m) {
   // Set cooldown on the linked HVT — target goes to ground
   if (m.linkedHvtId) {
@@ -3107,13 +3154,12 @@ window.interrogateTarget = function(hvtId) {
     const orgLabel = h.org || 'Unknown Network';
     const newRole = pick(['logistics coordinator', 'communications handler', 'safe house operator', 'courier', 'recruiter', 'financial facilitator', 'cell commander', 'weapons specialist']);
     const newId = `H${++G.hvtIdCounter}`;
-    const city = h.knownFields?.city || null;
-    const country = h.knownFields?.country || null;
+    const spawnLoc = pickHvtSpawnLocation(h);
     const newHvt = {
       id: newId, type: 'HVT', alias: newAlias, role: newRole,
       org: orgLabel, threat: Math.min((h.threat || 2) + 1, 5),
       location: h.location || 'FOREIGN', status: 'ACTIVE',
-      knownFields: { city: city, country: country },
+      knownFields: { city: spawnLoc.city, country: spawnLoc.country },
       gaps: ['Identity requires verification', 'Current location unconfirmed', 'Security detail unknown'],
       linkedMissionIds: [], addedDay: G.day,
       detainedAt: null, detainedDay: null, interrogationCount: 0,
