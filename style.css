@@ -2633,6 +2633,13 @@ input[type="range"] { accent-color: var(--accent); }
 /* --- Prob display: dramatic number reveal --- */
 .prob-value { transition: color 0.3s; }
 
+/* --- Genie effect ghost --- */
+.genie-ghost {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transform-origin: center center;
+}
+
 /* --- Header CHECK MAIL button: idle glow pulse --- */
 .hdr-btn-go { animation: glowPulse 3s ease-in-out infinite; }
 .hdr-btn-go:hover { animation: none; }
