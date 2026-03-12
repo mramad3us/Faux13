@@ -1438,7 +1438,7 @@ input[type="range"] { accent-color: var(--accent); }
   overflow: hidden;
 }
 .op-actions-centering {
-  transition: justify-content 0.3s ease;
+  transition: justify-content 0.36s ease;
   justify-content: center;
 }
 
