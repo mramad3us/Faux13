@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '4.3.0';
+const GAME_VERSION = '4.2.3';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // config.js (COUNTRIES, DEPT_CONFIG, FOREIGN_CITIES, etc.) must precede this file
@@ -606,18 +606,9 @@ function advanceToNextEvent() {
 // =============================================================================
 
 function switchFolder(folderId) {
-  if (folderId === G.currentFolder) return;
-  const pane = document.getElementById('reading-pane');
-  const content = pane?.firstElementChild;
-  const prevFolder = G.currentFolder;
   G.currentFolder = folderId;
   G.selected = null;
   G.selectedType = null;
-  // Genie the old reading pane content back into the previous folder
-  if (content && !content.classList.contains('rp-empty')) {
-    genieEffect(content, prevFolder);
-    content.style.opacity = '0';
-  }
   render();
 }
 
@@ -964,21 +955,7 @@ function followMission(missionId) {
   render();
 }
 function selectIntelMessage(id) { G.selected = id; G.selectedType = 'intel'; const msg = G.intelMessages.find(m => m.id === id); if (msg) msg.read = true; render(); }
-function acknowledgeIntelMessage(id) {
-  const pane = document.getElementById('reading-pane');
-  const content = pane?.querySelector('.email-wrap');
-  if (content) {
-    genieEffect(content, 'archive', () => {
-      G.intelMessages = G.intelMessages.filter(m => m.id !== id);
-      G.selected = null; G.selectedType = null; render();
-    });
-    // Hide original immediately so genie ghost is the only visible copy
-    content.style.opacity = '0';
-  } else {
-    G.intelMessages = G.intelMessages.filter(m => m.id !== id);
-    G.selected = null; G.selectedType = null; render();
-  }
-}
+function acknowledgeIntelMessage(id) { G.intelMessages = G.intelMessages.filter(m => m.id !== id); G.selected = null; G.selectedType = null; render(); }
 
 function assignInvestigation(missionId, deptId) {
   const m    = getMission(missionId);
@@ -1006,22 +983,15 @@ function assignInvestigation(missionId, deptId) {
 
 function archiveMission(missionId) {
   const m = getMission(missionId);
-  const pane = document.getElementById('reading-pane');
-  const content = pane?.querySelector('.email-wrap');
   if (m) {
     m.status = 'ARCHIVED';
     m.archivedDay = G.day;
   }
   pruneArchive();
+  // Stay in current folder, deselect
   G.selected = null;
   G.selectedType = null;
-  if (content) {
-    genieEffect(content, 'archive');
-    content.style.opacity = '0';
-    setTimeout(() => render(), 200);
-  } else {
-    render();
-  }
+  render();
 }
 
 function pruneArchive() {
@@ -4222,83 +4192,6 @@ function showHelp() {
 }
 
 // =============================================================================
-// GENIE EFFECT — Fold-and-fly dismiss animation
-// =============================================================================
-
-function genieEffect(sourceEl, targetFolderId, onDone) {
-  const targetItem = document.querySelector(`.folder-item[onclick*="'${targetFolderId}'"]`);
-  if (!sourceEl || !targetItem) { if (onDone) onDone(); return; }
-
-  const srcRect = sourceEl.getBoundingClientRect();
-  const tgtRect = targetItem.getBoundingClientRect();
-  const z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-
-  // Create ghost clone
-  const ghost = document.createElement('div');
-  ghost.className = 'genie-ghost';
-  ghost.style.cssText = `
-    position: fixed; z-index: 9998; pointer-events: none; overflow: hidden;
-    left: ${srcRect.left / z}px; top: ${srcRect.top / z}px;
-    width: ${srcRect.width / z}px; height: ${srcRect.height / z}px;
-    border-radius: 8px;
-    background: var(--glass-heavy);
-    border: 1px solid var(--border-glow);
-    box-shadow: var(--shadow-lg);
-  `;
-
-  // Snapshot content into ghost — use a clipped thumbnail
-  const inner = sourceEl.cloneNode(true);
-  inner.style.cssText = `
-    width: ${srcRect.width / z}px; height: ${srcRect.height / z}px;
-    overflow: hidden; pointer-events: none; opacity: 0.7;
-    transform-origin: top left;
-  `;
-  ghost.appendChild(inner);
-  document.body.appendChild(ghost);
-
-  // Calculate target center
-  const tx = (tgtRect.left + tgtRect.width / 2) / z - srcRect.width / z / 2;
-  const ty = (tgtRect.top + tgtRect.height / 2) / z - srcRect.height / z / 2;
-  const scaleX = tgtRect.width / srcRect.width;
-  const scaleY = tgtRect.height / srcRect.height;
-
-  // Force layout then animate
-  ghost.offsetHeight;
-  ghost.style.transition = 'all 0.45s cubic-bezier(0.4, 0, 0.2, 1)';
-  ghost.style.left = tx + 'px';
-  ghost.style.top = ty + 'px';
-  ghost.style.transform = `scale(${scaleX}, ${scaleY})`;
-  ghost.style.opacity = '0';
-  ghost.style.borderRadius = '4px';
-
-  ghost.addEventListener('transitionend', function handler(e) {
-    if (e.propertyName !== 'opacity') return;
-    ghost.removeEventListener('transitionend', handler);
-    ghost.remove();
-    if (onDone) onDone();
-  }, { passive: true });
-
-  // Safety timeout
-  setTimeout(() => { if (ghost.parentNode) { ghost.remove(); if (onDone) onDone(); } }, 600);
-}
-
-// Determine which sidebar folder a modal action relates to
-function getModalTargetFolder() {
-  if (G.selectedType === 'intel') return 'inbox';
-  if (G.selected) {
-    const m = getMission(G.selected);
-    if (m) {
-      if (m.status === 'EXECUTING') return 'active';
-      if (m.status === 'INVESTIGATING') return 'pending';
-      if (['SUCCESS', 'FAILURE'].includes(m.status)) return 'results';
-      if (m.status === 'ARCHIVED') return 'archive';
-      return 'inbox';
-    }
-  }
-  return G.currentFolder || 'inbox';
-}
-
-// =============================================================================
 // MODAL / SCREEN SYSTEM
 // =============================================================================
 
@@ -4306,10 +4199,7 @@ function showModal()     { document.getElementById('modal-overlay').classList.re
 function hideModal() {
   const overlay = document.getElementById('modal-overlay');
   if (!overlay || overlay.classList.contains('hidden')) return;
-  const modalBox = overlay.querySelector('.modal-box');
-  const targetFolder = getModalTargetFolder();
   overlay.classList.add('modal-closing');
-  if (modalBox) genieEffect(modalBox, targetFolder);
   setTimeout(() => {
     overlay.classList.add('hidden');
     overlay.classList.remove('modal-closing');
