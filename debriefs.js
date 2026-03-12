@@ -529,6 +529,47 @@
 
   // ---- HVT OPERATIONS (FOREIGN_HVT, DOMESTIC_HVT, LONG_HUNT, ABDUCTION) ----
 
+  // Hardness-aware flavor text for HVT debriefs
+  var HVT_HARDNESS_FLAVOR = {
+    SOFT: {
+      secProfile: ['minimal counter-surveillance awareness','no formal security training','reliant on routine rather than tradecraft','no bodyguard detail — a civilian target','negligible operational security discipline'],
+      resistance: ['offered no resistance — cooperated immediately','surrendered without incident, visibly shaken','froze in place — no evasion attempt','attempted to hide documents but was too slow','complied immediately when confronted'],
+      complication: ['none — target was wholly unprepared','papers were left unsecured on the desk','target\'s phone was unlocked and accessible','no encryption on seized devices','target had made no contingency plans'],
+      assessment: ['Target displayed no counter-intelligence awareness. Operational footprint consistent with a civilian with no formal training.','The target\'s complete lack of security discipline made this a textbook operation.','Subject showed no signs of intelligence tradecraft — strictly a technical asset.'],
+    },
+    MODERATE: {
+      secProfile: ['basic counter-surveillance habits','some security awareness — checked surroundings periodically','varied daily routines slightly','maintained a small personal security detail','used encrypted communications for sensitive matters'],
+      resistance: ['resisted briefly before being subdued','attempted to destroy documents — partially successful','tried to alert security detail before being cut off','made a brief attempt to flee on foot','showed some composure but ultimately complied'],
+      complication: ['target had a secondary phone that nearly went undetected','some documents were shredded before entry','target\'s security detail required additional resources to neutralize','a neighbor nearly compromised the approach','the target\'s routine deviated from pattern, requiring a last-minute adjustment'],
+      assessment: ['Target demonstrated moderate security awareness consistent with someone accustomed to operating in sensitive environments.','Subject maintained basic operational discipline, though not enough to defeat a dedicated surveillance operation.','The target\'s tradecraft was rudimentary — enough to complicate but not enough to prevent the operation.'],
+    },
+    HARD: {
+      secProfile: ['professional-grade counter-surveillance — ran detection routes daily','used multiple identities and safe houses in rotation','maintained a disciplined communications schedule with dead-drop protocols','employed active counter-surveillance teams','exhibited formal intelligence tradecraft throughout the surveillance period'],
+      resistance: ['fought back with trained close-quarters techniques — had to be physically restrained','triggered a dead-man signal before being subdued — limited window for clean extraction','managed to destroy a secure device before the team could prevent it','produced a concealed weapon and engaged — threat neutralized with non-lethal force','executed a rehearsed escape protocol — intercepted only because the perimeter was airtight'],
+      complication: ['target ran a sophisticated SDR that forced a 48-hour delay in the operation','encrypted devices used multi-layered security — exploitation will take weeks','the target had pre-positioned escape materials at a secondary location','a professional counter-surveillance team nearly detected the approach element','the target\'s compartmented lifestyle made establishing a pattern-of-life extremely difficult'],
+      assessment: ['This was a trained intelligence professional who maintained textbook tradecraft. The successful operation reflects the quality of planning and execution by the team.','Target exhibited the hallmarks of formal intelligence training — counter-surveillance awareness, communications discipline, and operational compartmentation.','Subject\'s professional tradecraft required an elevated operational tempo and significantly more resources than a standard target package.'],
+    },
+    ELITE: {
+      secProfile: ['exceptional tradecraft — target operated as a trained intelligence officer with decades of field experience','maintained an elaborate network of cover identities, safe houses, and escape routes across multiple countries','employed professional counter-surveillance teams, encrypted burst transmissions, and physical dead-drops exclusively','ran aggressive counter-intelligence operations against anyone showing interest — multiple surveillance teams burned during the tracking phase','exhibited near-flawless operational security — locating this target required an unprecedented intelligence effort'],
+      resistance: ['engaged the assault team with a concealed firearm and improvised barricade — required tactical escalation to subdue','executed a well-rehearsed escape protocol that nearly succeeded — was intercepted at the tertiary exfiltration route','detonated a thermite charge destroying all electronic devices before the team could breach — critical intelligence lost','managed to transmit an emergency signal to handlers — extraction timeline compressed to prevent hostile response','fought with lethal efficiency, wounding one operator before being neutralized — this was a combat-trained professional'],
+      complication: ['the target had identified and burned two surveillance teams during the tracking phase, requiring a complete operational reset','a hostile counter-intelligence team was actively protecting the target — required a parallel operation to neutralize them first','the target maintained a dead-man\'s switch that would alert their entire network — required simultaneous operations against multiple nodes','encrypted devices recovered use state-level cryptographic protocols — exploitation may take months if it succeeds at all','the target\'s network of informants and cutouts means elements of our operational approach may have been compromised'],
+      assessment: ['This was an elite-tier intelligence professional — arguably the most dangerous category of target. The fact that this operation succeeded is a testament to exceptional planning and execution by all involved.','Target operated at a level of tradecraft that most intelligence services aspire to. Neutralizing this individual required resources normally reserved for state-level operations.','Subject\'s operational security was near-perfect. This operation succeeded through a narrow window of opportunity that may not have presented itself again. The team\'s performance was extraordinary.'],
+    },
+  };
+
+  function getHvtHardness(m) {
+    if (!m.linkedHvtId || typeof G === 'undefined' || !G.hvts) return null;
+    for (var i = 0; i < G.hvts.length; i++) {
+      if (G.hvts[i].id === m.linkedHvtId) return G.hvts[i].hardness || 'MODERATE';
+    }
+    return null;
+  }
+  function hvtFlavor(key, hardness) {
+    var h = hardness && HVT_HARDNESS_FLAVOR[hardness] ? hardness : 'MODERATE';
+    var pool = HVT_HARDNESS_FLAVOR[h][key];
+    return pool ? P(pool) : '';
+  }
+
   function gen_HVT(m, units, elites, success) {
     var cd = currentDay();
     var execDays = m.execDays || R(2,4);
@@ -538,6 +579,7 @@
     var target = fv.target_name || fv.alias || fv.hvt_name || 'the high-value target';
     var city = fv.city || fv.location || 'the target area';
     var weather = P(WEATHER);
+    var hvtHard = getHvtHardness(m);
     var isAbduction = m.isAbduction || (m.typeId || '').indexOf('ABDUCTION') >= 0;
     // Determine if this is an elimination (kill) vs capture mission
     var tid = m.typeId || '';
@@ -563,7 +605,7 @@
       ])});
       if (execDays > 2) {
         entries.push({ day: opStart + 1, events: dayEvents([
-          'Final surveillance pass of target location. Target confirmed present. Security detail observed: ' + R(1,5) + ' armed individuals in a ' + P(['fixed perimeter pattern','rotating patrol','static guard posts at entrance','mobile escort configuration']) + '.',
+          'Final surveillance pass of target location. Target confirmed present. Security detail observed: ' + R(1,5) + ' armed individuals in a ' + P(['fixed perimeter pattern','rotating patrol','static guard posts at entrance','mobile escort configuration']) + '.' + (hvtHard ? ' Target security profile: ' + hvtFlavor('secProfile', hvtHard) + '.' : ''),
           'SIGINT confirmed target\'s phone active at location. Voice identification positive. Target is conducting ' + P(['routine business calls','encrypted communications with unknown parties','personal calls — appears relaxed','no calls — device on standby']) + '.',
           'Approach route finalized. Primary: ' + P(['vehicle approach via main road','foot infiltration through adjacent property','approach from elevated terrain to the north','maritime approach along the coastline','helicopter insertion to a nearby clearing']) + '. Alternate route briefed in case of compromise.',
           'Weather forecast for execution window: ' + weather + '. Assessment: ' + P(['FAVORABLE','ACCEPTABLE','CHALLENGING BUT VIABLE','OPTIMAL FOR COVERT OPERATIONS']) + '.',
@@ -578,8 +620,8 @@
           'H-HOUR. Breach initiated via ' + P(BREACH) + '. ' + elites[0].fullName + ' confirmed all sensor feeds active — providing overwatch from the operations center. Security detail ' + P(['neutralized within seconds','overwhelmed before they could react','engaged and suppressed','bypassed through stealth']) + '.') :
           'H-HOUR. Breach initiated via ' + P(BREACH) + '. Security detail ' + P(['neutralized within seconds','overwhelmed before they could react','engaged and suppressed','bypassed through stealth']) + '.',
         isElim ?
-          'Target located in ' + P(['the main bedroom on the second floor','a ground-floor office','the basement','a reinforced safe room','the kitchen area','a meeting room with associates']) + '. Target ' + P(['reached for a weapon — immediate lethal response authorized and executed.','attempted to flee through a rear exit — intercepted by the perimeter team. Lethal action taken.','was positively identified and engaged per the authorization. Death was instantaneous.','resisted and drew a concealed firearm — eliminated in the ensuing exchange.','was engaged by the assault element. Confirmed dead at the scene.']) :
-          'Target located in ' + P(['the main bedroom on the second floor','a ground-floor office','the basement','a reinforced safe room','the kitchen area','a meeting room with associates']) + '. ' + P(RESIST_LIGHT),
+          'Target located in ' + P(['the main bedroom on the second floor','a ground-floor office','the basement','a reinforced safe room','the kitchen area','a meeting room with associates']) + '. ' + (hvtHard && hvtHard !== 'SOFT' && hvtHard !== 'MODERATE' ? 'Target ' + hvtFlavor('resistance', hvtHard) : 'Target ' + P(['reached for a weapon — immediate lethal response authorized and executed.','attempted to flee through a rear exit — intercepted by the perimeter team. Lethal action taken.','was positively identified and engaged per the authorization. Death was instantaneous.','resisted and drew a concealed firearm — eliminated in the ensuing exchange.','was engaged by the assault element. Confirmed dead at the scene.'])) :
+          'Target located in ' + P(['the main bedroom on the second floor','a ground-floor office','the basement','a reinforced safe room','the kitchen area','a meeting room with associates']) + '. ' + (hvtHard ? hvtFlavor('resistance', hvtHard) : P(RESIST_LIGHT)),
         isElim ?
           'Target identity confirmed via ' + P(['biometric facial recognition','fingerprint match','identifying physical characteristics','dental records comparison','DNA rapid-test kit']) + '. Positive identification: ' + target + '. Status: DECEASED.' :
           'Target positively identified via ' + P(['biometric facial recognition','fingerprint match','voice comparison','identifying physical characteristics','document verification']) + '. Identity confirmed: ' + target + '.',
@@ -599,13 +641,15 @@
         'Target death has been confirmed via positive identification at the scene. ' +
         P(['No body was recovered — remains disposed of per standing protocol.','The scene was staged to obscure the cause of death and prevent attribution.','Body was exfiltrated for positive identification and disposal.','Remains left in place. Cover story established.']) + ' ' +
         'Seized materials from the target location are undergoing exploitation. Early assessment suggests ' + P(['significant intelligence value','connections to '+R(2,5)+' previously unknown associates','financial records that may map the target\'s support network','communications that could compromise additional operatives','limited additional intelligence — the target maintained strict operational security']) + '. ' +
-        'Operational security was maintained. No attribution to ' + (G.cfg ? G.cfg.acronym : 'our agency') + ' is expected. The target\'s network will require significant time to reconstitute. ' + unitShort(units) + ' performance rated OUTSTANDING.'
+        'Operational security was maintained. No attribution to ' + (G.cfg ? G.cfg.acronym : 'our agency') + ' is expected. The target\'s network will require significant time to reconstitute. ' + unitShort(units) + ' performance rated OUTSTANDING.' +
+        (hvtHard ? ' NOTABLE COMPLICATION: ' + hvtFlavor('complication', hvtHard) + '. TARGET ASSESSMENT: ' + hvtFlavor('assessment', hvtHard) : '')
         :
         'High-value target ' + target + ' has been successfully ' + (isAbduction ? 'acquired' : 'captured') + ' in ' + city + '. The operation was executed by ' + unitList(units) +
         (elites.length ? ' with elite asset ' + elites[0].fullName + ' attached' : '') + '. Total operation time from breach to extraction: approximately ' + R(25,90) + ' minutes. ' +
         'The target is now in secure custody and ' + P(['initial tactical questioning has begun','is being prepared for extended debriefing','has indicated willingness to cooperate on certain topics','is refusing to communicate — enhanced rapport-building techniques authorized','is providing limited but potentially valuable information']) + '. ' +
         'Seized materials from the target location are undergoing exploitation by the Analysis Bureau. Early assessment suggests ' + P(['significant intelligence value','connections to '+R(2,5)+' previously unknown associates','financial records that may map the target\'s support network','communications that could compromise additional operatives','limited additional intelligence — the target maintained strict operational security']) + '. ' +
-        'Operational security was maintained. No attribution to ' + (G.cfg ? G.cfg.acronym : 'our agency') + ' is expected. ' + unitShort(units) + ' performance rated OUTSTANDING.';
+        'Operational security was maintained. No attribution to ' + (G.cfg ? G.cfg.acronym : 'our agency') + ' is expected. ' + unitShort(units) + ' performance rated OUTSTANDING.' +
+        (hvtHard ? ' NOTABLE COMPLICATION: ' + hvtFlavor('complication', hvtHard) + '. TARGET ASSESSMENT: ' + hvtFlavor('assessment', hvtHard) : '');
 
       return headerSection(m, true) + deployedSection(units, elites, m) +
         '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
@@ -636,7 +680,8 @@
           elites[0].fullName + ' was deployed but had no opportunity to engage the target. ',
           elites[0].fullName + ' was providing remote support but the target had already departed. ') : '') +
         'Immediate actions: counter-intelligence review of the intelligence chain, reactivation of all HUMINT and SIGINT collection assets in the target area, and assessment of whether the target\'s network has been alerted. ' +
-        P(AFTERMATH_F) + ' ' + unitShort(units) + ' execution was professional — the failure lies in the intelligence timeline, not operational performance.';
+        P(AFTERMATH_F) + ' ' + unitShort(units) + ' execution was professional — the failure lies in the intelligence timeline, not operational performance.' +
+        (hvtHard && (hvtHard === 'HARD' || hvtHard === 'ELITE') ? ' TARGET ASSESSMENT: ' + hvtFlavor('assessment', hvtHard) : '');
 
       return headerSection(m, false) + deployedSection(units, elites, m) +
         '<div class="db-section-title">OPERATION TIMELINE</div>' + timeline(entries) + assessmentSection(assess);
