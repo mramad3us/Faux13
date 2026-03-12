@@ -255,14 +255,16 @@ function createPlot() {
     country = G.cfg.name;
   } else if (orgType.region === 'FOREIGN') {
     region = 'FOREIGN';
-    const loc = pick(FOREIGN_CITIES);
+    const pool = FOREIGN_CITIES.filter(c => c.country !== (G.cfg ? G.cfg.name : ''));
+    const loc = pick(pool.length > 0 ? pool : FOREIGN_CITIES);
     city = loc.city; country = loc.country;
   } else {
     region = Math.random() < 0.5 ? 'DOMESTIC' : 'FOREIGN';
     if (region === 'DOMESTIC') {
       city = pick(G.cfg.domesticCities); country = G.cfg.name;
     } else {
-      const loc = pick(FOREIGN_CITIES);
+      const pool = FOREIGN_CITIES.filter(c => c.country !== (G.cfg ? G.cfg.name : ''));
+      const loc = pick(pool.length > 0 ? pool : FOREIGN_CITIES);
       city = loc.city; country = loc.country;
     }
   }
@@ -805,7 +807,9 @@ function spawnInfiltrationHvt(plot) {
     city = pick(G.cfg.domesticCities);
     country = G.cfg.name;
   } else {
-    var loc = pick(FOREIGN_CITIES);
+    var homeCountry = G.cfg ? G.cfg.name : null;
+    var foreignPool = FOREIGN_CITIES.filter(function(c) { return c.country !== homeCountry; });
+    var loc = pick(foreignPool.length > 0 ? foreignPool : FOREIGN_CITIES);
     city = loc.city;
     country = loc.country;
   }

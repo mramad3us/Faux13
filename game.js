@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.2.9';
+const GAME_VERSION = '3.3.0';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -207,74 +207,92 @@ const DEPT_CONFIG = [
 // =============================================================================
 
 const FOREIGN_CITIES = [
-  // Russia / Former Soviet
-  { city: 'Moscow', country: 'Russia' },
-  { city: 'St. Petersburg', country: 'Russia' },
-  { city: 'Vladivostok', country: 'Russia' },
-  { city: 'Minsk', country: 'Belarus' },
-  { city: 'Kyiv', country: 'Ukraine' },
-  { city: 'Tbilisi', country: 'Georgia' },
-  { city: 'Almaty', country: 'Kazakhstan' },
-  { city: 'Tashkent', country: 'Uzbekistan' },
-  { city: 'Baku', country: 'Azerbaijan' },
   // Middle East
-  { city: 'Tehran', country: 'Iran' },
-  { city: 'Mashhad', country: 'Iran' },
-  { city: 'Damascus', country: 'Syria' },
-  { city: 'Baghdad', country: 'Iraq' },
-  { city: 'Mosul', country: 'Iraq' },
-  { city: 'Beirut', country: 'Lebanon' },
-  { city: 'Amman', country: 'Jordan' },
-  { city: 'Sanaa', country: 'Yemen' },
-  // Central / Eastern Europe
-  { city: 'Belgrade', country: 'Serbia' },
-  { city: 'Bucharest', country: 'Romania' },
-  { city: 'Sofia', country: 'Bulgaria' },
-  { city: 'Budapest', country: 'Hungary' },
-  { city: 'Warsaw', country: 'Poland' },
-  { city: 'Prague', country: 'Czech Republic' },
-  // East Asia
-  { city: 'Pyongyang', country: 'North Korea' },
-  { city: 'Beijing', country: 'China' },
-  { city: 'Shanghai', country: 'China' },
-  { city: 'Shenyang', country: 'China' },
-  // Southeast Asia
-  { city: 'Rangoon', country: 'Myanmar' },
-  { city: 'Phnom Penh', country: 'Cambodia' },
-  { city: 'Vientiane', country: 'Laos' },
-  { city: 'Bangkok', country: 'Thailand' },
-  { city: 'Manila', country: 'Philippines' },
-  { city: 'Jakarta', country: 'Indonesia' },
-  { city: 'Kuala Lumpur', country: 'Malaysia' },
-  // South Asia
-  { city: 'Islamabad', country: 'Pakistan' },
-  { city: 'Lahore', country: 'Pakistan' },
-  { city: 'Kabul', country: 'Afghanistan' },
-  { city: 'Quetta', country: 'Pakistan' },
-  { city: 'Dhaka', country: 'Bangladesh' },
-  { city: 'Kathmandu', country: 'Nepal' },
+  { city: 'Tehran', country: 'Iran' }, { city: 'Mashhad', country: 'Iran' }, { city: 'Isfahan', country: 'Iran' }, { city: 'Tabriz', country: 'Iran' },
+  { city: 'Baghdad', country: 'Iraq' }, { city: 'Mosul', country: 'Iraq' }, { city: 'Basra', country: 'Iraq' }, { city: 'Erbil', country: 'Iraq' },
+  { city: 'Damascus', country: 'Syria' }, { city: 'Aleppo', country: 'Syria' }, { city: 'Homs', country: 'Syria' },
+  { city: 'Beirut', country: 'Lebanon' }, { city: 'Tripoli', country: 'Lebanon' }, { city: 'Sidon', country: 'Lebanon' },
+  { city: 'Amman', country: 'Jordan' }, { city: 'Zarqa', country: 'Jordan' }, { city: 'Irbid', country: 'Jordan' },
+  { city: 'Sanaa', country: 'Yemen' }, { city: 'Aden', country: 'Yemen' }, { city: 'Taiz', country: 'Yemen' },
+  { city: 'Riyadh', country: 'Saudi Arabia' }, { city: 'Jeddah', country: 'Saudi Arabia' }, { city: 'Dammam', country: 'Saudi Arabia' },
+  { city: 'Doha', country: 'Qatar' }, { city: 'Al Wakrah', country: 'Qatar' }, { city: 'Al Khor', country: 'Qatar' },
+  { city: 'Dubai', country: 'UAE' }, { city: 'Abu Dhabi', country: 'UAE' }, { city: 'Sharjah', country: 'UAE' },
+  { city: 'Muscat', country: 'Oman' }, { city: 'Salalah', country: 'Oman' }, { city: 'Sohar', country: 'Oman' },
+  { city: 'Manama', country: 'Bahrain' }, { city: 'Muharraq', country: 'Bahrain' }, { city: 'Riffa', country: 'Bahrain' },
+  { city: 'Kuwait City', country: 'Kuwait' }, { city: 'Hawalli', country: 'Kuwait' }, { city: 'Al Ahmadi', country: 'Kuwait' },
+  // Eastern Europe
+  { city: 'Moscow', country: 'Russia' }, { city: 'St. Petersburg', country: 'Russia' }, { city: 'Novosibirsk', country: 'Russia' }, { city: 'Yekaterinburg', country: 'Russia' }, { city: 'Volgograd', country: 'Russia' },
+  { city: 'Kyiv', country: 'Ukraine' }, { city: 'Odesa', country: 'Ukraine' }, { city: 'Kharkiv', country: 'Ukraine' }, { city: 'Lviv', country: 'Ukraine' },
+  { city: 'Minsk', country: 'Belarus' }, { city: 'Gomel', country: 'Belarus' }, { city: 'Brest', country: 'Belarus' },
+  { city: 'Tbilisi', country: 'Georgia' }, { city: 'Batumi', country: 'Georgia' }, { city: 'Kutaisi', country: 'Georgia' },
+  { city: 'Chișinău', country: 'Moldova' }, { city: 'Bălți', country: 'Moldova' }, { city: 'Tiraspol', country: 'Moldova' },
+  { city: 'Belgrade', country: 'Serbia' }, { city: 'Novi Sad', country: 'Serbia' }, { city: 'Niš', country: 'Serbia' },
+  { city: 'Bucharest', country: 'Romania' }, { city: 'Cluj-Napoca', country: 'Romania' }, { city: 'Timișoara', country: 'Romania' },
+  { city: 'Sofia', country: 'Bulgaria' }, { city: 'Plovdiv', country: 'Bulgaria' }, { city: 'Varna', country: 'Bulgaria' },
+  { city: 'Budapest', country: 'Hungary' }, { city: 'Debrecen', country: 'Hungary' }, { city: 'Szeged', country: 'Hungary' },
+  { city: 'Warsaw', country: 'Poland' }, { city: 'Kraków', country: 'Poland' }, { city: 'Gdańsk', country: 'Poland' },
+  { city: 'Prague', country: 'Czech Republic' }, { city: 'Brno', country: 'Czech Republic' }, { city: 'Ostrava', country: 'Czech Republic' },
+  // Central & South Asia
+  { city: 'Kabul', country: 'Afghanistan' }, { city: 'Kandahar', country: 'Afghanistan' }, { city: 'Herat', country: 'Afghanistan' }, { city: 'Mazar-i-Sharif', country: 'Afghanistan' },
+  { city: 'Islamabad', country: 'Pakistan' }, { city: 'Lahore', country: 'Pakistan' }, { city: 'Quetta', country: 'Pakistan' }, { city: 'Karachi', country: 'Pakistan' }, { city: 'Peshawar', country: 'Pakistan' },
+  { city: 'Almaty', country: 'Kazakhstan' }, { city: 'Astana', country: 'Kazakhstan' }, { city: 'Shymkent', country: 'Kazakhstan' },
+  { city: 'Tashkent', country: 'Uzbekistan' }, { city: 'Samarkand', country: 'Uzbekistan' }, { city: 'Bukhara', country: 'Uzbekistan' },
+  { city: 'Dhaka', country: 'Bangladesh' }, { city: 'Chittagong', country: 'Bangladesh' }, { city: 'Khulna', country: 'Bangladesh' },
+  { city: 'Kathmandu', country: 'Nepal' }, { city: 'Pokhara', country: 'Nepal' }, { city: 'Lalitpur', country: 'Nepal' },
+  { city: 'Dushanbe', country: 'Tajikistan' }, { city: 'Khujand', country: 'Tajikistan' }, { city: 'Kulob', country: 'Tajikistan' },
+  { city: 'Bishkek', country: 'Kyrgyzstan' }, { city: 'Osh', country: 'Kyrgyzstan' }, { city: 'Jalal-Abad', country: 'Kyrgyzstan' },
+  // East Asia & Pacific
+  { city: 'Beijing', country: 'China' }, { city: 'Shanghai', country: 'China' }, { city: 'Shenyang', country: 'China' }, { city: 'Guangzhou', country: 'China' }, { city: 'Chengdu', country: 'China' },
+  { city: 'Pyongyang', country: 'North Korea' }, { city: 'Hamhung', country: 'North Korea' }, { city: 'Chongjin', country: 'North Korea' },
+  { city: 'Rangoon', country: 'Myanmar' }, { city: 'Mandalay', country: 'Myanmar' }, { city: 'Naypyidaw', country: 'Myanmar' },
+  { city: 'Phnom Penh', country: 'Cambodia' }, { city: 'Siem Reap', country: 'Cambodia' }, { city: 'Battambang', country: 'Cambodia' },
+  { city: 'Vientiane', country: 'Laos' }, { city: 'Luang Prabang', country: 'Laos' }, { city: 'Savannakhet', country: 'Laos' },
+  { city: 'Bangkok', country: 'Thailand' }, { city: 'Chiang Mai', country: 'Thailand' }, { city: 'Phuket', country: 'Thailand' },
+  { city: 'Manila', country: 'Philippines' }, { city: 'Cebu', country: 'Philippines' }, { city: 'Davao', country: 'Philippines' },
+  { city: 'Jakarta', country: 'Indonesia' }, { city: 'Surabaya', country: 'Indonesia' }, { city: 'Bandung', country: 'Indonesia' }, { city: 'Medan', country: 'Indonesia' },
+  { city: 'Kuala Lumpur', country: 'Malaysia' }, { city: 'Penang', country: 'Malaysia' }, { city: 'Johor Bahru', country: 'Malaysia' },
+  { city: 'Hanoi', country: 'Vietnam' }, { city: 'Ho Chi Minh City', country: 'Vietnam' }, { city: 'Da Nang', country: 'Vietnam' },
   // Africa
-  { city: 'Tripoli', country: 'Libya' },
-  { city: 'Khartoum', country: 'Sudan' },
-  { city: 'Cairo', country: 'Egypt' },
-  { city: 'Algiers', country: 'Algeria' },
-  { city: 'Lagos', country: 'Nigeria' },
-  { city: 'Kano', country: 'Nigeria' },
-  { city: 'Nairobi', country: 'Kenya' },
-  { city: 'Mogadishu', country: 'Somalia' },
-  { city: 'Addis Ababa', country: 'Ethiopia' },
-  { city: 'Dakar', country: 'Senegal' },
-  { city: 'Kinshasa', country: 'Congo (DRC)' },
-  { city: 'Bamako', country: 'Mali' },
-  { city: 'Niamey', country: 'Niger' },
-  { city: 'Ndjamena', country: 'Chad' },
+  { city: 'Tripoli', country: 'Libya' }, { city: 'Benghazi', country: 'Libya' }, { city: 'Misrata', country: 'Libya' },
+  { city: 'Khartoum', country: 'Sudan' }, { city: 'Omdurman', country: 'Sudan' }, { city: 'Port Sudan', country: 'Sudan' },
+  { city: 'Cairo', country: 'Egypt' }, { city: 'Alexandria', country: 'Egypt' }, { city: 'Giza', country: 'Egypt' },
+  { city: 'Algiers', country: 'Algeria' }, { city: 'Oran', country: 'Algeria' }, { city: 'Constantine', country: 'Algeria' },
+  { city: 'Lagos', country: 'Nigeria' }, { city: 'Kano', country: 'Nigeria' }, { city: 'Abuja', country: 'Nigeria' }, { city: 'Port Harcourt', country: 'Nigeria' },
+  { city: 'Nairobi', country: 'Kenya' }, { city: 'Mombasa', country: 'Kenya' }, { city: 'Kisumu', country: 'Kenya' },
+  { city: 'Mogadishu', country: 'Somalia' }, { city: 'Hargeisa', country: 'Somalia' }, { city: 'Kismayo', country: 'Somalia' },
+  { city: 'Addis Ababa', country: 'Ethiopia' }, { city: 'Dire Dawa', country: 'Ethiopia' }, { city: 'Mekelle', country: 'Ethiopia' },
+  { city: 'Dakar', country: 'Senegal' }, { city: 'Saint-Louis', country: 'Senegal' }, { city: 'Thiès', country: 'Senegal' },
+  { city: 'Kinshasa', country: 'Congo (DRC)' }, { city: 'Lubumbashi', country: 'Congo (DRC)' }, { city: 'Goma', country: 'Congo (DRC)' },
+  { city: 'Bamako', country: 'Mali' }, { city: 'Timbuktu', country: 'Mali' }, { city: 'Gao', country: 'Mali' },
+  { city: 'Niamey', country: 'Niger' }, { city: 'Zinder', country: 'Niger' }, { city: 'Maradi', country: 'Niger' },
+  { city: "N'Djamena", country: 'Chad' }, { city: 'Moundou', country: 'Chad' }, { city: 'Abéché', country: 'Chad' },
   // Latin America
-  { city: 'Caracas', country: 'Venezuela' },
-  { city: 'Havana', country: 'Cuba' },
-  { city: 'Bogotá', country: 'Colombia' },
-  { city: 'Medellín', country: 'Colombia' },
-  { city: 'Managua', country: 'Nicaragua' },
-  { city: 'Tegucigalpa', country: 'Honduras' },
+  { city: 'Caracas', country: 'Venezuela' }, { city: 'Maracaibo', country: 'Venezuela' }, { city: 'Valencia', country: 'Venezuela' },
+  { city: 'Havana', country: 'Cuba' }, { city: 'Santiago de Cuba', country: 'Cuba' }, { city: 'Camagüey', country: 'Cuba' },
+  { city: 'Bogotá', country: 'Colombia' }, { city: 'Medellín', country: 'Colombia' }, { city: 'Cali', country: 'Colombia' }, { city: 'Barranquilla', country: 'Colombia' },
+  { city: 'Managua', country: 'Nicaragua' }, { city: 'León', country: 'Nicaragua' }, { city: 'Granada', country: 'Nicaragua' },
+  { city: 'Tegucigalpa', country: 'Honduras' }, { city: 'San Pedro Sula', country: 'Honduras' }, { city: 'La Ceiba', country: 'Honduras' },
+  { city: 'Mexico City', country: 'Mexico' }, { city: 'Guadalajara', country: 'Mexico' }, { city: 'Monterrey', country: 'Mexico' }, { city: 'Tijuana', country: 'Mexico' },
+  { city: 'São Paulo', country: 'Brazil' }, { city: 'Rio de Janeiro', country: 'Brazil' }, { city: 'Brasília', country: 'Brazil' }, { city: 'Manaus', country: 'Brazil' },
+  { city: 'La Paz', country: 'Bolivia' }, { city: 'Santa Cruz', country: 'Bolivia' }, { city: 'Cochabamba', country: 'Bolivia' },
+  { city: 'Lima', country: 'Peru' }, { city: 'Arequipa', country: 'Peru' }, { city: 'Cusco', country: 'Peru' },
+  { city: 'Quito', country: 'Ecuador' }, { city: 'Guayaquil', country: 'Ecuador' }, { city: 'Cuenca', country: 'Ecuador' },
+  // Western Europe
+  { city: 'Paris', country: 'France' }, { city: 'Lyon', country: 'France' }, { city: 'Marseille', country: 'France' },
+  { city: 'London', country: 'United Kingdom' }, { city: 'Manchester', country: 'United Kingdom' }, { city: 'Edinburgh', country: 'United Kingdom' },
+  { city: 'Berlin', country: 'Germany' }, { city: 'Munich', country: 'Germany' }, { city: 'Hamburg', country: 'Germany' }, { city: 'Frankfurt', country: 'Germany' },
+  { city: 'Rome', country: 'Italy' }, { city: 'Milan', country: 'Italy' }, { city: 'Naples', country: 'Italy' },
+  { city: 'Madrid', country: 'Spain' }, { city: 'Barcelona', country: 'Spain' }, { city: 'Seville', country: 'Spain' },
+  { city: 'Brussels', country: 'Belgium' }, { city: 'Antwerp', country: 'Belgium' }, { city: 'Ghent', country: 'Belgium' },
+  { city: 'Amsterdam', country: 'Netherlands' }, { city: 'Rotterdam', country: 'Netherlands' }, { city: 'The Hague', country: 'Netherlands' },
+  { city: 'Vienna', country: 'Austria' }, { city: 'Graz', country: 'Austria' }, { city: 'Salzburg', country: 'Austria' },
+  { city: 'Zurich', country: 'Switzerland' }, { city: 'Geneva', country: 'Switzerland' }, { city: 'Bern', country: 'Switzerland' },
+  { city: 'Stockholm', country: 'Sweden' }, { city: 'Gothenburg', country: 'Sweden' }, { city: 'Malmö', country: 'Sweden' },
+  { city: 'Oslo', country: 'Norway' }, { city: 'Bergen', country: 'Norway' }, { city: 'Trondheim', country: 'Norway' },
+  { city: 'Copenhagen', country: 'Denmark' }, { city: 'Aarhus', country: 'Denmark' }, { city: 'Odense', country: 'Denmark' },
+  // North America
+  { city: 'Washington D.C.', country: 'United States' }, { city: 'New York', country: 'United States' }, { city: 'Los Angeles', country: 'United States' }, { city: 'Chicago', country: 'United States' }, { city: 'Houston', country: 'United States' }, { city: 'Miami', country: 'United States' },
+  { city: 'Toronto', country: 'Canada' }, { city: 'Ottawa', country: 'Canada' }, { city: 'Vancouver', country: 'Canada' }, { city: 'Montreal', country: 'Canada' },
 ];
 
 const CODENAME_ADJ = [
@@ -607,7 +625,8 @@ function spawnMission(forcedType) {
   if (tmpl.location === 'DOMESTIC') {
     cityName = pick(G.cfg.domesticCities); countryName = G.cfg.name;
   } else {
-    const loc = pick(FOREIGN_CITIES); cityName = loc.city; countryName = loc.country;
+    const foreignPool = FOREIGN_CITIES.filter(c => c.country !== G.cfg.name);
+    const loc = pick(foreignPool); cityName = loc.city; countryName = loc.country;
   }
 
   const pa = G.cfg.partnerAgencies || {};
@@ -2790,18 +2809,19 @@ function relocateHvt(h) {
     candidates = G.cfg.domesticCities.filter(function(c) { return c !== oldCity; })
       .map(function(c) { return { city: c, country: G.cfg.name }; });
   } else if (typeof THEATERS !== 'undefined') {
+    var homeCountry = G.cfg ? G.cfg.name : null;
     // Find theater containing the current city
     var theaterIds = Object.keys(THEATERS);
     for (var ti = 0; ti < theaterIds.length; ti++) {
       var th = THEATERS[theaterIds[ti]];
       if (th.cities && th.cities.some(function(c) { return c.city === oldCity; })) {
-        candidates = th.cities.filter(function(c) { return c.city !== oldCity; });
+        candidates = th.cities.filter(function(c) { return c.city !== oldCity && c.country !== homeCountry; });
         break;
       }
     }
     // Fallback: pick from all foreign cities
     if (candidates.length === 0 && typeof FOREIGN_CITIES !== 'undefined') {
-      candidates = FOREIGN_CITIES.filter(function(c) { return c.city !== oldCity; });
+      candidates = FOREIGN_CITIES.filter(function(c) { return c.city !== oldCity && c.country !== homeCountry; });
     }
   }
   if (candidates.length > 0) {
@@ -2837,22 +2857,23 @@ function pickHvtSpawnLocation(sourceHvt) {
     }
   }
 
+  var homeCountry = G.cfg ? G.cfg.name : null;
   var candidates = [];
   if (sameTheater && sourceTheaterId) {
     // Same theater, different city
-    candidates = THEATERS[sourceTheaterId].cities.filter(function(c) { return c.city !== oldCity; });
+    candidates = THEATERS[sourceTheaterId].cities.filter(function(c) { return c.city !== oldCity && c.country !== homeCountry; });
   }
   if (!sameTheater || candidates.length === 0) {
     // Different theater
     var otherTheaters = theaterIds.filter(function(t) { return t !== sourceTheaterId && THEATERS[t].cities && THEATERS[t].cities.length > 0; });
     if (otherTheaters.length > 0) {
       var picked = pick(otherTheaters);
-      candidates = THEATERS[picked].cities;
+      candidates = THEATERS[picked].cities.filter(function(c) { return c.country !== homeCountry; });
     }
   }
   // Fallback
   if (candidates.length === 0 && typeof FOREIGN_CITIES !== 'undefined') {
-    candidates = FOREIGN_CITIES.filter(function(c) { return c.city !== oldCity; });
+    candidates = FOREIGN_CITIES.filter(function(c) { return c.city !== oldCity && c.country !== homeCountry; });
   }
   if (candidates.length > 0) { var loc = pick(candidates); return { city: loc.city, country: loc.country }; }
   return { city: oldCity, country: sourceHvt.knownFields ? sourceHvt.knownFields.country : null };
