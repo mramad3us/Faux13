@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.3.4';
+const GAME_VERSION = '3.3.5';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -2502,6 +2502,79 @@ function classifyHvtHardness(role) {
   return 'MODERATE';
 }
 
+// Keyword-based role tooltips — first match wins, checked in order
+const ROLE_TOOLTIPS = [
+  // ELITE tier
+  [/cell commander|terror.*commander/i, 'ELITE — Commands a semi-autonomous terror cell. Trained in operational security, counter-interrogation, and compartmentalized communications. Losing this target means the cell reconstitutes under new leadership.'],
+  [/paramilitary commander/i, 'ELITE — Commands irregular military forces. Combat-hardened, experienced in asymmetric warfare, and capable of directing large-scale operations. Extremely dangerous if cornered.'],
+  [/network commander|senior.*commander/i, 'ELITE — Senior leadership figure directing multiple cells or operational branches. Extensive counter-intelligence awareness and deep organizational knowledge.'],
+  [/operations chief|operational director/i, 'ELITE — Directs the operational arm of a hostile network. Coordinates attacks, logistics, and personnel across regions. Removal cripples the network\'s ability to act.'],
+  [/security chief/i, 'ELITE — Runs internal security for a hostile organization. Expert at identifying infiltrators and maintaining operational secrecy. The hardest target to approach undetected.'],
+  [/attack coordinator|attack planner/i, 'ELITE — Plans and coordinates attacks against high-value targets. Deep knowledge of tactics, timing, and target selection. Neutralizing this individual prevents future operations.'],
+  [/war crimes/i, 'ELITE — Wanted for documented atrocities. Heavily protected and constantly moving. International priority target with significant political implications.'],
+  [/deep.cover|illegal.*no.*immunity/i, 'ELITE — A professional intelligence officer operating without diplomatic protection. Years of training in tradecraft, cover identity maintenance, and counter-surveillance. The most dangerous category of operative — they have nothing to fall back on if exposed.'],
+  [/proxy commander/i, 'ELITE — Directs deniable operations on behalf of a hostile state. Combines military command experience with intelligence tradecraft. State resources back their security.'],
+  [/wmd|chemical weapons/i, 'HARD — Specialist in weapons of mass destruction procurement or development. High-priority target due to catastrophic potential. Often protected by state actors.'],
+  // HARD tier
+  [/case officer/i, 'HARD — Trained intelligence professional who recruits and handles human sources. Expert in clandestine meetings, dead-drops, and agent communications. Formal counter-surveillance training.'],
+  [/intelligence officer|intelligence operative|espionage operative/i, 'HARD — Professional intelligence operative with formal training in tradecraft, surveillance detection, and covert communications. Operates under strict security protocols.'],
+  [/mole handler/i, 'HARD — Manages penetration agents inside foreign governments or agencies. Extremely cautious — a single mistake burns the mole. Uses the most secure communication methods available.'],
+  [/access agent/i, 'HARD — Recruited or placed to gain access to sensitive facilities, personnel, or information. Trained in social engineering and cover maintenance. Difficult to identify.'],
+  [/dead.drop/i, 'HARD — Specialist in covert communications infrastructure. Manages physical and digital dead-drop networks for agent handling. Trained in counter-surveillance and site selection.'],
+  [/influence operative/i, 'HARD — Conducts covert influence operations through media, political, or social channels. Skilled at building networks of unwitting assets. Difficult to distinguish from legitimate actors.'],
+  [/signals? (intelligence|tech)/i, 'HARD — Technical specialist in electronic surveillance, interception, and signals exploitation. Operates sophisticated collection equipment and knows how to avoid detection.'],
+  [/clandestine/i, 'HARD — Operates in a covert capacity with formal intelligence training. Skilled in cover identity management, surveillance detection, and secure communications.'],
+  [/hostile.*recruiter|state recruiter/i, 'HARD — Recruits assets for a hostile intelligence service. Expert at identifying vulnerabilities in potential targets and building rapport under false pretenses.'],
+  [/procurement (agent|specialist)|acquisition agent/i, 'HARD — Acquires restricted technology, materials, or equipment for hostile programs. Operates through front companies and cutouts. Difficult to track through legitimate commerce.'],
+  [/diplomatic cover/i, 'HARD — Intelligence officer operating under diplomatic immunity. Has access to embassy resources, secure communications, and a legal safety net that complicates operations.'],
+  [/intelligence liaison/i, 'HARD — Liaison between a state intelligence service and proxy forces. Coordinates covert support, training, and equipment transfers. Formally trained in tradecraft.'],
+  [/covert operations planner/i, 'HARD — Plans clandestine operations for a state proxy or hostile network. Formal military or intelligence training in operational planning and security.'],
+  [/saboteur/i, 'HARD — Trained in covert destruction of infrastructure, equipment, or facilities. Operates alone or in small teams with specialized skills.'],
+  // SOFT tier
+  [/scientist|researcher/i, 'SOFT — Technical specialist with no formal security or intelligence training. Relies on routine rather than tradecraft. Vulnerable to surveillance and straightforward approaches.'],
+  [/forger|certificate forger/i, 'SOFT — Document specialist who produces false credentials. Technical skill but minimal operational security awareness. Usually works from a fixed location.'],
+  [/front company|front business/i, 'SOFT — Operates a legitimate business as cover for illicit activities. Little to no counter-surveillance training. Follows predictable patterns tied to the business.'],
+  [/technology thief/i, 'SOFT — Steals sensitive technology through industrial espionage. Technical expertise but limited tradecraft. Often detected through their access patterns rather than fieldwork.'],
+  [/materials scientist/i, 'SOFT — Specialist in restricted materials relevant to weapons programs. Academic background with no field training. A high-value but operationally simple target.'],
+  // MODERATE tier
+  [/bomb.?maker|bombmaking/i, 'MODERATE — Constructs explosive devices for terror operations. Technical skill in ordnance but limited counter-intelligence training. Often identified through materials procurement patterns.'],
+  [/financier|financial facilitator|money launderer/i, 'MODERATE — Manages financial flows for hostile networks. Operates through banking systems and informal transfer networks. Some operational awareness but not formally trained.'],
+  [/courier|weapons courier|intelligence courier/i, 'MODERATE — Transports materials, messages, or funds between network nodes. Knows routes and contacts but limited broader operational knowledge. Moderate security awareness from experience.'],
+  [/logistics (handler|coordinator)/i, 'MODERATE — Manages supply chains, safe houses, and transport for hostile operations. Practical security awareness from experience but no formal intelligence training.'],
+  [/recruiter|recruitment (coordinator|officer|director)/i, 'MODERATE — Identifies and recruits new members for hostile networks. Social skills and some operational awareness, but follows detectable patterns of contact.'],
+  [/safe house operator/i, 'MODERATE — Maintains safe locations for operatives and materials. Knows locations and contacts but maintains a low profile. Moderate awareness of surveillance.'],
+  [/weapons (specialist|broker|smuggler)/i, 'MODERATE — Handles weapons procurement, storage, or distribution. Practical field experience and some security awareness. Often trackable through supply chain contacts.'],
+  [/communications (handler|officer)/i, 'MODERATE — Manages communications for hostile networks. Some technical knowledge of encrypted systems but not a trained intelligence professional.'],
+  [/cell coordinator/i, 'MODERATE — Coordinates between cells or operational nodes. Knows more of the network structure than most members. Moderate security discipline from operational necessity.'],
+  [/arms supplier/i, 'MODERATE — Supplies weapons to hostile networks through black market or diverted military channels. Operates in criminal circles with practical but informal security habits.'],
+  [/propaganda coordinator/i, 'MODERATE — Produces and distributes propaganda for hostile networks. Operates semi-publicly, making them easier to locate but politically sensitive to act against.'],
+  [/smuggling|smuggler/i, 'MODERATE — Manages illicit transport routes across borders. Street-level operational awareness and knowledge of evasion techniques, but no formal training.'],
+  [/corrupt official/i, 'MODERATE — A compromised insider providing access or protection to hostile networks. Position offers some protection but limited tradecraft.'],
+  [/enforcement chief/i, 'MODERATE — Directs enforcement or intimidation operations for criminal organizations. Dangerous in confrontation but limited in counter-intelligence awareness.'],
+  [/cartel liaison/i, 'MODERATE — Coordinates between organized crime and other hostile networks. Streetwise and cautious but operates within detectable criminal patterns.'],
+  [/shipping coordinator|transport broker/i, 'MODERATE — Manages shipping routes and logistics for illicit cargo. Operates through commercial systems that leave trackable records.'],
+  [/fugitive/i, 'MODERATE — A wanted individual operating in hiding. Has some awareness of how to evade pursuit but lacks formal training. Reliant on support networks that can be compromised.'],
+  [/rogue/i, 'MODERATE — A former professional now operating outside institutional control. Retains some training but lacks the resources and support of a state apparatus.'],
+  [/extremist/i, 'MODERATE — Operates within domestic radical networks. Ideologically motivated with variable tradecraft — some are disciplined, others reckless.'],
+  [/informant/i, 'MODERATE — A source providing intelligence, potentially under duress or for payment. Limited operational awareness but may be protected by handlers.'],
+  [/witness/i, 'SOFT — A civilian with knowledge relevant to an investigation. No operational training or security awareness. Must be handled carefully for legal and ethical reasons.'],
+  [/double.agent/i, 'HARD — An operative serving two masters. Trained in deception and compartmentation. Extremely difficult to assess true loyalties.'],
+];
+
+function roleTooltip(role) {
+  if (!role) return '';
+  for (let i = 0; i < ROLE_TOOLTIPS.length; i++) {
+    if (ROLE_TOOLTIPS[i][0].test(role)) return ROLE_TOOLTIPS[i][1];
+  }
+  return '';
+}
+
+function roleWithTip(role) {
+  const tip = roleTooltip(role);
+  if (!tip) return role || '';
+  return `<span data-tip="${tip.replace(/"/g, '&quot;')}">${role}</span>`;
+}
+
 const HVT_REGISTER_TYPES = new Set([
   'FOREIGN_HVT', 'DOMESTIC_HVT', 'RENDITION', 'SURVEILLANCE_TAKEDOWN', 'LONG_HUNT_HVT', 'MOLE_HUNT',
   'HVT_SURVEILLANCE_DOM', 'HVT_SURVEILLANCE_FOR', 'HVT_ABDUCTION_DOM', 'HVT_ABDUCTION_FOR',
@@ -2671,7 +2744,7 @@ function hvtBriefingPopup(type, h, extra) {
   }[h.status] || 'var(--text-dim)';
 
   var detailLines = '<div style="font-size:11px;font-weight:700;letter-spacing:0.5px;color:' + statusColor + '">' + h.alias + '</div>';
-  detailLines += '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">' + (h.role || 'Unknown role') + '</div>';
+  detailLines += '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">' + roleWithTip(h.role || 'Unknown role') + '</div>';
   if (location) detailLines += '<div style="font-size:9px;color:var(--text-dim)">' + location + '</div>';
   detailLines += '<div style="font-size:9px;margin-top:3px;letter-spacing:0.8px;color:' + statusColor + '">STATUS: ' + h.status + '</div>';
   if (extra?.detail) detailLines += '<div style="font-size:10px;color:var(--text-hi);margin-top:4px;line-height:1.4">' + extra.detail + '</div>';
@@ -3008,7 +3081,7 @@ window.openHvtMissionModal = function(hvtId) {
   document.getElementById('modal-body').innerHTML = `
     <div class="modal-section">
       <div class="modal-section-title">TARGET: ${h.alias}</div>
-      <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">${h.role}</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">${roleWithTip(h.role)}</div>
       <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px">${h.org} · ${h.knownFields.city || ''}${h.knownFields.country ? ', ' + h.knownFields.country : ''}</div>
     </div>
     <div class="modal-section">
@@ -4264,7 +4337,7 @@ function renderThreats() {
         ${hardnessBadge}
         ${statusChip}
       </div>
-      <div class="threat-role">${h.role}</div>
+      <div class="threat-role">${roleWithTip(h.role)}</div>
       <div class="threat-org">${h.org}</div>
       ${knownHtml ? `<div class="threat-known-fields">${knownHtml}</div>` : ''}
       ${gapsHtml}
