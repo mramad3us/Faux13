@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '4.1.1';
+const GAME_VERSION = '4.1.2';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // config.js (COUNTRIES, DEPT_CONFIG, FOREIGN_CITIES, etc.) must precede this file
@@ -1499,68 +1499,13 @@ window.authAndExecute = function(missionId, btnEl) {
   const cancelBtn = actionsRow?.querySelector('.btn-neutral');
   if (cancelBtn) cancelBtn.style.display = 'none';
 
-  // Capture button dimensions for smooth morph
-  const btnRect = btnEl.getBoundingClientRect();
-  const origWidth = btnRect.width;
-  const origHeight = btnRect.height;
-  const origText = btnEl.textContent;
+  // Replace button content with spinner
+  btnEl.innerHTML = '<span class="op-spinner"></span> PROCESSING';
+  btnEl.classList.add('btn-processing');
 
-  // Morph button into auth widget
-  btnEl.classList.add('auth-btn-morphing');
-  btnEl.style.width = origWidth + 'px';
-  btnEl.style.height = origHeight + 'px';
-  btnEl.innerHTML = `
-    <div class="auth-btn-inner">
-      <span class="auth-btn-fp">🫆</span>
-      <span class="auth-btn-status">SCANNING...</span>
-    </div>
-    <div class="auth-btn-bar-wrap"><div class="auth-btn-bar"></div></div>
-  `;
-
-  // Expand to full auth widget after a frame
-  requestAnimationFrame(() => {
-    btnEl.style.width = '';
-    btnEl.style.height = '';
-    btnEl.classList.add('auth-btn-expanded');
-
-    const fp = btnEl.querySelector('.auth-btn-fp');
-    const status = btnEl.querySelector('.auth-btn-status');
-    const bar = btnEl.querySelector('.auth-btn-bar');
-
-    let progress = 0;
-    const steps = [
-      { at: 25, text: 'VERIFYING...' },
-      { at: 55, text: 'IDENTITY CONFIRMED' },
-      { at: 80, text: 'GREENLIGHT AUTHORIZED' },
-    ];
-    let stepIdx = 0;
-
-    const interval = setInterval(() => {
-      progress += randInt(6, 14);
-      if (progress > 100) progress = 100;
-      bar.style.width = progress + '%';
-
-      if (stepIdx < steps.length && progress >= steps[stepIdx].at) {
-        status.textContent = steps[stepIdx].text;
-        stepIdx++;
-      }
-
-      if (progress >= 100) {
-        clearInterval(interval);
-        fp.classList.add('auth-fp-confirmed');
-        status.textContent = 'AUTHORIZED';
-        status.classList.add('auth-fp-go');
-        btnEl.classList.add('auth-btn-confirmed');
-
-        setTimeout(() => {
-          btnEl.classList.add('auth-btn-launch');
-          btnEl.addEventListener('animationend', () => {
-            window.executeOperation(missionId);
-          }, { once: true });
-        }, 500);
-      }
-    }, 80);
-  });
+  setTimeout(() => {
+    window.executeOperation(missionId);
+  }, 1200);
 };
 
 window.executeOperation = function(missionId) {
