@@ -2495,7 +2495,7 @@ function classifyHvtHardness(role) {
   // HARD: intelligence/espionage professionals, hostile state operatives
   if (/intelligence|espionage|case officer|mole handler|clandestine|hostile/.test(r)) return 'HARD';
   if (/access agent|dead-drop|influence operative|signals tech|wmd/.test(r)) return 'HARD';
-  if (/acquisition agent|diplomatic cover/.test(r)) return 'HARD';
+  if (/acquisition agent|diplomatic cover|operations officer/.test(r)) return 'HARD';
   // SOFT: scientists, technical specialists, forgers, front companies
   if (/scientist|researcher|forger|front company|technology thief/.test(r)) return 'SOFT';
   // MODERATE: terrorists, criminals, couriers, facilitators, financiers — everyone else
@@ -2528,6 +2528,7 @@ const ROLE_TOOLTIPS = [
   [/procurement (agent|specialist)|acquisition agent/i, 'HARD — Acquires restricted technology, materials, or equipment for hostile programs. Operates through front companies and cutouts. Difficult to track through legitimate commerce.'],
   [/diplomatic cover/i, 'HARD — Intelligence officer operating under diplomatic immunity. Has access to embassy resources, secure communications, and a legal safety net that complicates operations.'],
   [/intelligence liaison/i, 'HARD — Liaison between a state intelligence service and proxy forces. Coordinates covert support, training, and equipment transfers. Formally trained in tradecraft.'],
+  [/operations officer/i, 'HARD — Directs and coordinates field operations for a hostile network. Trained in planning, logistics, and operational security. A key link between leadership and active cells.'],
   [/covert operations planner/i, 'HARD — Plans clandestine operations for a state proxy or hostile network. Formal military or intelligence training in operational planning and security.'],
   [/saboteur/i, 'HARD — Trained in covert destruction of infrastructure, equipment, or facilities. Operates alone or in small teams with specialized skills.'],
   // SOFT tier
