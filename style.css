@@ -2210,20 +2210,7 @@ input[type="range"] { accent-color: var(--accent); }
 }
 
 
-/* --- Sidebar Active Glow --- */
-.folder-item.active {
-  box-shadow: inset 3px 0 8px -3px rgba(0,201,167,0.2);
-}
-.folder-item.active::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: var(--accent);
-  box-shadow: 0 0 8px rgba(0,201,167,0.4);
-}
+/* --- Sidebar Active Glow — handled by .sidebar-pill now --- */
 
 
 /* --- Resource Bar Ripple --- */
