@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '4.1.2';
+const GAME_VERSION = '4.1.3';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // config.js (COUNTRIES, DEPT_CONFIG, FOREIGN_CITIES, etc.) must precede this file
@@ -1494,10 +1494,16 @@ window.authAndExecute = function(missionId, btnEl) {
   if (!btnEl) { window.executeOperation(missionId); return; }
   btnEl.disabled = true;
 
-  // Hide the cancel button
+  // Animate cancel button out and center the execute button
   const actionsRow = btnEl.closest('.op-config-actions');
   const cancelBtn = actionsRow?.querySelector('.btn-neutral');
-  if (cancelBtn) cancelBtn.style.display = 'none';
+  if (cancelBtn) {
+    cancelBtn.style.width = cancelBtn.offsetWidth + 'px';
+    cancelBtn.style.overflow = 'hidden';
+    cancelBtn.offsetHeight; // force reflow
+    cancelBtn.classList.add('btn-fade-out');
+  }
+  if (actionsRow) actionsRow.classList.add('op-actions-centering');
 
   // Replace button content with spinner
   btnEl.innerHTML = '<span class="op-spinner"></span> PROCESSING';

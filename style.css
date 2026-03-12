@@ -1428,6 +1428,19 @@ input[type="range"] { accent-color: var(--accent); }
   opacity: 0.85;
   letter-spacing: 1.5px;
 }
+.btn-fade-out {
+  transition: width 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.25s ease, padding 0.35s cubic-bezier(0.16,1,0.3,1), margin 0.35s cubic-bezier(0.16,1,0.3,1), border-width 0.35s ease;
+  width: 0 !important;
+  opacity: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  border-width: 0 !important;
+  overflow: hidden;
+}
+.op-actions-centering {
+  transition: justify-content 0.3s ease;
+  justify-content: center;
+}
 
 .btn-primary { font-family: var(--font-mono); font-size: 12px; padding: 8px 18px; background: linear-gradient(135deg, var(--accent), #00b894); color: var(--bg); border: none; border-radius: 5px; cursor: pointer; letter-spacing: 0.5px; transition: all 0.2s cubic-bezier(0.16,1,0.3,1); box-shadow: 0 2px 8px rgba(0,201,167,0.2); }
 .btn-primary:hover { background: linear-gradient(135deg, #00ddb5, #00c9a7); box-shadow: 0 4px 16px rgba(0,201,167,0.3); }
