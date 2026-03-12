@@ -1954,36 +1954,7 @@ input[type="range"] { accent-color: var(--accent); }
 }
 
 
-/* --- CRT Scanline Overlay --- */
-#screen-client::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9998;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 2px,
-    rgba(0,0,0,0.04) 2px,
-    rgba(0,0,0,0.04) 4px
-  );
-  mix-blend-mode: multiply;
-}
-
-/* --- CRT Vignette --- */
-#screen-client::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9997;
-  background: radial-gradient(
-    ellipse at center,
-    transparent 60%,
-    rgba(0,0,0,0.25) 100%
-  );
-}
+/* CRT scanline + vignette removed in v4.0.2 — not the vibe */
 
 
 /* --- Card Depth & Hover Lift (universal) --- */
