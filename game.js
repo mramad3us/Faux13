@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '4.2.0';
+const GAME_VERSION = '4.1.0';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // config.js (COUNTRIES, DEPT_CONFIG, FOREIGN_CITIES, etc.) must precede this file
@@ -3115,9 +3115,6 @@ function renderReadingPane() {
 
   const folder = G.currentFolder;
 
-  // Pause globe when not viewing geo
-  if (folder !== 'geo' && window.GlobeView) window.GlobeView.hide();
-
   // Non-mission folders render their own content
   if (folder === 'threats') {
     renderThreatsInPane(paneEl);
@@ -3577,79 +3574,17 @@ function renderAgenciesInPane(paneEl) {
   paneEl.innerHTML = `<div class="email-body">${cards}</div>`;
 }
 
-// Render geopolitics in reading pane — 3D globe + theater cards
+// Render geopolitics in reading pane
 function renderGeoInPane(paneEl) {
+  // Ensure geo-panel is up-to-date before copying (it normally updates in render:after, after the reading pane)
   if (typeof window.renderGeoPanel === 'function') window.renderGeoPanel();
   const geoEl = document.getElementById('geo-panel');
-
-  // Add data-theater attribute to theater cards for globe click-to-focus
-  let geoHtml = geoEl ? geoEl.innerHTML : '';
-
   paneEl.innerHTML = `
-    <div class="geo-intel-layout">
-      <div class="geo-globe-section">
-        <div class="geo-globe-container" id="globe-container">
-          <div class="geo-globe-loading">
-            <div class="geo-globe-loading-icon">&#9670;</div>
-            <div class="geo-globe-loading-text">INITIALIZING ORBITAL VIEW...</div>
-          </div>
-        </div>
-        <div class="geo-globe-legend">
-          <span class="geo-legend-item"><span class="geo-legend-dot" style="background:#48c878"></span>LOW</span>
-          <span class="geo-legend-item"><span class="geo-legend-dot" style="background:#4a90d9"></span>ELEVATED</span>
-          <span class="geo-legend-item"><span class="geo-legend-dot" style="background:#e8a838"></span>HIGH</span>
-          <span class="geo-legend-item"><span class="geo-legend-dot" style="background:#e84848"></span>CRITICAL</span>
-        </div>
-      </div>
-      <div class="geo-theaters-section">
-        <div class="dc-section-title geo-theaters-title">THEATER STATUS</div>
-        ${geoHtml || '<div class="no-ops-msg">Monitoring global theaters...</div>'}
-      </div>
+    <div class="email-body">
+      <div class="dc-section-title">GLOBAL THEATER STATUS</div>
+      ${geoEl ? geoEl.innerHTML : '<div class="no-ops-msg">Monitoring global theaters...</div>'}
     </div>
   `;
-
-  // Tag theater cards with data-theater for scroll-to
-  if (geoEl && window.THEATER_IDS) {
-    const cards = paneEl.querySelectorAll('.geo-theater-card');
-    for (let i = 0; i < cards.length && i < window.THEATER_IDS.length; i++) {
-      cards[i].setAttribute('data-theater', window.THEATER_IDS[i]);
-    }
-  }
-
-  // Initialize or re-attach the 3D globe
-  const globeContainer = document.getElementById('globe-container');
-  if (!globeContainer) return;
-
-  function attachGlobe(gc) {
-    gc.innerHTML = '';
-    if (!window.GlobeView) return;
-    if (!window._globeInited) {
-      window.GlobeView.init(gc);
-      window._globeInited = true;
-    } else {
-      // Re-attach canvas from the existing renderer
-      const canvas = window._globeCanvas;
-      if (canvas) gc.appendChild(canvas);
-      window.GlobeView.show();
-      window.GlobeView.refresh();
-      setTimeout(() => window.GlobeView.resize(), 50);
-    }
-    // Stash canvas reference for future re-attachment
-    if (!window._globeCanvas) window._globeCanvas = gc.querySelector('canvas');
-  }
-
-  if (window.THREE) {
-    attachGlobe(globeContainer);
-  } else if (!window._threeLoading) {
-    window._threeLoading = true;
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-    script.onload = () => {
-      const gc = document.getElementById('globe-container');
-      if (gc) attachGlobe(gc);
-    };
-    document.head.appendChild(script);
-  }
 }
 
 // Render departments in reading pane
