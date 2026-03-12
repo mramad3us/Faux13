@@ -2459,13 +2459,14 @@ function vagueEstimate(days) {
 function classifyHvtHardness(role) {
   if (!role) return 'MODERATE';
   const r = role.toLowerCase();
-  // ELITE: senior leaders, commanders, military chiefs, operations directors
+  // ELITE: senior leaders, commanders, military chiefs, operations directors, illegals
   if (/\bcommander\b|operations chief|security chief|war crimes|paramilitary/.test(r)) return 'ELITE';
   if (/attack coordinator|target selection|operational director/.test(r)) return 'ELITE';
+  if (/deep.cover|illegal.*no.*immunity/.test(r)) return 'ELITE';
   // HARD: intelligence/espionage professionals, hostile state operatives
   if (/intelligence|espionage|case officer|mole handler|clandestine|hostile/.test(r)) return 'HARD';
   if (/access agent|dead-drop|influence operative|signals tech|wmd/.test(r)) return 'HARD';
-  if (/deep.cover|illegal.*no.*immunity|acquisition agent|diplomatic cover/.test(r)) return 'HARD';
+  if (/acquisition agent|diplomatic cover/.test(r)) return 'HARD';
   // SOFT: scientists, technical specialists, forgers, front companies
   if (/scientist|researcher|forger|front company|technology thief/.test(r)) return 'SOFT';
   // MODERATE: terrorists, criminals, couriers, facilitators, financiers — everyone else
