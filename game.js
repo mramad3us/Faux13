@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '4.2.2';
+const GAME_VERSION = '4.2.3';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // config.js (COUNTRIES, DEPT_CONFIG, FOREIGN_CITIES, etc.) must precede this file
@@ -1585,14 +1585,6 @@ window.executeOperation = function(missionId) {
   addLog(`OP ${m.codename}${phaseLabel} launched. ${fmt(budget)} · ${depts.length} dept(s)${supportNote}${eliteNote} · ETA ${m.execDays}d.`, 'log-info');
   hideModal(); // still safe to call — no-ops if modal isn't open
   followMission(m.id);
-  // Launch glow on the reading pane
-  requestAnimationFrame(() => {
-    const pane = document.getElementById('reading-pane');
-    if (pane) {
-      const wrap = pane.querySelector('.email-wrap') || pane.firstElementChild;
-      if (wrap) { wrap.classList.add('op-launching'); wrap.addEventListener('animationend', () => wrap.classList.remove('op-launching'), { once: true }); }
-    }
-  });
 };
 
 // =============================================================================
