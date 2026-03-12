@@ -3913,13 +3913,15 @@ function initTooltips() {
       tip.classList.add('visible');
       tip.style.left = '0px'; tip.style.top = '0px';
       requestAnimationFrame(() => {
+        const z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        const mx = e.clientX / z, my = e.clientY / z;
         const tw = tip.offsetWidth, th = tip.offsetHeight;
-        const preferX = e.clientX + 16;
-        const preferY = e.clientY - 8;
-        const lx = Math.min(preferX, window.innerWidth - tw - 10);
-        // Flip above cursor if tooltip would overflow bottom
-        const ly = (preferY + th + 10 > window.innerHeight)
-          ? e.clientY - th - 12
+        const vw = window.innerWidth / z, vh = window.innerHeight / z;
+        const preferX = mx + 12;
+        const preferY = my + 14;
+        const lx = Math.min(preferX, vw - tw - 10);
+        const ly = (preferY + th + 10 > vh)
+          ? my - th - 8
           : preferY;
         tip.style.left = Math.max(8, lx) + 'px';
         tip.style.top  = Math.max(8, ly) + 'px';
