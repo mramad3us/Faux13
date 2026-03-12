@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '4.1.0';
+const GAME_VERSION = '4.1.1';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // config.js (COUNTRIES, DEPT_CONFIG, FOREIGN_CITIES, etc.) must precede this file

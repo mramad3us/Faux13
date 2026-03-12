@@ -1259,7 +1259,7 @@ input[type="range"] { accent-color: var(--accent); }
 .threat-section-title { font-family: var(--font-disp); font-size: 11px; font-weight: 700; color: var(--text-dim); letter-spacing: 1px; padding: 10px 0 4px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
 .threat-card { padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; background: var(--glass-light); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .threat-card-active { border-left: 2px solid var(--amber); }
-.threat-card-neutralized { opacity: 0.6; }
+.threat-card-neutralized { opacity: 0.35; filter: saturate(0.3); }
 .threat-card-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .threat-type-badge { font-family: var(--font-mono); font-size: 8px; padding: 1px 5px; border-radius: 2px; }
 .hvt-badge { background: var(--red-dim); color: var(--red); }
