@@ -133,6 +133,13 @@
       }
     }
 
+    // Reclassify HVT hardness (ensures updated rules apply to old saves)
+    if (G.hvts && typeof classifyHvtHardness === 'function') {
+      for (var k = 0; k < G.hvts.length; k++) {
+        if (G.hvts[k].role) G.hvts[k].hardness = classifyHvtHardness(G.hvts[k].role);
+      }
+    }
+
     // Migrate new fields for old saves
     if (!G.intelMessages) G.intelMessages = [];
     if (!G.intelIdCounter) G.intelIdCounter = 0;

@@ -210,14 +210,8 @@ hook('game:start', function () {
 var _factionMigrated = false;
 hook('render:after', function () {
   if (_factionMigrated) return;
+  if (!G.country) return; // don't migrate before a game is active
   _factionMigrated = true;
-  // Reclassify all HVT hardness on load (ensures updated rules apply to old saves)
-  if (G.hvts && typeof classifyHvtHardness === 'function') {
-    for (var hi = 0; hi < G.hvts.length; hi++) {
-      var hv = G.hvts[hi];
-      if (hv.role) hv.hardness = classifyHvtHardness(hv.role);
-    }
-  }
   if (G.intel === undefined) G.intel = 0;
   if (G.intelLifetime === undefined) G.intelLifetime = 0;
   if (!G.playerFactionId) G.playerFactionId = (G.cfg && G.cfg.factionId) || 'FIVE_EYES_CORE';
