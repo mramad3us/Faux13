@@ -50,12 +50,12 @@ function createEarth() {
   // Main sphere — dark with subtle wireframe feel
   var earthGeo = new THREE.SphereGeometry(radius, 64, 64);
   var earthMat = new THREE.MeshPhongMaterial({
-    color: 0x0a0e18,
-    emissive: 0x040810,
-    specular: 0x111828,
-    shininess: 15,
+    color: 0x0c1824,
+    emissive: 0x0a1a2a,
+    specular: 0x2a4060,
+    shininess: 25,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.95,
   });
   earthMesh = new THREE.Mesh(earthGeo, earthMat);
   scene.add(earthMesh);
@@ -66,7 +66,7 @@ function createEarth() {
     color: 0x00c9a7,
     wireframe: true,
     transparent: true,
-    opacity: 0.06,
+    opacity: 0.15,
   });
   var wireMesh = new THREE.Mesh(wireGeo, wireMat);
   scene.add(wireMesh);
@@ -84,8 +84,8 @@ function createEarth() {
     fragmentShader: [
       'varying vec3 vNormal;',
       'void main() {',
-      '  float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.5);',
-      '  gl_FragColor = vec4(0.0, 0.79, 0.65, 1.0) * intensity * 0.6;',
+      '  float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);',
+      '  gl_FragColor = vec4(0.0, 0.79, 0.65, 1.0) * intensity * 1.2;',
       '}'
     ].join('\n'),
     side: THREE.BackSide,
@@ -108,8 +108,8 @@ function createEarth() {
     fragmentShader: [
       'varying vec3 vNormal;',
       'void main() {',
-      '  float intensity = pow(0.5 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);',
-      '  gl_FragColor = vec4(0.0, 0.6, 0.8, 1.0) * intensity * 0.3;',
+      '  float intensity = pow(0.6 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);',
+      '  gl_FragColor = vec4(0.0, 0.7, 0.85, 1.0) * intensity * 0.6;',
       '}'
     ].join('\n'),
     side: THREE.FrontSide,
@@ -162,24 +162,35 @@ function updateMarkers(radius) {
     var c = new THREE.Color(color);
 
     // Marker dot
-    var dotSize = 0.03 + (risk * 0.012);
-    var dotGeo = new THREE.SphereGeometry(dotSize, 12, 12);
+    var dotSize = 0.045 + (risk * 0.015);
+    var dotGeo = new THREE.SphereGeometry(dotSize, 16, 16);
     var dotMat = new THREE.MeshBasicMaterial({
       color: c,
-      transparent: true,
-      opacity: 0.9,
     });
     var dot = new THREE.Mesh(dotGeo, dotMat);
     dot.position.copy(pos);
     dot.userData = { theaterId: tid, name: theater ? theater.name : tid, risk: risk, events: eventCount, color: color };
     markerGroup.add(dot);
 
+    // Glow sprite behind marker
+    var spriteMat = new THREE.SpriteMaterial({
+      color: c,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+    });
+    var sprite = new THREE.Sprite(spriteMat);
+    sprite.position.copy(pos);
+    var spriteSize = dotSize * 5;
+    sprite.scale.set(spriteSize, spriteSize, 1);
+    markerGroup.add(sprite);
+
     // Glow ring (pulsing for active events)
-    var ringGeo = new THREE.RingGeometry(dotSize + 0.01, dotSize + 0.03, 32);
+    var ringGeo = new THREE.RingGeometry(dotSize + 0.02, dotSize + 0.05, 32);
     var ringMat = new THREE.MeshBasicMaterial({
       color: c,
       transparent: true,
-      opacity: eventCount > 0 ? 0.5 : 0.15,
+      opacity: eventCount > 0 ? 0.6 : 0.25,
       side: THREE.DoubleSide,
     });
     var ring = new THREE.Mesh(ringGeo, ringMat);
@@ -190,11 +201,11 @@ function updateMarkers(radius) {
 
     // Outer ring for critical risk
     if (risk >= 4) {
-      var outerGeo = new THREE.RingGeometry(dotSize + 0.04, dotSize + 0.07, 32);
+      var outerGeo = new THREE.RingGeometry(dotSize + 0.06, dotSize + 0.10, 32);
       var outerMat = new THREE.MeshBasicMaterial({
         color: 0xe84848,
         transparent: true,
-        opacity: 0.3,
+        opacity: 0.45,
         side: THREE.DoubleSide,
       });
       var outerRing = new THREE.Mesh(outerGeo, outerMat);
@@ -206,15 +217,15 @@ function updateMarkers(radius) {
 
     // Vertical beam for active theaters
     if (eventCount > 0) {
-      var beamGeo = new THREE.CylinderGeometry(0.003, 0.003, 0.3, 4);
+      var beamGeo = new THREE.CylinderGeometry(0.005, 0.002, 0.5, 6);
       var beamMat = new THREE.MeshBasicMaterial({
         color: c,
         transparent: true,
-        opacity: 0.25,
+        opacity: 0.4,
       });
       var beam = new THREE.Mesh(beamGeo, beamMat);
       var beamDir = pos.clone().normalize();
-      beam.position.copy(pos.clone().add(beamDir.clone().multiplyScalar(0.15)));
+      beam.position.copy(pos.clone().add(beamDir.clone().multiplyScalar(0.25)));
       beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), beamDir);
       markerGroup.add(beam);
     }
@@ -263,7 +274,7 @@ function drawArcs(radius) {
       var lineMat = new THREE.LineBasicMaterial({
         color: 0x00c9a7,
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.25,
       });
       arcGroup.add(new THREE.Line(lineGeo, lineMat));
     }
@@ -297,14 +308,18 @@ function initGlobe(containerEl) {
   container.appendChild(renderer.domElement);
 
   // Lights
-  var ambient = new THREE.AmbientLight(0x0a1428, 1.5);
+  var ambient = new THREE.AmbientLight(0x1a2840, 2.0);
   scene.add(ambient);
 
-  var dirLight = new THREE.DirectionalLight(0x4a90d9, 0.4);
+  var dirLight = new THREE.DirectionalLight(0x6aadee, 0.8);
   dirLight.position.set(5, 3, 5);
   scene.add(dirLight);
 
-  var pointLight = new THREE.PointLight(0x00c9a7, 0.6, 20);
+  var dirLight2 = new THREE.DirectionalLight(0x2060a0, 0.3);
+  dirLight2.position.set(-4, -2, 3);
+  scene.add(dirLight2);
+
+  var pointLight = new THREE.PointLight(0x00c9a7, 1.0, 20);
   pointLight.position.set(-3, 2, 4);
   scene.add(pointLight);
 
