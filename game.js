@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.3.0';
+const GAME_VERSION = '3.3.1';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -2465,6 +2465,7 @@ function classifyHvtHardness(role) {
   // HARD: intelligence/espionage professionals, hostile state operatives
   if (/intelligence|espionage|case officer|mole handler|clandestine|hostile/.test(r)) return 'HARD';
   if (/access agent|dead-drop|influence operative|signals tech|wmd/.test(r)) return 'HARD';
+  if (/deep.cover|illegal.*no.*immunity|acquisition agent|diplomatic cover/.test(r)) return 'HARD';
   // SOFT: scientists, technical specialists, forgers, front companies
   if (/scientist|researcher|forger|front company|technology thief/.test(r)) return 'SOFT';
   // MODERATE: terrorists, criminals, couriers, facilitators, financiers — everyone else

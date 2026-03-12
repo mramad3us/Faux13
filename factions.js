@@ -211,6 +211,13 @@ var _factionMigrated = false;
 hook('render:after', function () {
   if (_factionMigrated) return;
   _factionMigrated = true;
+  // Fix missing hardness on faction-spawned HVTs (pre-3.3.1)
+  if (G.hvts && typeof classifyHvtHardness === 'function') {
+    for (var hi = 0; hi < G.hvts.length; hi++) {
+      var hv = G.hvts[hi];
+      if (!hv.hardness && hv.role) hv.hardness = classifyHvtHardness(hv.role);
+    }
+  }
   if (G.intel === undefined) G.intel = 0;
   if (G.intelLifetime === undefined) G.intelLifetime = 0;
   if (!G.playerFactionId) G.playerFactionId = (G.cfg && G.cfg.factionId) || 'FIVE_EYES_CORE';
@@ -523,6 +530,7 @@ hook('day:post', function () {
     handedTo: null,
     factionId: srcFactionId,
     hvtIntelType: true,
+    hardness: typeof classifyHvtHardness === 'function' ? classifyHvtHardness(role) : 'HARD',
   });
 
   queueBriefingPopup({
