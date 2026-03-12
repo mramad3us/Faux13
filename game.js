@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '4.2.0';
+const GAME_VERSION = '4.2.1';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // config.js (COUNTRIES, DEPT_CONFIG, FOREIGN_CITIES, etc.) must precede this file
@@ -2023,10 +2023,10 @@ function triggerGameOver(title, msg) {
   document.getElementById('go-title').textContent = title;
   document.getElementById('go-message').textContent = msg;
   document.getElementById('go-stats').innerHTML = `
-    <div class="go-stat"><span class="go-stat-val">${G.day}</span><span class="go-stat-lbl">DAYS</span></div>
-    <div class="go-stat"><span class="go-stat-val">${G.opsSucceeded}</span><span class="go-stat-lbl">SUCCESSES</span></div>
-    <div class="go-stat"><span class="go-stat-val">${G.opsCompleted}</span><span class="go-stat-lbl">OPERATIONS</span></div>
-    <div class="go-stat"><span class="go-stat-val">${G.xp}</span><span class="go-stat-lbl">TOTAL XP</span></div>
+    <div class="go-stat go-stagger" style="--stagger:0"><span class="go-stat-val">${G.day}</span><span class="go-stat-lbl">DAYS</span></div>
+    <div class="go-stat go-stagger" style="--stagger:1"><span class="go-stat-val">${G.opsSucceeded}</span><span class="go-stat-lbl">SUCCESSES</span></div>
+    <div class="go-stat go-stagger" style="--stagger:2"><span class="go-stat-val">${G.opsCompleted}</span><span class="go-stat-lbl">OPERATIONS</span></div>
+    <div class="go-stat go-stagger" style="--stagger:3"><span class="go-stat-val">${G.xp}</span><span class="go-stat-lbl">TOTAL XP</span></div>
   `;
   showScreen('gameover');
 }
@@ -2875,8 +2875,24 @@ let _prevConf = null, _prevBudget = null, _prevXp = null, _prevIntel = null;
 function flashStat(el, direction) {
   if (!el) return;
   el.classList.remove('stat-flash-up', 'stat-flash-down');
-  void el.offsetWidth; // force reflow to restart animation
+  void el.offsetWidth;
   el.classList.add(direction > 0 ? 'stat-flash-up' : 'stat-flash-down');
+}
+
+// Animated number counting — values roll to their target
+function animateValue(el, start, end, suffix, duration) {
+  if (!el || start === end) return;
+  const range = end - start;
+  const startTime = performance.now();
+  const dur = Math.min(duration || 400, 800);
+  function tick(now) {
+    const t = Math.min((now - startTime) / dur, 1);
+    const ease = 1 - Math.pow(1 - t, 3); // ease-out cubic
+    const current = Math.round(start + range * ease);
+    el.textContent = (suffix === '$' ? fmt(current) : current + (suffix || ''));
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }
 
 function renderHeader() {
@@ -2895,15 +2911,23 @@ function renderHeader() {
   // Update both new and old stat elements, with flash on change
   const statConf = document.getElementById('stat-conf');
   if (statConf) {
-    statConf.textContent = `${confPct}%`;
-    if (_prevConf !== null && confPct !== _prevConf) flashStat(statConf, confPct - _prevConf);
+    if (_prevConf !== null && confPct !== _prevConf) {
+      flashStat(statConf, confPct - _prevConf);
+      animateValue(statConf, _prevConf, confPct, '%', 500);
+    } else {
+      statConf.textContent = `${confPct}%`;
+    }
   }
   _prevConf = confPct;
 
   const statBudget = document.getElementById('stat-budget');
   if (statBudget) {
-    statBudget.textContent = fmt(G.budget);
-    if (_prevBudget !== null && G.budget !== _prevBudget) flashStat(statBudget, G.budget - _prevBudget);
+    if (_prevBudget !== null && G.budget !== _prevBudget) {
+      flashStat(statBudget, G.budget - _prevBudget);
+      animateValue(statBudget, _prevBudget, G.budget, '$', 600);
+    } else {
+      statBudget.textContent = fmt(G.budget);
+    }
     const budgetStat = statBudget.closest('.hdr-stat');
     if (budgetStat && G.cfg) budgetStat.setAttribute('data-tip', `Available operational budget. Regenerates ${fmt(G.cfg.weeklyBudgetRegen)}/week (cap: ${fmt(G.cfg.budget)}).`);
   }
@@ -2911,15 +2935,24 @@ function renderHeader() {
 
   const statXp = document.getElementById('stat-xp');
   if (statXp) {
-    statXp.textContent = `${G.xp}`;
-    if (_prevXp !== null && G.xp !== _prevXp) flashStat(statXp, G.xp - _prevXp);
+    if (_prevXp !== null && G.xp !== _prevXp) {
+      flashStat(statXp, G.xp - _prevXp);
+      animateValue(statXp, _prevXp, G.xp, '', 500);
+    } else {
+      statXp.textContent = `${G.xp}`;
+    }
   }
   _prevXp = G.xp;
 
   const statIntel = document.getElementById('stat-intel');
   if (statIntel) {
-    statIntel.textContent = `${G.intel || 0}`;
-    if (_prevIntel !== null && (G.intel || 0) !== _prevIntel) flashStat(statIntel, (G.intel || 0) - _prevIntel);
+    const intel = G.intel || 0;
+    if (_prevIntel !== null && intel !== _prevIntel) {
+      flashStat(statIntel, intel - _prevIntel);
+      animateValue(statIntel, _prevIntel, intel, '', 500);
+    } else {
+      statIntel.textContent = `${intel}`;
+    }
   }
   _prevIntel = G.intel || 0;
 
@@ -2932,6 +2965,7 @@ function renderHeader() {
   if (xpEl) xpEl.textContent = `${G.xp}`;
 }
 
+let _prevFolderCounts = {};
 function renderFolderSidebar() {
   const el = document.getElementById('sidebar');
   if (!el) return;
@@ -2970,6 +3004,20 @@ function renderFolderSidebar() {
     <img class="folder-icon-img" src="icons/elite-roster.svg" alt="Elite Roster"><span class="folder-label">Elite Roster</span>
     ${(G.eliteUnits?.filter(u => u.alive).length || 0) > 0 ? `<span class="folder-badge">${G.eliteUnits.filter(u => u.alive).length}</span>` : ''}
   </div>`;
+
+  // Pop-animate badges whose counts changed
+  el.querySelectorAll('.folder-item').forEach(item => {
+    const folderId = (item.getAttribute('onclick') || '').match(/'(\w+)'/)?.[1];
+    const badge = item.querySelector('.folder-badge');
+    if (folderId && badge) {
+      const newCount = parseInt(badge.textContent) || 0;
+      if (_prevFolderCounts[folderId] !== undefined && _prevFolderCounts[folderId] !== newCount) {
+        badge.classList.add('badge-pop');
+        setTimeout(() => badge.classList.remove('badge-pop'), 400);
+      }
+      _prevFolderCounts[folderId] = newCount;
+    }
+  });
 }
 
 function renderMessageList() {
@@ -4142,12 +4190,23 @@ function queueBriefingPopup(cfg) {
 window.dismissBriefingPopup = function() { hideModal(); };
 
 function showScreen(name) {
-  // Map old screen names to new ones
   const map = { select: 'login', game: 'client' };
   const mapped = map[name] || name;
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById(`screen-${mapped}`);
-  if (el) el.classList.add('active');
+  const current = document.querySelector('.screen.active');
+  const next = document.getElementById(`screen-${mapped}`);
+  if (!next || next === current) return;
+  if (current) {
+    current.classList.add('screen-exit');
+    // Start new screen slightly after exit begins for overlap
+    setTimeout(() => {
+      next.classList.add('active', 'screen-enter');
+      setTimeout(() => next.classList.remove('screen-enter'), 600);
+    }, 200);
+    setTimeout(() => current.classList.remove('active', 'screen-exit'), 450);
+  } else {
+    next.classList.add('active', 'screen-enter');
+    setTimeout(() => next.classList.remove('screen-enter'), 600);
+  }
 }
 
 // =============================================================================
