@@ -720,6 +720,7 @@ input[type="range"] { accent-color: var(--accent); }
 .mlp-list {
   flex: 1;
   overflow-y: auto;
+  position: relative;
 }
 
 /* Message rows */
@@ -729,15 +730,15 @@ input[type="range"] { accent-color: var(--accent); }
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  padding-left: 10px;
   border-bottom: 1px solid rgba(26,35,50,0.5);
-  border-left: 2px solid transparent;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s, transform 0.1s;
+  transition: background 0.15s;
   min-height: 42px;
+  position: relative;
+  z-index: 1;
 }
 .msg-row:hover { background: var(--bg-hover); }
-.msg-row.msg-selected { background: rgba(0,201,167,0.05); border-left-color: var(--accent); box-shadow: inset 3px 0 10px -3px rgba(0,201,167,0.15); }
+.msg-row.msg-selected { color: var(--text-hi); }
 .msg-row.msg-unread .msg-from,
 .msg-row.msg-unread .msg-subject { color: var(--text-hi); font-weight: 600; }
 
@@ -2521,6 +2522,19 @@ input[type="range"] { accent-color: var(--accent); }
   z-index: 0;
   transition: top 0.3s cubic-bezier(0.16,1,0.3,1), height 0.25s cubic-bezier(0.16,1,0.3,1);
   box-shadow: inset 0 0 20px rgba(0,201,167,0.03);
+}
+
+/* --- Message list sliding pill highlight --- */
+.msglist-pill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: rgba(0,201,167,0.05);
+  border-left: 2px solid var(--accent);
+  pointer-events: none;
+  z-index: 0;
+  transition: top 0.3s cubic-bezier(0.16,1,0.3,1), height 0.2s cubic-bezier(0.16,1,0.3,1);
+  box-shadow: inset 3px 0 10px -3px rgba(0,201,167,0.15);
 }
 
 /* --- Sidebar folder: press feedback --- */

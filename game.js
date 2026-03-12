@@ -2966,7 +2966,8 @@ function renderHeader() {
 }
 
 let _prevFolderCounts = {};
-let _sidebarPillTop = null; // track pill position for slide animation
+let _sidebarPillTop = null;
+let _msgPillTop = null, _msgPillHeight = null, _msgPillFolder = null;
 function renderFolderSidebar() {
   const el = document.getElementById('sidebar');
   if (!el) return;
@@ -3132,6 +3133,32 @@ function renderMessageList() {
   }).join('');
 
   listEl.innerHTML = intelRows + missionRows;
+
+  // --- Sliding pill highlight for selected message ---
+  const selectedRow = listEl.querySelector('.msg-row.msg-selected');
+  if (selectedRow) {
+    const pill = document.createElement('div');
+    pill.className = 'msglist-pill';
+    listEl.appendChild(pill);
+    const rowTop = selectedRow.offsetTop;
+    const rowH = selectedRow.offsetHeight;
+    if (_msgPillTop !== null && _msgPillFolder === G.currentFolder) {
+      pill.style.top = _msgPillTop + 'px';
+      pill.style.height = (_msgPillHeight || rowH) + 'px';
+      pill.offsetHeight; // force layout
+      pill.style.top = rowTop + 'px';
+      pill.style.height = rowH + 'px';
+    } else {
+      pill.style.transition = 'none';
+      pill.style.top = rowTop + 'px';
+      pill.style.height = rowH + 'px';
+    }
+    _msgPillTop = rowTop;
+    _msgPillHeight = rowH;
+    _msgPillFolder = G.currentFolder;
+  } else {
+    _msgPillTop = null;
+  }
 }
 
 function renderPhaseRoadmap(m) {
