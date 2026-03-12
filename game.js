@@ -1503,11 +1503,15 @@ window.authAndExecute = function(missionId, btnEl) {
     cancelBtn.offsetHeight; // force reflow
     cancelBtn.classList.add('btn-fade-out');
   }
-  if (actionsRow) actionsRow.classList.add('op-actions-centering');
 
   // Replace button content with spinner
   btnEl.innerHTML = '<span class="op-spinner"></span> PROCESSING';
   btnEl.classList.add('btn-processing');
+
+  // Beat before centering
+  setTimeout(() => {
+    if (actionsRow) actionsRow.classList.add('op-actions-centering');
+  }, 400);
 
   setTimeout(() => {
     window.executeOperation(missionId);
