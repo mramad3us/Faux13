@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '3.3.2';
+const GAME_VERSION = '3.3.3';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // MISSION_TYPES loaded from missions.js (must precede this file)
@@ -1455,6 +1455,15 @@ window.reassignSuspect = function(missionId) {
 // OPERATION MODAL
 // =============================================================================
 
+function getHvtHardnessPenalty(m) {
+  if (!m.linkedHvtId || !G.hvts) return 0;
+  const h = G.hvts.find(x => x.id === m.linkedHvtId);
+  if (!h) return 0;
+  if (h.hardness === 'ELITE') return 10;
+  if (h.hardness === 'HARD') return 5;
+  return 0;
+}
+
 function calcOpProb(m, budget, depts, selectedSupport) {
   const minBudget        = Math.max(1, Math.floor(m.baseBudget * 0.5));
   const falseFlagPenalty = m.phaseFalseFlagPenalty ? 25 : 0;
@@ -1473,10 +1482,11 @@ function calcOpProb(m, budget, depts, selectedSupport) {
   const intelPenalty     = total > 0 ? Math.round((1 - effectiveRevealed / total) * 30) : 0;
   const intelBonusAmt    = (effectiveRevealed >= total && total > 0) ? 10 : (m.intelBonus ? 10 : 0);
   const blownPenalty     = m.blown ? 25 : 0;
+  const hardnessPenalty  = getHvtHardnessPenalty(m);
   const agencyBonus      = (selectedSupport || [])
     .filter(s => s.bonusType === 'execProb')
     .reduce((sum, s) => sum + s.bonusValue, 0);
-  let p = 35 - falseFlagPenalty - intelPenalty - blownPenalty + intelBonusAmt + agencyBonus;
+  let p = 35 - falseFlagPenalty - intelPenalty - blownPenalty - hardnessPenalty + intelBonusAmt + agencyBonus;
   p += Math.round(clamp((budget - minBudget) / Math.max(1, m.baseBudget - minBudget), 0, 1) * 25);
   p += depts.filter(d =>  m.execDepts.includes(d)).length * 12; // recommended
   p += depts.filter(d => !m.execDepts.includes(d)).length *  5; // optional
@@ -1502,6 +1512,7 @@ function calcOpProbBreakdown(m, budget, depts, selectedSupport) {
   const intelPenalty     = total > 0 ? Math.round((1 - effectiveRevealed / total) * 30) : 0;
   const intelBonusAmt    = (effectiveRevealed >= total && total > 0) ? 10 : (m.intelBonus ? 10 : 0);
   const blownPenalty     = m.blown ? 25 : 0;
+  const hardnessPenalty  = getHvtHardnessPenalty(m);
   const agencyBonus      = (selectedSupport || [])
     .filter(s => s.bonusType === 'execProb')
     .reduce((sum, s) => sum + s.bonusValue, 0);
@@ -1517,9 +1528,10 @@ function calcOpProbBreakdown(m, budget, depts, selectedSupport) {
   if (intelPenalty)     items.push({ label: `Unconfirmed intel (${effectiveRevealed}/${total})`, value: -intelPenalty });
   if (falseFlagPenalty) items.push({ label: 'Anomaly detected', value: -falseFlagPenalty });
   if (blownPenalty)     items.push({ label: 'Operation compromised', value: -blownPenalty });
+  if (hardnessPenalty)  items.push({ label: `Target hardness (${hardnessPenalty === 10 ? 'ELITE' : 'HARD'})`, value: -hardnessPenalty });
   if (agencyBonus)      items.push({ label: 'Agency support', value: agencyBonus });
 
-  let p = 35 - falseFlagPenalty - intelPenalty - blownPenalty + intelBonusAmt + agencyBonus + budgetContrib + recDepts * 12 + optDepts * 5;
+  let p = 35 - falseFlagPenalty - intelPenalty - blownPenalty - hardnessPenalty + intelBonusAmt + agencyBonus + budgetContrib + recDepts * 12 + optDepts * 5;
   // Hook modifiers (elite, infiltration, network)
   const preHook = p;
   for (const fn of _hooks['calcProb:modify'] || []) p = fn({ mission: m, prob: p, budget, depts });
@@ -1586,6 +1598,23 @@ function networkModNote(m) {
   const theater = typeof THEATERS !== 'undefined' && THEATERS[tid] ? THEATERS[tid].name : tid;
   if (mod > 0) return `<div class="op-penalty-note op-penalty-bonus">★ NETWORK ADVANTAGE: +${mod}% success probability. Strong presence in ${theater}.</div>`;
   return `<div class="op-penalty-note op-penalty-blown">⚠ WEAK NETWORK: ${mod}% success probability. Insufficient presence in ${theater}.</div>`;
+}
+
+function hardnessBadge(m) {
+  const pen = getHvtHardnessPenalty(m);
+  if (!pen) return '';
+  const label = pen === 10 ? 'ELITE' : 'HARD';
+  return `<span class="dc-badge dc-badge-netmod dc-badge-netmod-neg" data-tip="${label} target: −${pen}% success probability.">TARGET: ${label} (−${pen}%)</span>`;
+}
+
+function hardnessNote(m) {
+  const pen = getHvtHardnessPenalty(m);
+  if (!pen) return '';
+  const label = pen === 10 ? 'ELITE' : 'HARD';
+  const desc = pen === 10
+    ? 'Exceptional tradecraft and operational security. Expect maximum resistance.'
+    : 'Professional-grade counter-surveillance and trained resistance.';
+  return `<div class="op-penalty-note op-penalty-blown">⚠ ${label} TARGET: −${pen}% success probability. ${desc}</div>`;
 }
 
 function openOperationModal(missionId) {
@@ -1671,7 +1700,7 @@ function openOperationModal(missionId) {
           <span class="op-config-title">CONFIGURE OPERATION</span>
           <button class="op-config-close" onclick="openOperationModal('${missionId}')">✕</button>
         </div>
-        ${penaltyNote}${intelNote}${blownNote}${networkModNote(m)}
+        ${penaltyNote}${intelNote}${blownNote}${networkModNote(m)}${hardnessNote(m)}
         <div class="op-config-section anim-section" style="animation-delay:0.05s">
           <div class="modal-section-title">OPERATION PLAN</div>
           <div class="op-narrative">${m.opNarrative}</div>
@@ -3592,7 +3621,7 @@ function renderReadingPane() {
       <span class="dc-badge ${locCls}">${m.location === 'FOREIGN' ? `${m.city}, ${m.country}` : `${m.city} [DOMESTIC]`}</span>
       <span class="dc-badge">DEADLINE: ${m.urgencyLeft}d</span>
       ${linkedThreatBadge}
-      ${networkModBadge(m)}
+      ${networkModBadge(m)}${hardnessBadge(m)}
     </div>
     ${renderPhaseRoadmap(m)}
   `;
