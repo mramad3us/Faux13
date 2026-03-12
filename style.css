@@ -1700,6 +1700,7 @@ input[type="range"] { accent-color: var(--accent); }
   0%   { opacity: 1; transform: scale(1); }
   50%  { opacity: 1; transform: scale(1.02); box-shadow: 0 0 40px rgba(46,204,113,0.3); }
   100% { opacity: 0; transform: scale(0.97); }
+}
 
 /* --- Stat value flash when changed (JS adds .stat-flash) --- */
 @keyframes statFlash {
@@ -1920,4 +1921,460 @@ input[type="range"] { accent-color: var(--accent); }
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .msg-list-pane { width: 200px; }
+}
+
+
+/* =============================================================================
+   V4.0.0 — VISUAL OVERHAUL
+   Card depth, hover lift, staggered animations, missing keyframes,
+   CRT overlay, enhanced transitions, micro-interactions
+   ============================================================================= */
+
+/* --- Missing keyframe definitions (referenced in animations.js) --- */
+@keyframes flashGreen {
+  0%   { color: var(--green); text-shadow: 0 0 10px rgba(72,200,120,0.6); }
+  100% { color: inherit; text-shadow: none; }
+}
+@keyframes flashRed {
+  0%   { color: var(--red); text-shadow: 0 0 10px rgba(232,72,72,0.6); }
+  100% { color: inherit; text-shadow: none; }
+}
+.flash-green { animation: flashGreen 0.8s ease-out both; }
+.flash-red   { animation: flashRed 0.8s ease-out both; }
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,201,167,0.4); }
+  50%      { box-shadow: 0 0 14px 3px rgba(0,201,167,0.25); }
+}
+.pulse-glow { animation: pulseGlow 1.5s ease-in-out infinite; }
+
+@keyframes paneSlideIn {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+
+/* --- CRT Scanline Overlay --- */
+#screen-client::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0,0,0,0.04) 2px,
+    rgba(0,0,0,0.04) 4px
+  );
+  mix-blend-mode: multiply;
+}
+
+/* --- CRT Vignette --- */
+#screen-client::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0,0,0,0.25) 100%
+  );
+}
+
+
+/* --- Card Depth & Hover Lift (universal) --- */
+.threat-card,
+.dept-card,
+.elite-unit-card,
+.geo-theater-card,
+.save-slot,
+.active-op-card,
+.suspect-card,
+.roster-card,
+.hvt-mission-option {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 0 0 0 rgba(0,201,167,0);
+  transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+}
+.threat-card:hover,
+.dept-card:hover,
+.geo-theater-card:hover,
+.save-slot:hover,
+.active-op-card:hover,
+.hvt-mission-option:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,201,167,0.1);
+}
+
+/* Profile cards on login — enhanced depth */
+.profile-card {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+}
+.profile-card:hover {
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4), 0 0 20px rgba(0,201,167,0.08);
+  transform: translateX(6px) translateY(-1px);
+}
+
+/* Modal box depth */
+.modal-box {
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,201,167,0.05);
+}
+
+/* Result boxes depth */
+.result-box {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: box-shadow 0.3s ease;
+}
+.result-box.success { box-shadow: 0 2px 12px rgba(72,200,120,0.15); }
+.result-box.failure { box-shadow: 0 2px 12px rgba(232,72,72,0.15); }
+
+
+/* --- Button Micro-interactions --- */
+.btn-primary,
+.btn-neutral,
+.btn-danger,
+.btn-threat-assign,
+.btn-threat-action,
+.btn-upgrade,
+.reply-btn {
+  transition: all 0.15s cubic-bezier(0.16,1,0.3,1);
+}
+.btn-primary:active:not(:disabled),
+.btn-neutral:active:not(:disabled),
+.btn-danger:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 16px rgba(0,201,167,0.25);
+}
+.btn-danger:hover:not(:disabled) {
+  box-shadow: 0 0 12px rgba(232,72,72,0.2);
+}
+
+/* Hover glow on interactive cards */
+.elite-unit-card:hover:not(.on-cooldown):not(.irrelevant) {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 12px rgba(0,201,167,0.1);
+  border-color: var(--accent);
+}
+.suspect-card:hover:not(.eliminated) {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3), 0 0 8px rgba(0,201,167,0.08);
+}
+
+
+/* --- Staggered List Animation --- */
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.msg-row { animation: cardSlideIn 0.2s ease-out both; }
+.msg-row:nth-child(1)  { animation-delay: 0ms; }
+.msg-row:nth-child(2)  { animation-delay: 30ms; }
+.msg-row:nth-child(3)  { animation-delay: 60ms; }
+.msg-row:nth-child(4)  { animation-delay: 90ms; }
+.msg-row:nth-child(5)  { animation-delay: 120ms; }
+.msg-row:nth-child(6)  { animation-delay: 150ms; }
+.msg-row:nth-child(7)  { animation-delay: 180ms; }
+.msg-row:nth-child(8)  { animation-delay: 210ms; }
+.msg-row:nth-child(9)  { animation-delay: 240ms; }
+.msg-row:nth-child(10) { animation-delay: 270ms; }
+.msg-row:nth-child(n+11) { animation-delay: 300ms; }
+
+/* Threat/dept/geo cards stagger — applied via JS class */
+.card-stagger { animation: cardSlideIn 0.25s ease-out both; }
+
+
+/* --- Header Accent Shimmer --- */
+@keyframes headerShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.client-hdr {
+  position: relative;
+}
+.client-hdr::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0,201,167,0.3) 25%,
+    rgba(0,201,167,0.6) 50%,
+    rgba(0,201,167,0.3) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: headerShimmer 8s linear infinite;
+}
+
+
+/* --- Sidebar Active Glow --- */
+.folder-item.active {
+  box-shadow: inset 3px 0 8px -3px rgba(0,201,167,0.2);
+}
+.folder-item.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(0,201,167,0.4);
+}
+
+
+/* --- Resource Bar Ripple --- */
+@keyframes barRipple {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.hs-bar-fill.bar-changing {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.15) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: barRipple 0.8s ease-out;
+}
+
+
+/* --- Mission Status Transitions --- */
+@keyframes shakeCard {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-3px); }
+  40%      { transform: translateX(3px); }
+  60%      { transform: translateX(-2px); }
+  80%      { transform: translateX(2px); }
+}
+.msg-row-shake { animation: shakeCard 0.4s ease-out; }
+
+@keyframes successPulse {
+  0%   { box-shadow: inset 0 0 0 0 rgba(72,200,120,0.3); }
+  50%  { box-shadow: inset 0 0 20px 2px rgba(72,200,120,0.15); }
+  100% { box-shadow: none; }
+}
+.msg-row-success { animation: successPulse 0.8s ease-out; }
+
+@keyframes failurePulse {
+  0%   { box-shadow: inset 0 0 0 0 rgba(232,72,72,0.3); }
+  50%  { box-shadow: inset 0 0 20px 2px rgba(232,72,72,0.15); }
+  100% { box-shadow: none; }
+}
+.msg-row-failure { animation: failurePulse 0.8s ease-out; }
+
+/* BLOWN status — enhanced danger feel */
+.status-blown {
+  animation: pulse 1.2s infinite, blownGlow 2s ease-in-out infinite;
+}
+@keyframes blownGlow {
+  0%, 100% { box-shadow: 0 0 4px rgba(232,72,72,0.3); }
+  50%      { box-shadow: 0 0 10px rgba(232,72,72,0.5); }
+}
+
+
+/* --- DEFCON All-Levels Ambient Glow --- */
+.hdr-defcon {
+  transition: all 0.3s ease;
+  box-shadow: 0 0 0 0 transparent;
+}
+.hdr-defcon.defcon-2 { box-shadow: 0 0 6px rgba(232,136,56,0.15); }
+.hdr-defcon.defcon-3 { box-shadow: 0 0 4px rgba(232,168,56,0.1); }
+
+
+/* --- Tooltip Enhanced --- */
+.game-tooltip {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,201,167,0.08);
+  backdrop-filter: blur(4px);
+  border-color: rgba(42,58,78,0.8);
+}
+
+
+/* --- Op Config Panel Enhanced --- */
+.op-config-panel {
+  box-shadow: inset 0 2px 12px rgba(0,201,167,0.05);
+}
+.prob-display {
+  box-shadow: inset 0 1px 8px rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+  transition: border-color 0.3s ease;
+}
+.prob-display:hover {
+  border-color: var(--border-light);
+}
+
+
+/* --- Intel Notification Enhancement --- */
+@keyframes intelFlash {
+  0%   { border-left-color: var(--teal); background: rgba(0,201,167,0.08); }
+  25%  { border-left-color: var(--teal); background: rgba(0,201,167,0.04); }
+  50%  { border-left-color: var(--teal); background: rgba(0,201,167,0.08); }
+  100% { border-left-color: transparent; background: transparent; }
+}
+.msg-intel-new { animation: intelFlash 2.5s ease-out both; }
+
+
+/* --- Day Advance Overlay Enhancement --- */
+.time-skip-overlay {
+  backdrop-filter: blur(3px);
+}
+.time-skip-days {
+  text-shadow: 0 0 20px rgba(0,201,167,0.3);
+}
+
+
+/* --- Debrief Card Enhanced --- */
+.db-wrap {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: box-shadow 0.2s ease;
+}
+.db-wrap:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.db-toggle:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+
+/* --- Phase Roadmap Node Glow --- */
+.phase-node-active .phase-node-icon {
+  box-shadow: 0 0 8px rgba(0,201,167,0.4);
+}
+.phase-node-done .phase-node-icon {
+  box-shadow: 0 0 6px rgba(72,200,120,0.3);
+}
+
+
+/* --- Faction Network Bars Enhanced --- */
+.geo-network-fill {
+  transition: width 0.5s cubic-bezier(0.16,1,0.3,1), background 0.3s ease;
+}
+
+
+/* --- Agency Bar Chips Enhanced --- */
+.agency-rel-chip {
+  transition: opacity 0.2s ease;
+}
+.agency-rel-bar-fill {
+  transition: width 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+
+
+/* --- Footer Log Toast Animation --- */
+@keyframes logToast {
+  0%   { opacity: 0; transform: translateY(4px); }
+  15%  { opacity: 1; transform: translateY(0); }
+  85%  { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+.footer-log { animation: logToast 0.4s ease-out; }
+
+
+/* --- Game Over Screen Enhancement --- */
+#screen-gameover {
+  backdrop-filter: blur(4px);
+}
+.go-stamp {
+  animation: pulse 2s ease-in-out infinite;
+  text-shadow: 0 0 8px rgba(232,72,72,0.3);
+}
+.go-title {
+  text-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+@keyframes goFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.go-wrap {
+  animation: goFadeIn 0.6s cubic-bezier(0.16,1,0.3,1);
+}
+
+
+/* --- Scrollbar Enhancement --- */
+::-webkit-scrollbar-thumb {
+  transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,201,167,0.2);
+}
+
+
+/* --- Save Slot Cards Enhanced --- */
+.save-slot {
+  transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+}
+.save-slot:hover {
+  border-color: var(--border-light);
+}
+.save-tag-auto {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: var(--amber-dim);
+  color: var(--amber);
+  letter-spacing: 0.5px;
+}
+.save-tag-manual {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: var(--green-dim);
+  color: var(--green);
+  letter-spacing: 0.5px;
+}
+
+
+/* --- Operation Launch Sequence Enhanced --- */
+@keyframes opLaunchEnhanced {
+  0%   { border-color: var(--accent); box-shadow: 0 0 0 0 rgba(0,201,167,0.5); }
+  30%  { border-color: var(--accent); box-shadow: 0 0 24px 6px rgba(0,201,167,0.2); }
+  60%  { border-color: var(--accent); box-shadow: 0 0 12px 2px rgba(0,201,167,0.1); }
+  100% { border-color: var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+}
+.op-launching { animation: opLaunchEnhanced 1s ease-out both; }
+
+
+/* --- Keyboard Focus Indicators --- */
+.hdr-btn:focus-visible,
+.reply-btn:focus-visible,
+.btn-primary:focus-visible,
+.btn-neutral:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+
+/* --- Email Body Enhancement --- */
+.email-body {
+  position: relative;
+}
+.email-class {
+  box-shadow: 0 1px 4px rgba(200,160,48,0.1);
+}
+
+
+/* --- Reading Pane Empty State Enhancement --- */
+.rp-empty-icon {
+  animation: pulse 3s ease-in-out infinite;
+  text-shadow: 0 0 12px rgba(42,58,78,0.5);
+}
+
+
+/* --- Upgrade Row Hover --- */
+.upgrade-row {
+  transition: background 0.15s ease;
+}
+.upgrade-row:hover {
+  background: rgba(255,255,255,0.02);
 }
