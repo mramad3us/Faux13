@@ -2577,11 +2577,19 @@ input[type="range"] { accent-color: var(--accent); }
 .folder-item.active .fi-results .fi-bar3 { animation-delay: 0.16s; }
 .folder-item.active .fi-results .fi-bar4 { animation-delay: 0.24s; }
 
-/* THREATS: bell shakes violently, eyes flash */
-@keyframes bellShake { 0%,100% { transform: rotate(0); } 15% { transform: rotate(8deg); } 30% { transform: rotate(-8deg); } 45% { transform: rotate(5deg); } 60% { transform: rotate(-5deg); } 75% { transform: rotate(2deg); } }
-@keyframes eyeFlash { 0%,100% { opacity: 1; } 50% { opacity: 0.15; } }
-.folder-item.active .fi-threats .fi-bell { transform-origin: 32px 6px; animation: bellShake 0.6s cubic-bezier(0.16,1,0.3,1) both; }
-.folder-item.active .fi-threats .fi-eye { animation: eyeFlash 0.25s 0.15s ease 2 both; }
+/* THREATS: bullet flies in, cracks the skull, recoil */
+@keyframes bulletFly { 0% { cx: -4; opacity: 1; } 60% { cx: 14; opacity: 1; } 70% { cx: 14; opacity: 0; } 100% { cx: 14; opacity: 0; } }
+@keyframes skullRecoil { 0%,40% { transform: translateX(0); } 50% { transform: translateX(3px) rotate(2deg); } 65% { transform: translateX(-1px) rotate(-1deg); } 80% { transform: translateX(1px); } 100% { transform: translateX(0); } }
+@keyframes crackDraw { 0%,45% { stroke-dashoffset: 40; opacity: 0; } 50% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 1; } }
+@keyframes impactRing { 0%,45% { r: 0; opacity: 0; } 50% { r: 2; opacity: 0.8; } 80% { r: 8; opacity: 0; } 100% { r: 8; opacity: 0; } }
+.folder-item.active .fi-threats .fi-bullet { animation: bulletFly 0.6s cubic-bezier(0.2,0,0.3,1) both; }
+.folder-item.active .fi-threats .fi-skull-group { transform-origin: 32px 32px; animation: skullRecoil 0.7s 0.05s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-threats .fi-crack { stroke-dasharray: 40; animation: crackDraw 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-threats .fi-impact { animation: impactRing 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+/* Hide crack and bullet when not active */
+.fi-threats .fi-crack { opacity: 0; }
+.fi-threats .fi-bullet { opacity: 0; }
+.fi-threats .fi-impact { opacity: 0; }
 
 /* AGENCIES: center person scales up, sides slide in */
 @keyframes personSlideL { 0% { transform: translateX(-8px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
