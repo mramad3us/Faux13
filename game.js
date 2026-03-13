@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '4.3.1';
+const GAME_VERSION = '4.3.4';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // config.js (COUNTRIES, DEPT_CONFIG, FOREIGN_CITIES, etc.) must precede this file
@@ -534,10 +534,58 @@ function advanceDay() {
 }
 
 // =============================================================================
-// TIME ADVANCEMENT — "CHECK MAIL" (inspired by Floor 13)
-// Wraps advanceDay() to skip ahead until something significant happens.
+// TIME ADVANCEMENT
 // =============================================================================
 
+// Show day-advance interstitial overlay
+function showDayOverlay(daysAdvanced) {
+  const newMsgs = G.missions.filter(m =>
+    !['EXECUTING', 'ARCHIVED'].includes(m.status)
+  ).length + G.intelMessages.filter(m => !m.read).length;
+
+  const isSingle = daysAdvanced === 1;
+  const headline = isSingle ? formatGameDate(G.day) : `${daysAdvanced} DAYS`;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'time-skip-overlay';
+  overlay.innerHTML = `
+    <div class="time-skip-box">
+      <div class="time-skip-days">${headline}</div>
+      <div class="time-skip-msg">TIME ADVANCED</div>
+      <div class="time-skip-new">${newMsgs} message${newMsgs !== 1 ? 's' : ''} in inbox</div>
+      ${!isSingle ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:4px">${formatGameDate(G.day)}</div>` : ''}
+    </div>
+  `;
+  function dismissOverlay() {
+    if (overlay.classList.contains('time-skip-out')) return;
+    overlay.classList.add('time-skip-out');
+    setTimeout(() => overlay.remove(), 150);
+  }
+  overlay.addEventListener('click', dismissOverlay);
+  document.body.appendChild(overlay);
+  setTimeout(dismissOverlay, 750);
+}
+
+// Auto-switch to inbox if new content arrived
+function autoSwitchToInbox() {
+  const hasNewInbox = G.missions.some(m => m.status === 'INCOMING' && m.dayReceived === G.day)
+    || G.intelMessages.some(m => !m.read);
+  if (hasNewInbox && G.currentFolder !== 'inbox') {
+    G.currentFolder = 'inbox';
+    G.selected = null;
+    G.selectedType = null;
+    render();
+  }
+}
+
+// END DAY — advance exactly 1 day (button + N key)
+function endDay() {
+  advanceDay();
+  autoSwitchToInbox();
+  showDayOverlay(1);
+}
+
+// CHECK MAIL — skip ahead until something significant happens (Shift+N key)
 function advanceToNextEvent() {
   let daysAdvanced = 0;
   const maxDays = 7;
@@ -555,50 +603,17 @@ function advanceToNextEvent() {
 
     // Check if something significant happened
     if (G.missions.length !== prevMissionCount) eventOccurred = true;
-    if (G.intelMessages.length !== prevIntelCount) eventOccurred = true; // new intel arrived
+    if (G.intelMessages.length !== prevIntelCount) eventOccurred = true;
     for (const m of G.missions) {
       if (prevStatuses[m.id] && prevStatuses[m.id] !== m.status) eventOccurred = true;
     }
-    if (G.day % 7 === 0) eventOccurred = true; // weekly briefing
-    if (Math.abs(G.confidence - prevConf) >= 5) eventOccurred = true; // big confidence shift
+    if (G.day % 7 === 0) eventOccurred = true;
+    if (Math.abs(G.confidence - prevConf) >= 5) eventOccurred = true;
     if (G.confidence <= 0 || G.budget <= 0) { eventOccurred = true; break; }
   }
 
-  // Auto-switch to inbox if new intel or missions arrived
-  const hasNewInbox = G.missions.some(m => m.status === 'INCOMING' && m.dayReceived === G.day)
-    || G.intelMessages.some(m => !m.read);
-  if (hasNewInbox && G.currentFolder !== 'inbox') {
-    G.currentFolder = 'inbox';
-    G.selected = null;
-    G.selectedType = null;
-    render();
-  }
-
-  // Show time skip interstitial
-  if (daysAdvanced > 1) {
-    const newMsgs = G.missions.filter(m =>
-      !['EXECUTING', 'ARCHIVED'].includes(m.status)
-    ).length + G.intelMessages.filter(m => !m.read).length;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'time-skip-overlay';
-    overlay.innerHTML = `
-      <div class="time-skip-box">
-        <div class="time-skip-days">${daysAdvanced} DAYS</div>
-        <div class="time-skip-msg">TIME ADVANCED</div>
-        <div class="time-skip-new">${newMsgs} message${newMsgs !== 1 ? 's' : ''} in inbox</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:4px">${formatGameDate(G.day)}</div>
-      </div>
-    `;
-    function dismissOverlay() {
-      if (overlay.classList.contains('time-skip-out')) return;
-      overlay.classList.add('time-skip-out');
-      setTimeout(() => overlay.remove(), 350);
-    }
-    overlay.addEventListener('click', dismissOverlay);
-    document.body.appendChild(overlay);
-    setTimeout(dismissOverlay, 2500);
-  }
+  autoSwitchToInbox();
+  showDayOverlay(daysAdvanced);
 }
 
 // =============================================================================
@@ -4192,7 +4207,7 @@ function showHelp() {
 
       <div class="help-section">
         <div class="help-section-title">CONTROLS</div>
-        <div class="help-resource-row"><strong>N</strong> — Advance 1 day &nbsp; <strong>Shift+N / →</strong> — Check mail (skip to next event) &nbsp; <strong>ESC</strong> — Close modal &nbsp; <strong>?</strong> — This handbook &nbsp; <strong>U</strong> — Upgrades &nbsp; <strong>S</strong> — Save/Load</div>
+        <div class="help-resource-row"><strong>N</strong> — End day (advance 1 day) &nbsp; <strong>Shift+N / →</strong> — Skip to next event &nbsp; <strong>ESC</strong> — Close modal &nbsp; <strong>?</strong> — This handbook &nbsp; <strong>U</strong> — Upgrades &nbsp; <strong>S</strong> — Save/Load</div>
       </div>
     </div>
   `;
@@ -4610,7 +4625,7 @@ document.addEventListener('keydown', e => {
   const clientActive = document.getElementById('screen-client')?.classList.contains('active');
   if (e.key === 'n') {
     if (clientActive && document.getElementById('modal-overlay')?.classList.contains('hidden'))
-      advanceDay();
+      endDay();
   }
   if (e.key === 'N' || e.key === 'ArrowRight') {
     if (clientActive && document.getElementById('modal-overlay')?.classList.contains('hidden'))
@@ -4632,7 +4647,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('DOMContentLoaded', () => {
   showScreen('login');
   bootTerminal();
-  document.getElementById('btn-advance').addEventListener('click', advanceToNextEvent);
+  document.getElementById('btn-advance').addEventListener('click', endDay);
   document.getElementById('btn-help').addEventListener('click', showHelp);
   document.getElementById('btn-capabilities')?.addEventListener('click', () => showCapabilitiesMenu(false));
   document.getElementById('btn-abort-game')?.addEventListener('click', confirmAbortGame);
