@@ -187,12 +187,20 @@ function getEventSender(event) {
 
 // --- Folder definitions ---
 const MAIL_FOLDERS = [
-  { id: 'inbox',    label: 'Inbox',        iconImg: 'icons/inbox.svg' },
-  { id: 'pending',  label: 'Pending',      iconImg: 'icons/pending.svg' },
-  { id: 'active',   label: 'Active Ops',   iconImg: 'icons/active.svg' },
-  { id: 'results',  label: 'Results',      iconImg: 'icons/results.svg' },
-  { id: 'threats',  label: 'Threat Files', iconImg: 'icons/threats.svg' },
-  { id: 'agencies', label: 'Agencies',     iconImg: 'icons/agencies.svg' },
-  { id: 'geo',      label: 'World Intel',  iconImg: 'icons/world-intel.svg' },
-  { id: 'archive',  label: 'Archive',      iconImg: 'icons/archive.svg' },
+  { id: 'inbox',    label: 'Inbox',        iconImg: 'icons/inbox.svg',
+    iconSvg: `<svg class="fi-svg fi-inbox" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="fi-tray-top" d="M12 30l8-16h24l8 16"/><path class="fi-tray-body" d="M12 30v14a2 2 0 002 2h36a2 2 0 002-2V30"/><path class="fi-tray-shelf" d="M12 30h12a2 2 0 012 2v2a2 2 0 002 2h8a2 2 0 002-2v-2a2 2 0 012-2h12"/><path class="fi-arrow" d="M32 18v10M28 24l4 4 4-4"/></svg>` },
+  { id: 'pending',  label: 'Pending',      iconImg: 'icons/pending.svg',
+    iconSvg: `<svg class="fi-svg fi-pending" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle class="fi-ring" cx="32" cy="32" r="26"/><path class="fi-glass" d="M22 16h20v8l-6 8 6 8v8H22v-8l6-8-6-8z"/><path class="fi-sand" d="M26 44c0-2 2-4 6-6 4 2 6 4 6 6"/></svg>` },
+  { id: 'active',   label: 'Active Ops',   iconImg: 'icons/active.svg',
+    iconSvg: `<svg class="fi-svg fi-active" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle class="fi-ring" cx="32" cy="32" r="26"/><polygon class="fi-play" points="26,20 26,44 46,32" fill="currentColor" stroke="none"/></svg>` },
+  { id: 'results',  label: 'Results',      iconImg: 'icons/results.svg',
+    iconSvg: `<svg class="fi-svg fi-results" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle class="fi-ring" cx="32" cy="32" r="26"/><rect class="fi-bar fi-bar1" x="20" y="36" width="4" height="6" rx="0.5"/><rect class="fi-bar fi-bar2" x="26" y="30" width="4" height="12" rx="0.5"/><rect class="fi-bar fi-bar3" x="32" y="26" width="4" height="16" rx="0.5"/><rect class="fi-bar fi-bar4" x="38" y="22" width="4" height="20" rx="0.5"/><path class="fi-baseline" d="M20 46h24"/></svg>` },
+  { id: 'threats',  label: 'Threat Files', iconImg: 'icons/threats.svg',
+    iconSvg: `<svg class="fi-svg fi-threats" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="fi-bell" d="M32 6C18 6 10 16 10 28c0 8 4 14 8 18v6a2 2 0 002 2h24a2 2 0 002-2v-6c4-4 8-10 8-18C54 16 46 6 32 6z"/><circle class="fi-eye fi-eye-l" cx="24" cy="26" r="4" fill="currentColor"/><circle class="fi-eye fi-eye-r" cx="40" cy="26" r="4" fill="currentColor"/><path class="fi-strike" d="M28 38v8"/><path class="fi-strike" d="M32 38v8"/><path class="fi-strike" d="M36 38v8"/><path class="fi-base" d="M20 54h24"/><path class="fi-base" d="M22 58h20"/></svg>` },
+  { id: 'agencies', label: 'Agencies',     iconImg: 'icons/agencies.svg',
+    iconSvg: `<svg class="fi-svg fi-agencies" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle class="fi-ring" cx="32" cy="32" r="26"/><circle class="fi-head fi-head-c" cx="32" cy="22" r="5"/><path class="fi-body fi-body-c" d="M22 46c0-6 4-10 10-10s10 4 10 10"/><circle class="fi-head fi-head-l" cx="18" cy="28" r="4"/><path class="fi-body fi-body-l" d="M10 44c0-4 3-8 8-8"/><circle class="fi-head fi-head-r" cx="46" cy="28" r="4"/><path class="fi-body fi-body-r" d="M54 44c0-4-3-8-8-8"/></svg>` },
+  { id: 'geo',      label: 'World Intel',  iconImg: 'icons/world-intel.svg',
+    iconSvg: `<svg class="fi-svg fi-globe" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle class="fi-sphere" cx="32" cy="32" r="24"/><ellipse class="fi-meridian" cx="32" cy="32" rx="10" ry="24"/><path class="fi-lat fi-lat1" d="M10 22h44"/><path class="fi-lat fi-lat2" d="M8 32h48"/><path class="fi-lat fi-lat3" d="M10 42h44"/></svg>` },
+  { id: 'archive',  label: 'Archive',      iconImg: 'icons/archive.svg',
+    iconSvg: `<svg class="fi-svg fi-archive" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect class="fi-lid" x="10" y="12" width="44" height="10" rx="2"/><path class="fi-box" d="M14 22v26a2 2 0 002 2h32a2 2 0 002-2V22"/><path class="fi-slot" d="M26 32h12"/></svg>` },
 ];

@@ -2537,6 +2537,94 @@ input[type="range"] { accent-color: var(--accent); }
   box-shadow: inset 3px 0 10px -3px rgba(0,201,167,0.15);
 }
 
+/* --- Inline SVG folder icons --- */
+.folder-icon-svg {
+  width: 24px; height: 24px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.fi-svg {
+  width: 24px; height: 24px;
+  color: var(--text-dim);
+  opacity: 0.7;
+  transition: color 0.2s, opacity 0.2s;
+}
+.folder-item:hover .fi-svg { opacity: 0.85; }
+.folder-item.active .fi-svg { color: var(--accent); opacity: 1; }
+
+/* ================ PER-ICON SELECTION ANIMATIONS ================ */
+
+/* INBOX: arrow drops into tray, tray bounces */
+@keyframes inboxArrowDrop { 0% { transform: translateY(-6px); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(0); } }
+@keyframes inboxTrayBounce { 0%,100% { transform: translateY(0); } 40% { transform: translateY(2px); } 60% { transform: translateY(-1px); } }
+.folder-item.active .fi-inbox .fi-arrow { animation: inboxArrowDrop 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-inbox .fi-tray-body,
+.folder-item.active .fi-inbox .fi-tray-shelf { animation: inboxTrayBounce 0.5s 0.3s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* PENDING: hourglass flips 180° */
+@keyframes hourglassFlip { 0% { transform: rotate(0deg); } 100% { transform: rotate(180deg); } }
+.folder-item.active .fi-pending .fi-glass { transform-origin: 32px 32px; animation: hourglassFlip 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-pending .fi-sand { animation: hourglassFlip 0.6s cubic-bezier(0.16,1,0.3,1) both; transform-origin: 32px 32px; }
+
+/* ACTIVE: play button pulses, ring ripples */
+@keyframes playPulse { 0% { transform: scale(0.7); opacity: 0.4; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+.folder-item.active .fi-active .fi-play { transform-origin: 34px 32px; animation: playPulse 0.45s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* RESULTS: bars grow up staggered */
+@keyframes barGrow { 0% { transform: scaleY(0); } 100% { transform: scaleY(1); } }
+.folder-item.active .fi-results .fi-bar { transform-origin: center bottom; animation: barGrow 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-results .fi-bar1 { animation-delay: 0s; }
+.folder-item.active .fi-results .fi-bar2 { animation-delay: 0.08s; }
+.folder-item.active .fi-results .fi-bar3 { animation-delay: 0.16s; }
+.folder-item.active .fi-results .fi-bar4 { animation-delay: 0.24s; }
+
+/* THREATS: bell shakes violently, eyes flash */
+@keyframes bellShake { 0%,100% { transform: rotate(0); } 15% { transform: rotate(8deg); } 30% { transform: rotate(-8deg); } 45% { transform: rotate(5deg); } 60% { transform: rotate(-5deg); } 75% { transform: rotate(2deg); } }
+@keyframes eyeFlash { 0%,100% { opacity: 1; } 50% { opacity: 0.15; } }
+.folder-item.active .fi-threats .fi-bell { transform-origin: 32px 6px; animation: bellShake 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-threats .fi-eye { animation: eyeFlash 0.25s 0.15s ease 2 both; }
+
+/* AGENCIES: center person scales up, sides slide in */
+@keyframes personSlideL { 0% { transform: translateX(-8px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+@keyframes personSlideR { 0% { transform: translateX(8px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+@keyframes personScaleC { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.folder-item.active .fi-agencies .fi-head-c,
+.folder-item.active .fi-agencies .fi-body-c { transform-origin: 32px 34px; animation: personScaleC 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-agencies .fi-head-l,
+.folder-item.active .fi-agencies .fi-body-l { animation: personSlideL 0.4s 0.15s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-agencies .fi-head-r,
+.folder-item.active .fi-agencies .fi-body-r { animation: personSlideR 0.4s 0.15s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* GLOBE: meridian sweeps across */
+@keyframes meridianSweep { 0% { rx: 2; } 50% { rx: 22; } 100% { rx: 10; } }
+@keyframes latPulse { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 1; } }
+.folder-item.active .fi-globe .fi-meridian { animation: meridianSweep 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-globe .fi-lat { animation: latPulse 0.4s ease both; }
+.folder-item.active .fi-globe .fi-lat1 { animation-delay: 0.1s; }
+.folder-item.active .fi-globe .fi-lat2 { animation-delay: 0.2s; }
+.folder-item.active .fi-globe .fi-lat3 { animation-delay: 0.3s; }
+
+/* ARCHIVE: lid pops open then settles */
+@keyframes lidOpen { 0% { transform: translateY(0); } 35% { transform: translateY(-6px) scaleY(0.7); } 100% { transform: translateY(0) scaleY(1); } }
+@keyframes slotFlash { 0%,100% { opacity: 1; } 35% { opacity: 0; } 65% { opacity: 0; } }
+.folder-item.active .fi-archive .fi-lid { transform-origin: center bottom; animation: lidOpen 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-archive .fi-slot { animation: slotFlash 0.5s ease both; }
+
+/* DEPARTMENTS: nodes pop in cascading, wires draw */
+@keyframes nodePopIn { 0% { transform: scale(0); opacity: 0; } 70% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes wiresDraw { 0% { stroke-dashoffset: 80; } 100% { stroke-dashoffset: 0; } }
+.folder-item.active .fi-depts .fi-node { transform-origin: center center; animation: nodePopIn 0.3s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-depts .fi-node-top { animation-delay: 0s; }
+.folder-item.active .fi-depts .fi-node-bl { animation-delay: 0.1s; }
+.folder-item.active .fi-depts .fi-node-bc { animation-delay: 0.15s; }
+.folder-item.active .fi-depts .fi-node-br { animation-delay: 0.2s; }
+.folder-item.active .fi-depts .fi-wires { stroke-dasharray: 80; animation: wiresDraw 0.5s 0.1s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* ELITE ROSTER: star spins in, flourishes draw */
+@keyframes starSpin { 0% { transform: rotate(-72deg) scale(0.5); opacity: 0; } 100% { transform: rotate(0) scale(1); opacity: 1; } }
+@keyframes flourishDraw { 0% { stroke-dashoffset: 20; opacity: 0; } 100% { stroke-dashoffset: 0; opacity: 1; } }
+.folder-item.active .fi-elite .fi-star { transform-origin: 32px 28px; animation: starSpin 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-elite .fi-flourish { stroke-dasharray: 20; animation: flourishDraw 0.3s 0.3s cubic-bezier(0.16,1,0.3,1) both; }
+
 /* --- Sidebar folder: press feedback --- */
 .folder-item:active { transform: scale(0.97); }
 

@@ -1,5 +1,5 @@
 'use strict';
-const GAME_VERSION = '4.2.3';
+const GAME_VERSION = '4.3.0';
 // =============================================================================
 // SHADOW DIRECTIVE  —  Per-department resources, XP & capabilities system
 // config.js (COUNTRIES, DEPT_CONFIG, FOREIGN_CITIES, etc.) must precede this file
@@ -2982,9 +2982,11 @@ function renderFolderSidebar() {
     const badgeHtml = count > 0
       ? `<span class="folder-badge ${hasUrgent ? 'folder-badge-urgent' : ''}">${count}</span>`
       : '';
-    const iconHtml = f.iconImg
-      ? `<img class="folder-icon-img" src="${f.iconImg}" alt="${f.label}">`
-      : `<span class="folder-icon ${f.iconCls || ''}">${f.icon}</span>`;
+    const iconHtml = f.iconSvg
+      ? `<span class="folder-icon-svg">${f.iconSvg}</span>`
+      : f.iconImg
+        ? `<img class="folder-icon-img" src="${f.iconImg}" alt="${f.label}">`
+        : `<span class="folder-icon ${f.iconCls || ''}">${f.icon}</span>`;
     return `<div class="folder-item ${isActive ? 'active' : ''}" onclick="switchFolder('${f.id}')">
       ${iconHtml}
       <span class="folder-label">${f.label}</span>
@@ -2992,10 +2994,10 @@ function renderFolderSidebar() {
     </div>`;
   }).join('') + '<div class="folder-divider"></div>' +
   `<div class="folder-item ${G.currentFolder === 'depts' ? 'active' : ''}" onclick="switchFolder('depts')">
-    <img class="folder-icon-img" src="icons/departments.svg" alt="Departments"><span class="folder-label">Departments</span>
+    <span class="folder-icon-svg"><svg class="fi-svg fi-depts" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle class="fi-ring" cx="32" cy="32" r="26"/><rect class="fi-node fi-node-top" x="26" y="14" width="12" height="8" rx="1.5"/><rect class="fi-node fi-node-bl" x="10" y="40" width="12" height="8" rx="1.5"/><rect class="fi-node fi-node-bc" x="26" y="40" width="12" height="8" rx="1.5"/><rect class="fi-node fi-node-br" x="42" y="40" width="12" height="8" rx="1.5"/><path class="fi-wires" d="M32 22v18M16 40v-8h32v8"/></svg></span><span class="folder-label">Departments</span>
   </div>` +
   `<div class="folder-item ${G.currentFolder === 'roster' ? 'active' : ''}" onclick="switchFolder('roster')">
-    <img class="folder-icon-img" src="icons/elite-roster.svg" alt="Elite Roster"><span class="folder-label">Elite Roster</span>
+    <span class="folder-icon-svg"><svg class="fi-svg fi-elite" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle class="fi-ring" cx="32" cy="32" r="26"/><polygon class="fi-star" points="32,12 36,24 48,24 38,31 42,43 32,36 22,43 26,31 16,24 28,24" fill="none"/><path class="fi-flourish" d="M16 30c-6-2-8-4-8-6"/><path class="fi-flourish" d="M48 30c6-2 8-4 8-6"/><path class="fi-flourish" d="M18 36c-6 0-10-2-10-4"/><path class="fi-flourish" d="M46 36c6 0 10-2 10-4"/></svg></span><span class="folder-label">Elite Roster</span>
     ${(G.eliteUnits?.filter(u => u.alive).length || 0) > 0 ? `<span class="folder-badge">${G.eliteUnits.filter(u => u.alive).length}</span>` : ''}
   </div>`;
 
