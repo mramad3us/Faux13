@@ -2560,10 +2560,10 @@ input[type="range"] { accent-color: var(--accent); }
 .folder-item.active .fi-inbox .fi-tray-body,
 .folder-item.active .fi-inbox .fi-tray-shelf { animation: inboxTrayBounce 0.5s 0.3s cubic-bezier(0.16,1,0.3,1) both; }
 
-/* PENDING: hourglass flips 180° */
-@keyframes hourglassFlip { 0% { transform: rotate(0deg); } 100% { transform: rotate(180deg); } }
-.folder-item.active .fi-pending .fi-glass { transform-origin: 32px 32px; animation: hourglassFlip 0.6s cubic-bezier(0.16,1,0.3,1) both; }
-.folder-item.active .fi-pending .fi-sand { animation: hourglassFlip 0.6s cubic-bezier(0.16,1,0.3,1) both; transform-origin: 32px 32px; }
+/* PENDING: hourglass does a full 360° flip */
+@keyframes hourglassFlip { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.folder-item.active .fi-pending .fi-glass { transform-origin: 32px 32px; animation: hourglassFlip 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+.folder-item.active .fi-pending .fi-sand { transform-origin: 32px 32px; animation: hourglassFlip 0.7s cubic-bezier(0.16,1,0.3,1) both; }
 
 /* ACTIVE: play button pulses, ring ripples */
 @keyframes playPulse { 0% { transform: scale(0.7); opacity: 0.4; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
